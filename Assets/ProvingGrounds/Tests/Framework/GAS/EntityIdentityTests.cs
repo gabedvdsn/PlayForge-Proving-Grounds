@@ -9,7 +9,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class EntityIdentityTests : ProvingGroundsTest
     {
         /// <summary>A runtime copy of an identity lost what it starts with, so the entity came up with nothing.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_09_A_runtime_copy_starts_with_what_the_identity_does() => Live(async () =>
         {
             var identity = Filled(out var sword);
@@ -23,7 +23,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Every field the two share, so the next one added can't be left out of the copy either.</summary>
-        [Test, Category("Red")]
+        [Test]
         public void GAS_09_A_runtime_copy_carries_every_field_the_identity_has()
         {
             var identity = Filled(out _);
