@@ -46,6 +46,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
 
         private readonly List<ProcessRelay> _owned = new();
         private readonly List<GameObject> _objects = new();
+        private GameObject _templates;
         private readonly List<Scene> _scenes = new();
         private HashSet<int> _baseline = new();
 
@@ -150,13 +151,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         }
 
         /// <summary>
-        /// A stand-in for a prefab: an object outside any scene, as a prefab is, so ProcessControl clones
-        /// it on registration. Real prefab assets aren't needed until a test is about the asset itself.
+        /// A stand-in for a prefab: an object outside any scene and not active, as a prefab is, so ProcessControl
+        /// clones it on registration, and the clone is an ordinary active object in the scene. Real prefab assets
+        /// aren't needed until a test is about the asset itself.
         /// </summary>
         public T Template<T>(string name) where T : AbstractMonoProcess
         {
-            var host = new GameObject(name) { hideFlags = HideFlags.HideAndDontSave };
-            _objects.Add(host);
+            if (!_templates)
+            {
+                _templates = new GameObject("Templates") { hideFlags = HideFlags.HideAndDontSave };
+                _templates.SetActive(false);
+                _objects.Add(_templates);
+            }
+
+            var host = new GameObject(name);
+            host.transform.SetParent(_templates.transform, false);
             return host.AddComponent<T>();
         }
 
