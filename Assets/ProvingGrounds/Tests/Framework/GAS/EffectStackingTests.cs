@@ -82,10 +82,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             return value.CurrentValue;
         }
 
-        /// <summary>The containers add one stack whatever amount they're asked for.</summary>
-        [UnityTest, Category("Red")]
-        public IEnumerator GAS_05_Each_application_adds_the_stack_amount(
-            [Values(EEffectStackPolicy.StacksShareOneDuration, EEffectStackPolicy.DurationTakenFromOneStack)] EEffectStackPolicy policy) => Live(async () =>
+        /// <summary>The containers added one stack whatever amount they were asked for.</summary>
+        [UnityTest]
+        public IEnumerator GAS_05_Each_application_adds_the_stack_amount([Values] EEffectStackPolicy policy) => Live(async () =>
         {
             var gas = World.RuntimeEntity();
             var effect = Stacking(policy, stackAmount: 3);
@@ -99,10 +98,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
-        /// <summary>The stack amount only consults its configs when it has a scaler, so a plain Max does nothing.</summary>
-        [UnityTest, Category("Red")]
-        public IEnumerator GAS_05_Max_stacks_is_enforced(
-            [Values(EEffectStackPolicy.StacksShareOneDuration, EEffectStackPolicy.DurationTakenFromOneStack)] EEffectStackPolicy policy) => Live(async () =>
+        /// <summary>The stack amount only consulted its configs when it had a scaler, so a plain Max did nothing.</summary>
+        [UnityTest]
+        public IEnumerator GAS_05_Max_stacks_is_enforced([Values] EEffectStackPolicy policy) => Live(async () =>
         {
             var gas = World.RuntimeEntity();
             var effect = Stacking(policy);
@@ -115,10 +113,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Each config picks the container in turn and the last answer stands, so a config with no opinion
-        /// overrules a bound that asked for a new container.
+        /// Each config picks the container in turn and the last answer stands, so they have to go in priority
+        /// order, or a config with no opinion overrules a bound that asked for a new container.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_05_A_later_config_doesnt_overrule_the_stack_bound() => Live(async () =>
         {
             var gas = World.RuntimeEntity();
@@ -133,7 +131,46 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
-        /// <summary>The control for the test above: the bound alone gets its way.</summary>
+        /// <summary>The amount goes through the configs in the same order, so a bound caps what the rest ask for.</summary>
+        [UnityTest]
+        public IEnumerator GAS_05_A_bound_caps_an_amount_set_by_a_later_config() => Live(async () =>
+        {
+            var gas = World.RuntimeEntity();
+            var effect = Stacking(EEffectStackPolicy.StacksShareOneDuration);
+            effect.DurationSpecification.StackingConfigs.Add(new StackBoundsConfig { Max = 2 });
+            effect.DurationSpecification.StackingConfigs.Add(new TripledAmount());
+
+            World.Apply(gas, gas, effect);
+
+            Assert.That(Stacks(gas, effect), Is.EqualTo(2), "tripled to 3, and held at Max");
+            await Frames.Step();
+        });
+
+        private sealed class TripledAmount : AbstractStackingConfig
+        {
+            public override void InitializeContainer(AbstractStackingEffectContainer container) { }
+
+            public override int GetStacks(AbstractStackingEffectContainer container, int amount = 1) => amount * 3;
+        }
+
+        /// <summary>
+        /// The field defaults to 0 on any asset authored before amounts took effect, and every application
+        /// added one regardless, so that's what an unset amount has to go on meaning.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_05_An_unset_stack_amount_is_one_stack([Values] EEffectStackPolicy policy) => Live(async () =>
+        {
+            var gas = World.RuntimeEntity();
+            var effect = Stacking(policy, stackAmount: 0);
+
+            World.Apply(gas, gas, effect);
+            World.Apply(gas, gas, effect);
+
+            Assert.That(Stacks(gas, effect), Is.EqualTo(2));
+            await Frames.Step();
+        });
+
+        /// <summary>The bound alone gets its way, and a new container starts counting from nothing.</summary>
         [UnityTest]
         public IEnumerator A_stack_bound_alone_starts_a_new_container_at_Max() => Live(async () =>
         {
