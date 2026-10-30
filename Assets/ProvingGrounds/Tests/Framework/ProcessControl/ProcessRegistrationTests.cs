@@ -32,7 +32,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A packet heard about every process it served and never let go of one.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_16_A_packet_lets_go_of_a_process_that_ends() => Live(async () =>
         {
             var data = ProcessDataPacket.Default();
