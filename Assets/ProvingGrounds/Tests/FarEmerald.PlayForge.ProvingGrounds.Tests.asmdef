@@ -1,0 +1,24 @@
+{
+    "name": "FarEmerald.PlayForge.ProvingGrounds.Tests",
+    "rootNamespace": "FarEmerald.PlayForge.ProvingGrounds.Tests",
+    "references": [
+        "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.ProvingGrounds.Harness",
+        "UniTask",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
