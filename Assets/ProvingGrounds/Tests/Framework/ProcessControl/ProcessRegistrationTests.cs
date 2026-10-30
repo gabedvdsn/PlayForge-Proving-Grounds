@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// WhenInitialize runs with the block already in place, so a throw there left a process half registered,
         /// and the exception went to whoever called Register. It's refused now, and nothing of it stays.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_15_A_throw_in_WhenInitialize_refuses_the_process() => Live(async () =>
         {
             var probe = World.NewProbe("Broken Start", EProcessLifecycle.Synchronous);
