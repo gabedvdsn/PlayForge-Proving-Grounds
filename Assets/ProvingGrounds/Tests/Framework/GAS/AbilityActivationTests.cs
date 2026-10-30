@@ -79,6 +79,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// The channel yielded in its body and DoWhileAsync yielded again, so it counted one frame's time in
+        /// two and lasted twice as long as it was set to.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_AB_A_channel_lasts_its_duration() => Live(async () =>
+        {
+            const int HalfASecond = 30;
+            var channel = new ChannelAbilityTask { ChannelDuration = 0.5f };
+            var ability = Make.Ability("Channelled", Make.Stage(channel), Make.Stage(new ProbeAbilityTask(World, "After")));
+
+            var abilities = World.RuntimeEntity().GetAbilitySystem();
+            abilities.GiveAbility(ability, 1, out int index);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            int taken = await Frames.Until(() => Ledger.Prepares("After") == 1, HalfASecond + 5, "the channel ends");
+            Assert.That(taken, Is.GreaterThanOrEqualTo(HalfASecond - 3), "and doesn't end early");
+        });
+
+        /// <summary>
         /// A stage set to apply usage at its start, which is the default, fired its ended callback there too,
         /// and never at its real end.
         /// </summary>

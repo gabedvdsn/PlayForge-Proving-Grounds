@@ -32,7 +32,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Channel
         }
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_paused_delay_stops_counting([Values] Pauser pauser) => Live(async () =>
         {
             var next = new ProbeSequenceTask(World, "Next Stage");
@@ -50,7 +50,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A task that doesn't time itself finishes when it finishes, but its stage waits for the resume.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_No_stage_ends_or_starts_during_a_pause([Values] Pauser pauser) => Live(async () =>
         {
             var first = new ProbeSequenceTask(World, "First Stage", frames: 3);
@@ -69,7 +69,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 5, "the sequence goes on");
         });
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_timer_doesnt_run_out_during_a_pause([Values] Timer timer) => Live(async () =>
         {
             const float Seconds = 0.25f;
@@ -99,7 +99,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The library's helpers get only a token, and that token is enough to hold them.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_library_helper_holds_with_its_sequence([Values] Pauser pauser) => Live(async () =>
         {
             float value = 0f;
@@ -120,7 +120,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value, Is.EqualTo(1f));
         });
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_paused_ability_holds_its_timed_tasks([Values] Hub hub, [Values] TimedAbilityTask timed) => Live(async () =>
         {
             AbstractAbilityTask task = timed == TimedAbilityTask.Delay
@@ -142,7 +142,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 30, "the ability goes on");
         });
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_paused_chain_holds_between_sequences() => Live(async () =>
         {
             var next = new ProbeSequenceTask(World, "Next Sequence");
@@ -162,8 +162,158 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Next Sequence") == 1, 20, "the chain goes on");
         });
 
+        [UnityTest]
+        public IEnumerator A_sequence_can_be_paused_more_than_once() => Live(async () =>
+        {
+            var next = new ProbeSequenceTask(World, "Next Stage");
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Twice").Delay(0.5f).Task(next).Build()));
+
+            await Frames.Seconds(0.1f);
+
+            for (int i = 0; i < 2; i++)
+            {
+                relay.Pause();
+                await Frames.Seconds(0.5f);
+                relay.Unpause();
+                await Frames.Seconds(0.1f);
+            }
+
+            Assert.That(Ledger.Prepares("Next Stage"), Is.EqualTo(0), "0.3 s of its 0.5 s have gone");
+
+            await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 20, "the rest runs out");
+        });
+
+        /// <summary>A Terminate is an interrupt to a sequence, which a pause in the same frame doesn't undo.</summary>
+        [UnityTest]
+        public IEnumerator A_terminate_on_a_sequence_survives_a_control_pause() => Live(async () =>
+        {
+            var task = new ProbeSequenceTask(World, "Ending", frames: 1000);
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Ending").Task(task).Build()));
+            await Frames.Step(2);
+
+            relay.Terminate();
+            World.Control.SetControlState(EProcessControlState.Waiting);
+            await Frames.Step(3);
+
+            World.Control.SetControlState(EProcessControlState.Ready);
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 3, "it ends");
+            Assert.That(Ledger.Prepares("Ending"), Is.EqualTo(1), "without running again");
+        });
+
+        /// <summary>An interrupt during a pause ends the ability, and nothing is left waiting on the held sequence.</summary>
+        [UnityTest]
+        public IEnumerator An_ability_interrupted_during_a_pause_can_run_again([Values] Hub hub) => Live(async () =>
+        {
+            var task = new ProbeAbilityTask(World, "Long", frames: 20);
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("Interrupted", Make.Stage(task)), 1, out int index);
+
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(2);
+
+            World.Control.SetControlState(EProcessControlState.Waiting);
+            await Frames.Step();
+
+            abilities.Inject(index, InterruptSequenceInjection.Instance);
+            await Frames.Step(3);
+
+            World.Control.SetControlState(EProcessControlState.Ready);
+            await Frames.Step(3);
+
+            Assert.That(Ledger.Cleans("Long"), Is.EqualTo(1), "its task is cleaned up");
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "and it activates again");
+
+            await Frames.Until(() => Ledger.Cleans("Long") == 2, 30, "and runs to its end");
+        });
+
+        /// <summary>An ability activated during a pause waits with everything else.</summary>
+        [UnityTest]
+        public IEnumerator An_ability_activated_during_a_pause_starts_when_it_ends([Values] Hub hub) => Live(async () =>
+        {
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("Late", Make.Stage(new ProbeAbilityTask(World, "Late Task"))), 1, out int index);
+
+            World.Control.SetControlState(EProcessControlState.Waiting);
+            await Frames.Step();
+
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(5);
+            Assert.That(Ledger.Prepares("Late Task"), Is.EqualTo(0), "it waits");
+
+            World.Control.SetControlState(EProcessControlState.Ready);
+
+            await Frames.Until(() => Ledger.Cleans("Late Task") == 1, 10, "and then runs");
+        });
+
+        /// <summary>Skipping is asked for from outside, so it lands during a pause, but what follows it waits.</summary>
+        [UnityTest]
+        public IEnumerator A_stage_skipped_during_a_pause_holds_the_next_one() => Live(async () =>
+        {
+            var next = new ProbeSequenceTask(World, "Next Stage");
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Skipped").Delay(100f).Task(next).Build());
+            var relay = Run(sequence);
+            await Frames.Step(2);
+
+            relay.Pause();
+            Assert.That(sequence.SkipCurrentStage(), "the skip is accepted");
+            await Frames.Step(5);
+
+            Assert.That(Ledger.Prepares("Next Stage"), Is.EqualTo(0), "the next stage waits for the resume");
+
+            relay.Unpause();
+
+            await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 5, "and then runs");
+        });
+
+        /// <summary>The same a level up: a sequence skipped in a paused chain doesn't start the next one.</summary>
+        [UnityTest]
+        public IEnumerator A_sequence_skipped_during_a_chains_pause_holds_the_next_one() => Live(async () =>
+        {
+            var next = new ProbeSequenceTask(World, "Next Sequence");
+            var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Delay(100f).Build())
+                .Then(new TaskSequence(TaskSequenceBuilder.Create("Second").Task(next).Build()));
+
+            ProcessControl.Register(chain, out var relay);
+            World.Own(relay);
+            await Frames.Step(2);
+
+            relay.Pause();
+            relay.TryGetProcess<TaskSequenceProcess>(out var process);
+            Assert.That(process.SkipCurrentSequence(), "the skip is accepted");
+            await Frames.Step(5);
+
+            Assert.That(Ledger.Prepares("Next Sequence"), Is.EqualTo(0), "the next sequence waits for the resume");
+
+            relay.Unpause();
+
+            await Frames.Until(() => Ledger.Cleans("Next Sequence") == 1, 5, "and then runs");
+        });
+
+        /// <summary>A chain ended while paused doesn't carry the pause into its next run.</summary>
+        [UnityTest]
+        public IEnumerator A_chain_ended_while_paused_runs_again() => Live(async () =>
+        {
+            var next = new ProbeSequenceTask(World, "Chained");
+            var chain = new TaskSequence(TaskSequenceBuilder.Create("Only").Delay(0.1f).Build())
+                .Then(new TaskSequence(TaskSequenceBuilder.Create("Then").Task(next).Build()));
+
+            ProcessControl.Register(chain, out var first);
+            World.Own(first);
+            await Frames.Step(2);
+
+            first.Pause();
+            first.TerminateImmediate();
+            await Frames.Step(2);
+
+            ProcessControl.Register(chain, out var second);
+            World.Own(second);
+
+            await Frames.Until(() => Ledger.Cleans("Chained") == 1, 20, "the new run goes through");
+        });
+
         /// <summary>A held sequence is waiting for a resume that won't come, so ending it has to end its run.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_Terminating_a_paused_sequence_ends_it([Values] Pauser pauser) => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Held", frames: 1000);
@@ -182,7 +332,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Interrupted during a pause, a sequence is over, so the resume ends it and doesn't start it again.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Y_A_sequence_interrupted_during_a_pause_ends_on_resume() => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Interrupted", frames: 1000);
