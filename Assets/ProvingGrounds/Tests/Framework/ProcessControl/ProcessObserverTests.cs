@@ -9,7 +9,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class ProcessObserverTests : ProvingGroundsTest
     {
         /// <summary>The report was built after the state had changed, so old and new were always the same.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_13_A_state_change_reports_where_it_came_from() => Live(async () =>
         {
             var seen = new List<(EProcessState from, EProcessState to)>();
@@ -33,7 +33,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A run that ends at once changes state twice, and each change was reported once, not one twice.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_13_A_run_that_ends_at_once_reports_each_change_once() => Live(async () =>
         {
             var seen = new List<(EProcessState from, EProcessState to)>();
@@ -57,7 +57,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Terminating took the watchers off before they were told, so none ever saw Terminated.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_13_A_watcher_sees_the_process_terminate() => Live(async () =>
         {
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
@@ -72,7 +72,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The event says it fires before the removal, and it fired after.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_13_Unregistered_fires_before_the_process_goes() => Live(async () =>
         {
             var probe = World.Probe("Leaving", EProcessLifecycle.Synchronous);
