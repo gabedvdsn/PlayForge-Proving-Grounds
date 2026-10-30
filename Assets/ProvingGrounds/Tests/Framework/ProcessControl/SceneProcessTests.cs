@@ -12,7 +12,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Anything outside a scene was taken for a prefab, so a live object with HideAndDontSave was cloned,
         /// and what the caller had set on it went nowhere.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_09_A_live_object_outside_any_scene_isnt_cloned() => Live(async () =>
         {
             var host = new GameObject("Hidden") { hideFlags = HideFlags.HideAndDontSave };
