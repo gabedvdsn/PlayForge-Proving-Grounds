@@ -19,7 +19,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A task can finish without yielding, and nothing in the repeat loop yielded either, so the stage
         /// repeated for ever inside one frame. That's the freeze the Swarm Defender sample yields to avoid.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_M_An_instant_stage_repeats_once_a_frame([Values] RepeatKind kind) => Live(async () =>
         {
             int iterations = 0;
@@ -41,7 +41,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// SyncDelay resets in Prepare, and a repeat never prepared again, so from the second iteration the
         /// delay was over before it began, and the stage spun as the test above does.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_M_A_repeating_SyncDelay_waits_every_time([Values] RepeatKind kind) => Live(async () =>
         {
             int iterations = 0;
@@ -60,7 +60,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>An iteration is a run of the stage's tasks, so each one gets its Prepare and its Clean.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_M_Every_iteration_prepares_and_cleans_its_tasks([Values] RepeatKind kind) => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Repeated", frames: 2);
@@ -83,8 +83,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Ledger.Violations(), Is.Empty);
         });
 
+        /// <summary>A repeat broken from its own callback is over, so nothing is prepared for a run that won't happen.</summary>
+        [UnityTest]
+        public IEnumerator TS_M_A_repeat_broken_from_OnRepeat_prepares_nothing_more() => Live(async () =>
+        {
+            int iterations = 0;
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Broken From Its Callback")
+                .Stage(stage =>
+                {
+                    stage.WithRepeat(true);
+                    stage.OnRepeat(context => { if (++iterations == 2) context.Data.BreakStageRepeat(); });
+                    stage.Task(new ProbeSequenceTask(World, "Repeated", frames: 1));
+                })
+                .Build()));
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 10, "the repeat ends");
+
+            Assert.That(Ledger.Prepares("Repeated"), Is.EqualTo(2), "one for each iteration that ran");
+            Assert.That(Ledger.Violations(), Is.Empty);
+        });
+
         /// <summary>The synced runner prepared each iteration, but cleaned only the last.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_M_A_synced_repeat_cleans_before_it_prepares_again() => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Stepped", frames: 2);
@@ -98,12 +118,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(8);
 
             Assert.That(Ledger.Prepares("Stepped"), Is.GreaterThanOrEqualTo(3), "several iterations");
-            Assert.That(Ledger.Violations(), Is.Empty);
 
             runner.Interrupt(data);
             await Frames.Step(2);
 
             Assert.That(Ledger.Cleans("Stepped"), Is.EqualTo(Ledger.Prepares("Stepped")));
+            Assert.That(Ledger.Violations(), Is.Empty);
         });
 
         /// <summary>The whole-sequence repeat waits on its maintained stages, which has always taken it a frame.</summary>

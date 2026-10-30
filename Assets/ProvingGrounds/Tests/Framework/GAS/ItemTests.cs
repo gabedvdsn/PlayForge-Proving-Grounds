@@ -25,6 +25,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(gas.GetAbilitySystem().AbilityCount, Is.EqualTo(abilities), "and grants nothing it doesn't have");
 
             Assert.DoesNotThrow(() => items.UnequipAllItems());
+            Assert.That(gas.GetAbilitySystem().GiveAbility(null, 1, out _), Is.False, "and there's no giving nothing");
+            await Frames.Step();
+        });
+
+        /// <summary>Having no ability to grant isn't a failed grant, so a passive item says nothing about one.</summary>
+        [UnityTest]
+        public IEnumerator A_passive_item_reports_no_ability([Values] Hub hub) => Live(async () =>
+        {
+            var items = World.Entity(hub).GetItemSystem();
+
+            int reports = 0;
+            items.Callbacks.OnItemAbilityGranted += _ => reports++;
+            items.Callbacks.OnItemAbilityRevoked += _ => reports++;
+
+            items.GiveAndEquipItem(Make.Item("Ring"), out int index);
+            items.UnequipItem(index);
+
+            Assert.That(reports, Is.EqualTo(0));
             await Frames.Step();
         });
 
