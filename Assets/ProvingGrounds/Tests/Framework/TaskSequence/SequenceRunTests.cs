@@ -1,4 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -8,10 +11,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class SequenceRunTests : ProvingGroundsTest
     {
         /// <summary>
-        /// A TaskSequence holds one Runtime, and each run overwrites it, so running one twice at once leaves
-        /// the first run unreachable: interrupting it stops the other one instead.
+        /// A TaskSequence held one Runtime, and each run overwrote it, so running one twice at once left the
+        /// first run unreachable: interrupting it stopped the other one instead.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_I_An_interrupt_reaches_the_run_it_was_sent_to() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Shared Sequence").Delay(100f).Build());
@@ -33,10 +36,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// A run's stage timeout goes into the shared definition, so every later run of it inherits a timeout
+        /// A run's stage timeout went into the shared definition, so every later run of it inherited a timeout
         /// that one run asked for.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_I_A_run_leaves_the_definition_as_it_found_it() => Live(async () =>
         {
             var definition = TaskSequenceBuilder.Create("Shared Definition").Delay(100f).Build();
@@ -49,6 +52,59 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             sequence.Runtime.RequestStartStageTimeout(new SequenceTimeout { Seconds = 100f });
 
             Assert.That(definition.Stages[0].Timeouts, Is.Empty, "a run's timeout stays with the run");
+        });
+
+        /// <summary>
+        /// A broken repeat was recorded on the stage, which every run shares, so it broke the repeat of them all.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_I_Breaking_a_repeat_stops_only_that_run() => Live(async () =>
+        {
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Repeating")
+                .Stage(stage => stage.WithRepeat(true).Task(async (CancellationToken token) =>
+                    await UniTask.Yield(PlayerLoopTiming.Update, token)))
+                .Build());
+
+            ProcessControl.Register(sequence, out var first);
+            World.Own(first);
+            ProcessControl.Register(sequence, out var second);
+            World.Own(second);
+            await Frames.Step(3);
+
+            first.TryGetProcess<TaskSequenceProcess>(out var firstProcess);
+            Assert.That(firstProcess.Inject(BreakStageRepeatInjection.Instance), "the break is accepted");
+            await Frames.Step(4);
+
+            Assert.That(second.IsRunning, "the other run goes on repeating");
+            Assert.That(first.IsRunning, Is.False, "the broken run ends");
+        });
+
+        /// <summary>
+        /// A condition's fired flag lived on the shared definition, and only the newest run was ever checked,
+        /// so a once-only condition fired once between all the runs.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_I_Each_run_fires_a_once_only_condition_once() => Live(async () =>
+        {
+            var fired = new List<TaskSequenceRuntime>();
+            bool armed = false;
+
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Conditional")
+                .InjectWhen(_ => armed, new DelegateSequenceInjection(run => { fired.Add(run); return true; }), fireOnce: true)
+                .Delay(100f)
+                .Build());
+
+            ProcessControl.Register(sequence, out var first);
+            World.Own(first);
+            ProcessControl.Register(sequence, out var second);
+            World.Own(second);
+            await Frames.Step();
+
+            armed = true;
+            await Frames.Step(3);
+
+            Assert.That(fired, Has.Count.EqualTo(2), "each run fires it");
+            Assert.That(fired, Is.Unique, "and no run fires it twice");
         });
 
         /// <summary>
