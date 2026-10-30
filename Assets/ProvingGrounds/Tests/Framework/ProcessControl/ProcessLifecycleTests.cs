@@ -10,6 +10,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     public class ProcessLifecycleTests : ProvingGroundsTest
     {
+        public enum EndPath
+        {
+            Queued,
+            Immediate,
+            RunEnding
+        }
+
         public enum LazyKind
         {
             RuntimeGas,
@@ -151,6 +158,60 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(3);
 
             Assert.That(probe.Recorder[ProbeHook.Wait], Is.EqualTo(1));
+        });
+
+        /// <summary>
+        /// WhenTerminate is the process's own code, and a throw there skipped the unregister. That left a block
+        /// that was Terminated and still stepped, and nothing could end it, as terminating it again does nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PC_08_A_throw_in_WhenTerminate_still_ends_the_process([Values] EndPath path) => Live(async () =>
+        {
+            var lifecycle = path == EndPath.RunEnding ? EProcessLifecycle.SelfTerminating : EProcessLifecycle.Synchronous;
+            var probe = World.Probe("Broken End", lifecycle, runFrames: 2);
+            Faults.Arm(probe.Recorder.Site(ProbeHook.Terminate));
+            await Frames.Step();
+
+            if (path == EndPath.Queued) probe.Relay.Terminate();
+            if (path == EndPath.Immediate) probe.Relay.TerminateImmediate();
+            await Frames.Step(4);
+
+            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "its block is gone");
+
+            int updates = probe.Recorder[ProbeHook.Update];
+            await Frames.Step(2);
+
+            Assert.That(probe.Recorder[ProbeHook.Update], Is.EqualTo(updates), "and nothing steps it");
+        });
+
+        /// <summary>The throw also skipped destroying a Mono process's object.</summary>
+        [UnityTest]
+        public IEnumerator PC_08_A_throw_in_WhenTerminate_still_destroys_the_object() => Live(async () =>
+        {
+            var probe = World.MonoProbe("Broken End", EProcessLifecycle.Synchronous);
+            await Frames.Step();
+            Faults.Arm(probe.Recorder.Site(ProbeHook.Terminate));
+
+            probe.ProcessRelay.TerminateImmediate();
+            await Frames.Step(2);
+
+            Assert.That(probe == null, "its object is gone");
+        });
+
+        /// <summary>A watcher's callback runs ahead of the unregister too, so a throw there kept the block the same way.</summary>
+        [UnityTest]
+        public IEnumerator PC_08_A_throw_in_a_watcher_still_ends_the_process() => Live(async () =>
+        {
+            const string Site = "Watcher.OnUnregister";
+            var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
+            World.Control.WatchProcess(probe.Relay, this, onUnregister: _ => Faults.Trip(Site));
+            Faults.Arm(Site);
+            await Frames.Step();
+
+            probe.Relay.TerminateImmediate();
+            await Frames.Step();
+
+            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "its block is gone");
         });
 
         /// <summary>
