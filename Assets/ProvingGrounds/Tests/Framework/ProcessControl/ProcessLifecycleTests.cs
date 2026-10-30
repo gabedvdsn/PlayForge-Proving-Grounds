@@ -324,10 +324,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// A control state change ends by queuing every process's default transition. For a synchronous
-        /// process that's Running to Waiting, so a pause and resume parks it for good.
+        /// A control state change ended by queuing every process's default transition. For a synchronous
+        /// process that's Running to Waiting, so a pause and resume parked it for good.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_07_A_pause_and_resume_leaves_a_synchronous_process_running() => Live(async () =>
         {
             var probe = World.Probe("Steady", EProcessLifecycle.Synchronous);
@@ -339,8 +339,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(probe.Relay.State, Is.EqualTo(EProcessState.Running), "it's where it was");
         });
 
-        /// <summary>The same default transition starts a process that only runs when told to.</summary>
-        [UnityTest, Category("Red")]
+        /// <summary>The same default transition started a process that only runs when told to.</summary>
+        [UnityTest]
         public IEnumerator PC_07_A_pause_and_resume_doesnt_start_a_RequiresControl_process() => Live(async () =>
         {
             var probe = World.Probe("Held", EProcessLifecycle.RequiresControl);
@@ -353,8 +353,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(probe.Relay.IsWaiting, "it's where it was");
         });
 
-        /// <summary>And it runs again a process that already ran once and was done.</summary>
-        [UnityTest, Category("Red")]
+        /// <summary>And it ran again a process that already ran once and was done.</summary>
+        [UnityTest]
         public IEnumerator PC_07_A_pause_and_resume_doesnt_rerun_a_finished_RunThenWait_process() => Live(async () =>
         {
             var probe = World.Probe("Once", EProcessLifecycle.RunThenWait, runFrames: 1);
