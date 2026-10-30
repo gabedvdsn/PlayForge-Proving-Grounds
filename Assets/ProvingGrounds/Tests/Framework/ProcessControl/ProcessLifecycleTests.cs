@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -76,6 +77,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(World.Control.IsRegistered(survivor.ProcessRelay.CacheIndex), "the other enemy survives");
         });
 
+        /// <summary>
+        /// The hierarchy follows the clone, so what hangs off a clone is that clone's to end, and no other's.
+        /// Keyed by the prefab, a clone was never anyone's parent.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_03_A_clone_ends_its_own_children_and_no_others() => Live(async () =>
+        {
+            var template = World.MonoProbeTemplate("Enemy", EProcessLifecycle.Synchronous);
+            var doomed = World.Spawn(template);
+            var survivor = World.Spawn(template);
+            var doomedChild = ChildProbe(doomed);
+            var survivorChild = ChildProbe(survivor);
+            await Frames.Step();
+
+            doomed.ProcessRelay.TerminateImmediate();
+            await Frames.Step();
+
+            Assert.That(World.Control.IsRegistered(doomedChild.ProcessRelay.CacheIndex), Is.False, "its child goes with it");
+            Assert.That(World.Control.IsRegistered(survivorChild.ProcessRelay.CacheIndex), "the other clone's child stays");
+        });
+
+        private ProbeMonoProcess ChildProbe(Component parent)
+        {
+            var host = new GameObject($"{parent.name} Child");
+            host.transform.SetParent(parent.transform);
+
+            var probe = host.AddComponent<ProbeMonoProcess>();
+            probe.ProcessLifecycle = EProcessLifecycle.Synchronous;
+            probe.ProcessTiming = EProcessStepTiming.Update;
+            World.Register(probe);
+            return probe;
+        }
+
         /// <summary>The control for PC-3: separate objects with no prefab in common end alone already.</summary>
         [UnityTest]
         public IEnumerator Separate_scene_objects_end_alone() => Live(async () =>
@@ -88,6 +122,35 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             Assert.That(World.Control.IsRegistered(survivor.ProcessRelay.CacheIndex));
+        });
+
+        /// <summary>
+        /// A forced state change moves on without waiting for the run, and when the cancelled run unwound it
+        /// applied that state again: a second WhenTerminate, with its Destroy, unregister and events.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_04_A_forced_terminate_ends_a_process_once() => Live(async () =>
+        {
+            var probe = World.Probe("Forced");
+            await Frames.Step();
+
+            probe.Relay.TerminateImmediate();
+            await Frames.Step(3);
+
+            Assert.That(probe.Recorder[ProbeHook.Terminate], Is.EqualTo(1));
+        });
+
+        /// <summary>Forced Waiting goes the same way, with a second WhenWait.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_04_A_forced_wait_waits_once() => Live(async () =>
+        {
+            var probe = World.Probe("Forced");
+            await Frames.Step();
+
+            World.Control.SetControlState(EProcessControlState.Waiting);
+            await Frames.Step(3);
+
+            Assert.That(probe.Recorder[ProbeHook.Wait], Is.EqualTo(1));
         });
 
         /// <summary>
@@ -108,6 +171,58 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => relay.State == EProcessState.Terminated, 5, "the queued terminate completes");
             Assert.That(World.Control.IsRegistered(relay.CacheIndex), Is.False, "its block is gone");
         });
+
+        /// <summary>A cascade queues the same Terminate on a child, so a Lazy child has to hear of it too.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_05_A_cascaded_terminate_ends_a_running_Lazy_child() => Live(async () =>
+        {
+            var parent = SpawnLazy(LazyKind.Mono);
+            parent.TryGetProcess<LazyMonoProcess>(out var parentProcess);
+
+            var host = new GameObject("Lazy Child");
+            host.transform.SetParent(parentProcess.transform);
+            var child = host.AddComponent<LazyMonoProcess>();
+            child.ProcessLifecycle = EProcessLifecycle.SelfTerminating;
+            child.ProcessTiming = EProcessStepTiming.Update;
+            var childRelay = World.Register(child);
+            await Frames.Step();
+
+            parent.Terminate();
+
+            await Frames.Until(() => !World.Control.IsRegistered(childRelay.CacheIndex), 5, "the child ends with its parent");
+        });
+
+        /// <summary>
+        /// A queued Terminate is graceful: only a run with nothing left to do ends early. The control for
+        /// PC-5, so that a fix can't cut every run short.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator A_queued_terminate_lets_a_run_with_work_finish() => Live(async () =>
+        {
+            var probe = new SteadyRun(World, "Steady", frames: 4);
+            var relay = World.Register(probe);
+            await Frames.Step();
+
+            relay.Terminate();
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 8, "the run finishes, then the process ends");
+            Assert.That(probe.Recorder.RunsCompleted, Is.EqualTo(1), "it ran to its end");
+            Assert.That(probe.Recorder.RunsCancelled, Is.EqualTo(0), "nothing cut it short");
+        });
+
+        /// <summary>A run with work of its own, which doesn't wait on processActive as a Lazy process does.</summary>
+        private sealed class SteadyRun : AbstractRuntimeProcess
+        {
+            public readonly ProbeRecorder Recorder;
+
+            public SteadyRun(World world, string name, int frames)
+                : base(name, EProcessStepPriorityMethod.Manual, 0, EProcessStepTiming.Update, EProcessLifecycle.SelfTerminating)
+            {
+                Recorder = new ProbeRecorder(name, world.Faults, frames);
+            }
+
+            public override UniTask RunProcess(CancellationToken token) => Recorder.Run(() => true, token);
+        }
 
         private ProcessRelay SpawnLazy(LazyKind kind)
         {
@@ -143,7 +258,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The Register overloads with no data packet pass null on, and registration calls through it. The
         /// exception comes after the cache index is spent and the handler has subscribed.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_06_Registering_with_no_data_works([Values] bool withHandler) => Live(async () =>
         {
             var probe = World.NewProbe("No Data", EProcessLifecycle.Synchronous);
@@ -162,7 +277,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>RunProcessTask registers with the handler alone, so it hits PC-6 on every activation.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_06_An_ability_can_run_a_process([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
