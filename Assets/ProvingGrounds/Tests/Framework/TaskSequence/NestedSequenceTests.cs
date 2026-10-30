@@ -29,7 +29,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Cancelling the outer ability sent the nested sequence an interrupt, which it can refuse. The ability
         /// ended and left the nested sequence running as a process nothing owned any more.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_G_Interrupting_an_ability_ends_its_nested_sequence([Values] Hub hub) => Live(async () =>
         {
             var abilities = RunNested(hub, nameof(Uninterruptible), out int index);
