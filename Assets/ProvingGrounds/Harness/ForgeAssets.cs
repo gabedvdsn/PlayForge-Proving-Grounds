@@ -206,6 +206,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             };
         }
 
+        public Item Item(string name)
+        {
+            var item = Own(ScriptableObject.CreateInstance<Item>());
+            item.name = name;
+            item.Tags.AssetTag = NewTag($"Test.Item.{name}");
+            return item;
+        }
+
         public AbilityTaskBehaviourStage Stage(params AbstractAbilityTask[] tasks)
         {
             return new AbilityTaskBehaviourStage { Tasks = new List<AbstractAbilityTask>(tasks) };

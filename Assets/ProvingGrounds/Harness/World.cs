@@ -14,6 +14,13 @@ using UnityEditor.SceneManagement;
 
 namespace FarEmerald.PlayForge.ProvingGrounds
 {
+    /// <summary>The two GAS hubs, which still duplicate about 400 lines (GAS-S1), so a scenario runs on each.</summary>
+    public enum Hub
+    {
+        Runtime,
+        Mono
+    }
+
     /// <summary>
     /// One live PlayForge for one test: a real ProcessControl and GameRoot brought up by the real
     /// Bootstrapper, stepped by Unity's player loop. It spawns what a test needs and takes it all away
@@ -185,15 +192,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         /// </summary>
         public GameplayAbilitySystem MonoEntity(AttributeSet set = null, string name = "Entity", bool observed = true)
         {
+            var gas = NewMonoEntity(set, name);
+            Register(gas);
+            if (observed) Invariants.Observe(gas);
+            return gas;
+        }
+
+        /// <summary>A MonoBehaviour GAS as <see cref="MonoEntity"/> makes it, not registered yet and not observed.</summary>
+        public GameplayAbilitySystem NewMonoEntity(AttributeSet set = null, string name = "Entity")
+        {
             var host = new GameObject(name);
             _objects.Add(host);
 
             var gas = GameplayAbilitySystem.AddToGameObject(host, Make.Identity(name, set ?? Make.UnusedSet()));
             gas.ProcessLifecycle = EProcessLifecycle.Synchronous;
             gas.ProcessTiming = EProcessStepTiming.UpdateAndLate;
-            Register(gas);
-            if (observed) Invariants.Observe(gas);
             return gas;
+        }
+
+        /// <summary>A registered GAS on either hub.</summary>
+        public IGameplayAbilitySystem Entity(Hub hub, AttributeSet set = null, string name = "Entity", bool observed = true)
+        {
+            return hub == Hub.Runtime ? RuntimeEntity(set, name, observed) : MonoEntity(set, name, observed);
         }
 
         /// <summary>Applies <paramref name="effect"/> from <paramref name="source"/> to <paramref name="target"/>.</summary>

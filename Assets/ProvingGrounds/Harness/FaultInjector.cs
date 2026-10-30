@@ -23,8 +23,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds
     /// <c>gas.Callbacks.OnFrameComplete += _ =&gt; Faults.Trip("frame complete")</c>.
     ///
     /// A fault that fires is expected in the log exactly once, so a framework that swallows it fails the
-    /// test, and so does one that reports it twice. Arm with <c>reported: false</c> when the exception
-    /// should reach a caller instead, which then catches it.
+    /// test, and so does one that reports it twice. By default that's as an exception. Arm with
+    /// <c>loggedAs: LogType.Error</c> where the framework reports it through LogError, and with
+    /// <c>loggedAs: null</c> when the exception should reach a caller instead, which then catches it.
     /// </summary>
     public sealed class FaultInjector
     {
@@ -34,7 +35,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         {
             public int FirstHit;
             public int Remaining;
-            public bool Reported;
+            public LogType? LoggedAs;
         }
 
         private readonly Dictionary<string, Plan> _plans = new();
@@ -42,9 +43,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         private readonly Dictionary<string, int> _fired = new();
 
         /// <summary>Throws from <paramref name="site"/>'s hit number <paramref name="onHit"/>, <paramref name="times"/> times over.</summary>
-        public void Arm(string site, int onHit = 1, int times = 1, bool reported = true)
+        public void Arm(string site, int onHit = 1, int times = 1, LogType? loggedAs = LogType.Exception)
         {
-            _plans[site] = new Plan { FirstHit = onHit, Remaining = times, Reported = reported };
+            _plans[site] = new Plan { FirstHit = onHit, Remaining = times, LoggedAs = loggedAs };
         }
 
         public void Disarm(string site) => _plans.Remove(site);
@@ -67,7 +68,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             _fired[site] = Fired(site) + 1;
 
             var fault = new InjectedFault(site);
-            if (plan.Reported) LogAssert.Expect(LogType.Exception, new Regex(Regex.Escape(fault.Message)));
+            if (plan.LoggedAs.HasValue) LogAssert.Expect(plan.LoggedAs.Value, new Regex(Regex.Escape(fault.Message)));
             throw fault;
         }
     }

@@ -23,7 +23,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         private readonly FramePulse _pulse;
         private readonly float _savedCapture, _savedFixed, _savedTimeScale;
 
-        public float DeltaTime { get; }
+        public float DeltaTime { get; private set; }
 
         /// <summary>Frames stepped since the test body started.</summary>
         public int Frame { get; private set; }
@@ -34,8 +34,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds
 
         internal FrameStepper(float deltaTime)
         {
-            DeltaTime = deltaTime;
-
             var host = new GameObject("Frame Pulse");
             Object.DontDestroyOnLoad(host);
             _pulse = host.AddComponent<FramePulse>();
@@ -44,9 +42,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             _savedFixed = Time.fixedDeltaTime;
             _savedTimeScale = Time.timeScale;
 
+            SetDeltaTime(deltaTime);
+            Time.timeScale = 1f;
+        }
+
+        /// <summary>Runs from here on at <paramref name="fps"/> frames a second, still fixed and still one FixedUpdate each.</summary>
+        public void SetFrameRate(int fps) => SetDeltaTime(1f / fps);
+
+        private void SetDeltaTime(float deltaTime)
+        {
+            DeltaTime = deltaTime;
             Time.captureDeltaTime = deltaTime;
             Time.fixedDeltaTime = deltaTime;
-            Time.timeScale = 1f;
         }
 
         internal void Release()

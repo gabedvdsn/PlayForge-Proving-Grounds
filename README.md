@@ -19,6 +19,15 @@ python Tools/test-report.py results.xml
 Exit code 0 means everything passed and 2 means tests failed. A run takes about 10 seconds. In the editor, use
 Window → General → Test Runner → PlayMode.
 
+**The green gate.** A test for a bug not fixed yet carries the `Red` category, so a full run stays red until the bug
+is fixed. The report lists those apart from new failures. To check nothing else broke, leave them out:
+
+```bash
+"/c/Program Files/Unity/Hub/Editor/6000.0.33f1/Editor/Unity.exe" -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testCategory "!Red" -testResults results.xml -logFile test.log
+```
+
+When a fix turns a red test green, the report says so, and the test loses its category in the same commit.
+
 **The planted failures** check the harness itself. Every test in that category must fail, each for its own reason,
 so exit code 2 is the right answer here and the report is what counts. Run this after changing the harness:
 
@@ -29,6 +38,15 @@ so exit code 2 is the right answer here and the report is what counts. Run this 
 ```bash
 python Tools/check-planted.py planted.xml
 ```
+
+## The suites
+
+| Folder | What's in it |
+|---|---|
+| `Tests/Harness` | The harness's own tests |
+| `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
+| `Tests/Framework` | Tests for one bug or behaviour, named after the tracker ID |
+| `Tests/Planted` | Tests that must fail, proving the harness's checks work |
 
 ## Writing a test
 
@@ -52,8 +70,11 @@ public class ExampleTests : ProvingGroundsTest
 }
 ```
 
-Name a test after its tracker ID when it pins a bug. The base class checks the invariants after every test, so a
-test about something else still catches a leak.
+Name a test after its tracker ID when it pins a bug, and give it `[Category("Red")]` until the bug is fixed. The base
+class checks the invariants after every test, so a test about something else still catches a leak.
+
+`[Values] Hub hub` with `World.Entity(hub, …)` runs a test on both GAS hubs, and `Frames.SetFrameRate(fps)` runs it at
+another fixed rate.
 
 **The one rule:** never call `WhenUpdate` or `WhenLateUpdate` by hand. Step frames and let ProcessControl do it.
 Hand-stepping is how the golden tests hid GAS-1.

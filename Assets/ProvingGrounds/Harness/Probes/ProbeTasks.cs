@@ -67,6 +67,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         }
     }
 
+    /// <summary>An ability's asset loader, whose work is its Prepare. Its fault site is <c>"{loader}.Prepare"</c>.</summary>
+    public sealed class ProbeLoader : AbstractSetAssetsTask
+    {
+        private readonly World _world;
+
+        public readonly string Name;
+
+        public override bool IsCriticalSection => false;
+
+        public ProbeLoader(World world, string name)
+        {
+            _world = world;
+            Name = name;
+        }
+
+        public string Site => $"{Name}.{TaskHook.Prepare}";
+
+        public override void Prepare(AbilityDataPacket data) => _world.Faults.Trip(Site);
+    }
+
     /// <summary>An ability task that reports to the <see cref="TaskLedger"/>, running for its given number of frames.</summary>
     public sealed class ProbeAbilityTask : AbstractAbilityTask
     {

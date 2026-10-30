@@ -22,7 +22,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator A_fault_fires_on_its_hit_and_only_as_often_as_armed() => Live(async () =>
         {
-            Faults.Arm("site", onHit: 2, times: 2, reported: false);
+            Faults.Arm("site", onHit: 2, times: 2, loggedAs: null);
 
             Faults.Trip("site");
             Assert.Throws<InjectedFault>(() => Faults.Trip("site"));
@@ -38,7 +38,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator A_disarmed_site_stays_quiet() => Live(async () =>
         {
-            Faults.Arm("site", times: FaultInjector.Always, reported: false);
+            Faults.Arm("site", times: FaultInjector.Always, loggedAs: null);
             Faults.Disarm("site");
 
             Faults.Trip("site");
