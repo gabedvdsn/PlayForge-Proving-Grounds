@@ -19,17 +19,42 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private const int ExitFrames = 12;
 
         /// <summary>
-        /// WhenAny waits for a task to finish and ignores cancellation, so a stage stopped from outside
-        /// cancels every task, none finishes, and the sequence hangs on that stage for good.
+        /// WhenAny waited for a task to finish and ignored cancellation, so a stage stopped from outside
+        /// cancelled every task, none finished, and the sequence hung on that stage for good.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_A_A_stopped_WhenAny_stage_lets_the_sequence_go_on([Values] StageExit exit) =>
             StopsAndGoesOn(stage => stage.WhenAny(), exit);
 
-        /// <summary>WhenN has the same wait: a cancelled task doesn't count, so N is never reached.</summary>
-        [UnityTest, Category("Red")]
+        /// <summary>WhenN had the same wait: a cancelled task doesn't count, so N was never reached.</summary>
+        [UnityTest]
         public IEnumerator TS_A_A_stopped_WhenN_stage_lets_the_sequence_go_on([Values] StageExit exit) =>
             StopsAndGoesOn(stage => stage.WhenN(1), exit);
+
+        /// <summary>A WhenN that one task has part met is still stopped by the cancellation of the rest.</summary>
+        [UnityTest]
+        public IEnumerator TS_A_A_part_met_WhenN_stage_can_be_stopped() => Live(async () =>
+        {
+            var next = new ProbeSequenceTask(World, "Next Stage");
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Part Met")
+                .Stage(stage =>
+                {
+                    stage.WhenN(2);
+                    stage.Delay(0.05f);
+                    stage.Delay(100f);
+                    stage.Delay(100f);
+                })
+                .Stage(stage => stage.Task(next))
+                .Build());
+
+            ProcessControl.Register(sequence, out var relay);
+            World.Own(relay);
+            await Frames.Seconds(0.1f);
+
+            Assert.That(sequence.SkipCurrentStage(), "the skip is accepted");
+
+            await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, ExitFrames, "the next stage runs");
+        });
 
         /// <summary>The control for the two above, which also shows the frames they allow are enough.</summary>
         [UnityTest]
