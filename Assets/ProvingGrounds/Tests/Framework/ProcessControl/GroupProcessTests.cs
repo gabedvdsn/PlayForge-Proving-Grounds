@@ -10,7 +10,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A group is Synchronous with no step timing, so nothing ever applied its queued Terminate. Any process
         /// set up that way had the same problem, and the group is where it showed.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_17_A_group_ends_with_its_last_member() => Live(async () =>
         {
             var tag = Make.NewTag("Test.Group");
@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The general case: a queued Terminate on a process nothing steps.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_17_A_process_nothing_steps_can_still_be_terminated() => Live(async () =>
         {
             var probe = World.Probe("Unstepped", EProcessLifecycle.Synchronous, EProcessStepTiming.None);
@@ -40,13 +40,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Detaching removed every watcher on the process, not only the group's.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_17_Detaching_a_member_leaves_its_other_watchers() => Live(async () =>
         {
             var tag = Make.NewTag("Test.Group");
             ProcessControl.RegisterWithGroup(tag, World.NewProbe("Member"), out var member, false);
             World.Own(member);
             ProcessControl.TryGetGroup(tag, out var group);
+            World.Own(group.Relay);
             group.TerminateWhenEmpty = false;
 
             int heard = 0;
