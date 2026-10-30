@@ -42,7 +42,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// clone. Every clone of one prefab shares a node and so counts as a sibling of the rest, and ending
         /// one cascades to them all.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_03_PrefabCascade_KillsOnlyOne() => Live(async () =>
         {
             var template = World.MonoProbeTemplate("Enemy", EProcessLifecycle.Synchronous);
@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The same cascade as a game meets it: one enemy of a prefab dies and takes the rest with it.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_03_One_GAS_death_leaves_the_rest_of_its_prefab() => Live(async () =>
         {
             var template = World.Template<GameplayAbilitySystem>("Enemy");
@@ -81,7 +81,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The hierarchy follows the clone, so what hangs off a clone is that clone's to end, and no other's.
         /// Keyed by the prefab, a clone was never anyone's parent.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_03_A_clone_ends_its_own_children_and_no_others() => Live(async () =>
         {
             var template = World.MonoProbeTemplate("Enemy", EProcessLifecycle.Synchronous);
