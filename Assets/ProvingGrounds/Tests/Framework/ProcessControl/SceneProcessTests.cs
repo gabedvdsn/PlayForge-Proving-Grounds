@@ -49,7 +49,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Nothing told ProcessControl when a process's object went, so an external Destroy or a scene unload
         /// left a block stepping a dead object.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_10_Destroying_a_process_object_ends_the_process() => Live(async () =>
         {
             var probe = World.MonoProbe("Destroyed", EProcessLifecycle.Synchronous);
@@ -63,7 +63,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(probe.Recorder[ProbeHook.Terminate], Is.EqualTo(1), "and it was told once");
         });
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_10_Unloading_a_scene_ends_its_processes() => Live(async () =>
         {
             var scene = World.AddScene("Level");
@@ -82,7 +82,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Processes sharing an object go together. One opted out of sibling cascades, which is the case that
         /// used to leave a block behind when the other destroyed their object.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_10_Processes_on_one_object_go_together() => Live(async () =>
         {
             var first = World.MonoProbe("Shared Object", EProcessLifecycle.Synchronous);
