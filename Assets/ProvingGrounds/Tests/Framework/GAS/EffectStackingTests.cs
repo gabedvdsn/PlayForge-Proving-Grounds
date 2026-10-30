@@ -8,11 +8,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class EffectStackingTests : ProvingGroundsTest
     {
         /// <summary>
-        /// Two bugs in a row. The base constructor reaches DurationRemaining before the derived constructor has
-        /// made its packet list, so applying such an effect throws. Past that, the packets are structs walked
-        /// with foreach, so what counts down is a copy and no stack ever expires.
+        /// Two bugs in a row. The base constructor reached DurationRemaining before the derived constructor had
+        /// made its packet list, so applying such an effect threw. Past that, the packets were structs walked
+        /// with foreach, so what counted down was a copy and no stack ever expired.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_04_Stacks_with_independent_durations_expire_one_at_a_time([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -32,6 +32,55 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.That(gas.TryGetEffectContainer(effect, out _), Is.False, "the last stack's second is up, and the effect is gone");
         });
+
+        /// <summary>Each stack keeps its own tick timer: stacks a half second apart tick a half second apart.</summary>
+        [UnityTest]
+        public IEnumerator GAS_04_Each_stack_ticks_on_its_own_timer() => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.RuntimeEntity(Make.Set(Make.Element(health, 50f, 100f, EAttributeOverflowPolicy.ZeroToBase)));
+            var regen = Make.Effect("Regen", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational,
+                Target = health, Op = ECalculationOperation.Add, Magnitude = 5f,
+                Duration = 2f, PeriodicTicks = true, Ticks = 2,
+                Reapply = EEffectReApplicationPolicy.StackExistingContainers,
+                StackPolicy = EEffectStackPolicy.StacksHaveIndependentDurations,
+                StackAmount = 1,
+            });
+
+            World.Apply(gas, gas, regen);
+            await Frames.Seconds(0.5f);
+            World.Apply(gas, gas, regen);
+
+            await Frames.Seconds(0.75f);
+            Assert.That(Value(gas, health), Is.EqualTo(55f), "the first stack ticked at 1 s");
+
+            await Frames.Seconds(0.5f);
+            Assert.That(Value(gas, health), Is.EqualTo(60f), "the second ticked at 1.5 s");
+        });
+
+        /// <summary>A refresh reached a copy too, so the oldest stack expired on its first schedule.</summary>
+        [UnityTest]
+        public IEnumerator GAS_04_A_refresh_reaches_the_oldest_stack() => Live(async () =>
+        {
+            var gas = World.RuntimeEntity();
+            var effect = Stacking(EEffectStackPolicy.StacksHaveIndependentDurations);
+            effect.DurationSpecification.ReApplicationInteraction = EEffectInteractionPolicy.RefreshContainerDuration;
+
+            World.Apply(gas, gas, effect);
+            await Frames.Seconds(0.5f);
+            World.Apply(gas, gas, effect);
+
+            await Frames.Seconds(0.75f);
+            Assert.That(Stacks(gas, effect), Is.EqualTo(2), "the refreshed stack outlives its first second");
+        });
+
+        private static float Value(IGameplayAbilitySystem gas, Attribute attribute)
+        {
+            gas.TryGetAttributeValue(attribute, out var value);
+            return value.CurrentValue;
+        }
 
         /// <summary>The containers add one stack whatever amount they're asked for.</summary>
         [UnityTest, Category("Red")]
