@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Application refuses an effect unless its removal group passes, so a poison that a cleanse removes
         /// can only land on a target already cleansed.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_06_A_removal_requirement_doesnt_block_application([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -23,11 +23,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// The removal check is inverted, so an effect leaves while its requirement ISN'T met. It takes a
-        /// requirement on both sides to show, because the sides are AND-ed and an empty group never passes.
-        /// The requirements go on after the effect lands, to get past the application bug above.
+        /// The removal check was inverted, so an effect left while its requirement WASN'T met. It took a
+        /// requirement on both sides to show, because the sides were AND-ed and an empty group never passed.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_06_An_effect_stays_while_its_removal_requirement_isnt_met([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -44,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(gas.GetTagWeight(poisoned), Is.GreaterThan(0), "nothing has cleansed it");
         });
 
-        /// <summary>The control for the test above: with one side empty, the AND keeps the effect on today.</summary>
+        /// <summary>The same with one side empty, which held even with the bug.</summary>
         [UnityTest]
         public IEnumerator An_effect_stays_while_a_target_requirement_isnt_met([Values] Hub hub) => Live(async () =>
         {
@@ -61,10 +60,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// The removal check needs the target's AND the source's group to pass, and an empty group never does
-        /// (it's inverted too), so a requirement on one side alone can never remove anything.
+        /// The removal check needed the target's AND the source's group to pass, and an empty group never did,
+        /// so a requirement on one side alone could never remove anything.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_06_An_effect_leaves_when_its_removal_requirement_is_met([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -82,7 +81,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A target that already meets the removal requirement would lose the effect as it landed.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_06_An_effect_doesnt_land_when_its_removal_requirement_is_met([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
