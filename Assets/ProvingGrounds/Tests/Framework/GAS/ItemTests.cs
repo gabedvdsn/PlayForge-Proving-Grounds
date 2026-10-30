@@ -8,10 +8,31 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class ItemTests : ProvingGroundsTest
     {
         /// <summary>
+        /// Most items have no ability of their own, and equipping one threw, with its effects already on and
+        /// the item marked as equipped.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_32_An_item_with_no_ability_can_be_equipped([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var items = gas.GetItemSystem();
+            int abilities = gas.GetAbilitySystem().AbilityCount;
+
+            bool equipped = false;
+            Assert.DoesNotThrow(() => equipped = items.GiveAndEquipItem(Make.Item("Ring"), out _));
+
+            Assert.That(equipped, "it's on");
+            Assert.That(gas.GetAbilitySystem().AbilityCount, Is.EqualTo(abilities), "and grants nothing it doesn't have");
+
+            Assert.DoesNotThrow(() => items.UnequipAllItems());
+            await Frames.Step();
+        });
+
+        /// <summary>
         /// Removing an item moves the rest down, so counting up skipped every other one, and the Clear after it
         /// dropped those without unequipping them. Their effects stayed on the entity with no item behind them.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_32_Clearing_items_takes_every_one_of_them_off([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -35,7 +56,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Unequipping removed the effect by asset, so it took the same effect from anywhere else too.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_32_Unequipping_leaves_the_same_effect_from_elsewhere([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -62,7 +83,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// An item's spec always said it wasn't active, and an effect-scoped action is dropped when its origin
         /// isn't, so every queued action from an item's effect was thrown away.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_32_An_items_spec_is_active_while_it_is_equipped([Values] Hub hub) => Live(async () =>
         {
             var items = World.Entity(hub).GetItemSystem();
@@ -81,7 +102,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Tags compiled while the item still counted as equipped, so its tags outlived it.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_32_An_unequipped_item_takes_its_tags_with_it([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
