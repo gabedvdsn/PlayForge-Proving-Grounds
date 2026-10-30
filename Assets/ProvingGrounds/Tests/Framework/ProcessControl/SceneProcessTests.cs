@@ -140,7 +140,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>GameRoot went with the first scene, and every overload with no handler uses it.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_21_GameRoot_survives_a_scene_change() => Live(async () =>
         {
             await World.ChangeScene();
