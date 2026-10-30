@@ -75,7 +75,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Everything a stage signals with sits in a finally behind its OnTerminate, so a throw there left the
         /// sequence waiting on a signal that never came.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_E_A_throwing_stage_callback_doesnt_stop_the_sequence() => Live(async () =>
         {
             const string Site = "Stage.OnTerminate";
@@ -94,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Leaving a critical stage notifies from the same finally, ahead of the signal.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_E_A_throwing_critical_exit_on_a_stage_doesnt_stop_the_sequence() => Live(async () =>
         {
             const string Site = "Stage.CriticalExit";
@@ -117,7 +117,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A whole-sequence critical section exits in the finally around the run, so a throw there skipped
         /// OnComplete and OnTerminate and left the data packet marked in use.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_E_A_throwing_critical_exit_on_a_sequence_still_completes_it() => Live(async () =>
         {
             const string Site = "Sequence.CriticalExit";
