@@ -10,10 +10,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Cost validation compares what the attribute holds with the effect's signed magnitude, and a cost is
         /// negative, so anything clears it: 10 mana affords a 50 mana ability.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_07_A_cost_blocks_activation_when_short([Values] Hub hub) => Live(async () =>
         {
-            int index = GrantCostly(hub, mana: 10f, out var abilities);
+            int index = GrantCostly(hub, mana: 10f, cost: -50f, out var abilities);
 
             Assert.That(abilities.CanActivateAbility(index), Is.False, "10 mana can't pay a 50 mana cost");
             await Frames.Step();
@@ -21,15 +21,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         /// <summary>The control for the test above, so that a fix can't pass it by refusing everything.</summary>
         [UnityTest]
-        public IEnumerator A_cost_allows_activation_when_affordable([Values] Hub hub) => Live(async () =>
+        public IEnumerator A_cost_allows_activation_when_affordable([Values] Hub hub, [Values(50f, 60f)] float mana) => Live(async () =>
         {
-            int index = GrantCostly(hub, mana: 60f, out var abilities);
+            int index = GrantCostly(hub, mana, cost: -50f, out var abilities);
 
-            Assert.That(abilities.CanActivateAbility(index), "60 mana can pay a 50 mana cost");
+            Assert.That(abilities.CanActivateAbility(index), $"{mana} mana can pay a 50 mana cost");
             await Frames.Step();
         });
 
-        private int GrantCostly(Hub hub, float mana, out AbilitySystemComponent abilities)
+        /// <summary>An effect that adds to the attribute asks nothing of it, so it can't be unaffordable.</summary>
+        [UnityTest]
+        public IEnumerator A_cost_that_gives_needs_nothing([Values] Hub hub) => Live(async () =>
+        {
+            int index = GrantCostly(hub, mana: 0f, cost: 20f, out var abilities);
+
+            Assert.That(abilities.CanActivateAbility(index), "it's a gain, not a price");
+            await Frames.Step();
+        });
+
+        private int GrantCostly(Hub hub, float mana, float cost, out AbilitySystemComponent abilities)
         {
             var attribute = Make.Attribute("Mana");
             var gas = World.Entity(hub, Make.Set(Make.Element(attribute, mana, 100f)));
@@ -37,7 +47,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ability = Make.Ability("Costly");
             ability.Cost = Make.Effect("Cost", new EffectConfig
             {
-                Policy = EEffectDurationPolicy.Instant, Target = attribute, Op = ECalculationOperation.Add, Magnitude = -50f,
+                Policy = EEffectDurationPolicy.Instant, Target = attribute, Op = ECalculationOperation.Add, Magnitude = cost,
             });
 
             abilities = gas.GetAbilitySystem();

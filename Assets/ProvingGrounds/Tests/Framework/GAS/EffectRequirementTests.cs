@@ -81,6 +81,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(gas.GetTagWeight(poisoned), Is.LessThanOrEqualTo(0), "the cleanse removed it");
         });
 
+        /// <summary>A target that already meets the removal requirement would lose the effect as it landed.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_06_An_effect_doesnt_land_when_its_removal_requirement_is_met([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var poison = Poison(out _);
+            var cleansed = Make.NewTag("Test.Status.Cleansed");
+            RemoveWhen(poison, cleansed);
+
+            World.Apply(gas, gas, Make.Effect("Cleanse", new EffectConfig { Target = null, GrantedTags = new List<Tag> { cleansed } }));
+            await Frames.Step();
+
+            Assert.That(World.Apply(gas, gas, poison), Is.False, "the target is already cleansed");
+        });
+
         private static void RemoveWhen(GameplayEffect effect, Tag tag)
         {
             effect.TargetRequirements.RemovalRequirements.RequireTags = new List<TagQuery> { TagQuery.HasTag(tag) };
