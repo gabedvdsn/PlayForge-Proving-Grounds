@@ -117,7 +117,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Collecting the scene's processes gave each one GameRoot's packet, which reparents whatever it's
         /// handed, so a scene's hierarchy was flattened under GameRoot at startup.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_20_A_scene_process_stays_where_the_scene_put_it() => Live(async () =>
         {
             var parent = new GameObject("Parent");
