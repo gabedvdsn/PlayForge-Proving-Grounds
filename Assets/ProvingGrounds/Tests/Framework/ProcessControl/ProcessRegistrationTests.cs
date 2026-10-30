@@ -82,7 +82,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The short constructors left the step timing at None, so the action never ran, and the long generic
         /// one had nowhere to take a source from.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_19_An_action_process_runs_its_action() => Live(async () =>
         {
             int plain = 0;
