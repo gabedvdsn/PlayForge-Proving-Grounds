@@ -56,11 +56,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>
-        /// An Any stage ends with its first finished task, and every compiled stage carries a callback task
-        /// that finishes at once, so an Any stage ends as it starts and cancels its real work. The stage here
-        /// has one task of a second, which is the least it can last.
+        /// An Any stage ends with its first finished task, and every compiled stage carried a callback task
+        /// that finished at once, so an Any stage ended as it started and cancelled its real work. The stage
+        /// here has one task of a second, which is the least it can last.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_B_An_Any_stage_lasts_until_a_real_task_finishes([Values] Hub hub) => Live(async () =>
         {
             const int OneSecond = 60;
@@ -76,6 +76,66 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             int taken = await Frames.Until(() => Ledger.Cleans("One Second") == 1, OneSecond + 10, "the stage ends");
 
             Assert.That(taken, Is.GreaterThanOrEqualTo(OneSecond), "the stage lasts as long as its task");
+        });
+
+        /// <summary>
+        /// A stage set to apply usage at its start, which is the default, fired its ended callback there too,
+        /// and never at its real end.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_D_A_stage_reports_its_end_when_it_ends([Values] Hub hub, [Values] bool usageAtStart) => Live(async () =>
+        {
+            const int TaskFrames = 10;
+            var stage = Make.Stage(new ProbeAbilityTask(World, "Stage Work", frames: TaskFrames));
+            stage.ApplyUsageAtStageStart = usageAtStart;
+
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("Reported", stage), 1, out int index);
+
+            int started = 0, ended = 0;
+            abilities.Callbacks.OnAbilityStageActivate += _ => started++;
+            abilities.Callbacks.OnAbilityStageEnd += _ => ended++;
+
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(3);
+
+            Assert.That(started, Is.EqualTo(1), "it has started");
+            Assert.That(ended, Is.EqualTo(0), "it hasn't ended");
+
+            await Frames.Until(() => ended == 1, TaskFrames + 5, "it ends with its task");
+            Assert.That(started, Is.EqualTo(1), "and it started once");
+        });
+
+        /// <summary>Usage effects land when the stage asks for them, and only on a stage that ran to its end.</summary>
+        [UnityTest]
+        public IEnumerator Usage_effects_apply_at_the_moment_the_stage_chooses([Values] Hub hub, [Values] bool usageAtStart) => Live(async () =>
+        {
+            const int TaskFrames = 10;
+            var attribute = Make.Attribute("Mana");
+            var gas = World.Entity(hub, Make.Set(Make.Element(attribute, 60f, 100f)));
+
+            var stage = Make.Stage(new ProbeAbilityTask(World, "Stage Work", frames: TaskFrames));
+            stage.ApplyUsageEffects = true;
+            stage.ApplyUsageAtStageStart = usageAtStart;
+
+            var ability = Make.Ability("Costly", stage);
+            ability.Cost = Make.Effect("Cost", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = attribute, Op = ECalculationOperation.Add, Magnitude = -50f,
+            });
+
+            var abilities = gas.GetAbilitySystem();
+            abilities.GiveAbility(ability, 1, out int index);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(3);
+
+            gas.TryGetAttributeValue(attribute, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(usageAtStart ? 10f : 60f), "the cost at this point in the stage");
+
+            await Frames.Step(TaskFrames + 5);
+
+            gas.TryGetAttributeValue(attribute, out value);
+            Assert.That(value.CurrentValue, Is.EqualTo(10f), "and the cost is paid once by the end");
         });
 
         /// <summary>
