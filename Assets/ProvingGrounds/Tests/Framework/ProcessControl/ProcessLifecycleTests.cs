@@ -128,7 +128,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A forced state change moves on without waiting for the run, and when the cancelled run unwound it
         /// applied that state again: a second WhenTerminate, with its Destroy, unregister and events.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_04_A_forced_terminate_ends_a_process_once() => Live(async () =>
         {
             var probe = World.Probe("Forced");
@@ -141,7 +141,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Forced Waiting goes the same way, with a second WhenWait.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_04_A_forced_wait_waits_once() => Live(async () =>
         {
             var probe = World.Probe("Forced");
