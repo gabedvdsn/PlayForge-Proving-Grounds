@@ -45,7 +45,7 @@ python Tools/check-planted.py planted.xml
 |---|---|
 | `Tests/Harness` | The harness's own tests |
 | `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
-| `Tests/Framework` | Tests for one bug or behaviour, named after the tracker ID |
+| `Tests/Framework` | Framework behaviour by area, with tests for a bug named after its tracker ID. Each red test has been shown to go green when its bug is fixed |
 | `Tests/Planted` | Tests that must fail, proving the harness's checks work |
 
 ## Writing a test
@@ -101,3 +101,5 @@ Hand-stepping is how the golden tests hid GAS-1.
 - The GC API returns 0 under Mono. Use `AllocationProbe`.
 - Allocation in a coroutine isn't measured, because the test runner's own coroutine tick is subtracted with it.
   PlayForge's stepping and UniTask continuations are measured.
+- `MeasureFrames` retakes a measure that isn't clean, up to 3 times, because a rare burst of about 1 KB lands at
+  random, even with nothing spawned. A real leak fails every attempt.

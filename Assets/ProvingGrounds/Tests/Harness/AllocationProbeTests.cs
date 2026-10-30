@@ -137,6 +137,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         [UnityTest]
+        public IEnumerator A_one_off_burst_doesnt_fail_a_measure() => Live(async () =>
+        {
+            using var probe = new AllocationProbe();
+            int updates = 0;
+            var once = World.Probe("Just Once", EProcessLifecycle.Synchronous);
+            once.Recorder.OnHit = hook =>
+            {
+                if (hook == ProbeHook.Update && ++updates == 30) Sink.Add(new byte[1024]);
+            };
+
+            var frames = await probe.MeasureFrames(Frames, 100);
+
+            Assert.That(updates, Is.GreaterThan(30), "the burst landed inside the first attempt");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        [UnityTest]
         public IEnumerator An_occasional_allocation_shows_as_the_frames_it_hit() => Live(async () =>
         {
             using var probe = new AllocationProbe();

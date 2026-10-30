@@ -87,6 +87,49 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         public override void Prepare(AbilityDataPacket data) => _world.Faults.Trip(Site);
     }
 
+    /// <summary>
+    /// A targeting task that passes through fault sites rather than the ledger, because TS-AA would flag every
+    /// cancelled one. It takes its given number of frames, then finds its target invalid if told to.
+    /// </summary>
+    public sealed class ProbeTargetingTask : AbstractTargetingAbilityTask
+    {
+        private readonly World _world;
+        private readonly int _frames;
+        private readonly bool _invalid;
+
+        public readonly string Name;
+
+        public ProbeTargetingTask(World world, string name, int frames = 0, bool invalid = false)
+        {
+            _world = world;
+            _frames = frames;
+            _invalid = invalid;
+            Name = name;
+        }
+
+        public string Site(TaskHook hook) => $"{Name}.{hook}";
+
+        public override void Prepare(AbilityDataPacket data)
+        {
+            _world.Faults.Trip(Site(TaskHook.Prepare));
+            base.Prepare(data);
+        }
+
+        public override async UniTask Activate(AbilityDataPacket data, CancellationToken token)
+        {
+            _world.Faults.Trip(Site(TaskHook.Execute));
+            for (int i = 0; i < _frames; i++) await UniTask.Yield(PlayerLoopTiming.Update, token);
+
+            if (_invalid) WhenTargetingInvalid(data);
+        }
+
+        public override void Clean(AbilityDataPacket data)
+        {
+            _world.Faults.Trip(Site(TaskHook.Clean));
+            base.Clean(data);
+        }
+    }
+
     /// <summary>An ability task that reports to the <see cref="TaskLedger"/>, running for its given number of frames.</summary>
     public sealed class ProbeAbilityTask : AbstractAbilityTask
     {
