@@ -48,7 +48,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A Lazy process never marked itself initialized, so one instance could be running twice over.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_18_One_instance_cant_be_registered_twice_at_once() => Live(async () =>
         {
             var process = new LazyRuntimeProcess("Lazy", EProcessStepPriorityMethod.Manual, 0, EProcessStepTiming.Update, EProcessLifecycle.SelfTerminating);
@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Initialized means registered, so a process that's ended can be run again, as RunProcessTask does.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator A_process_that_has_ended_can_be_registered_again([Values] bool lazy) => Live(async () =>
         {
             AbstractRuntimeProcess process = lazy
