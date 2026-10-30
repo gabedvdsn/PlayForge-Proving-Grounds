@@ -23,7 +23,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A throw in an async RunProcess is logged, but the state queued for the end of the run is skipped,
         /// so the process stays Running for good and anything waiting on it hangs (B10).
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_02_A_run_that_throws_still_ends(
             [Values(EProcessLifecycle.SelfTerminating, EProcessLifecycle.RunThenWait)] EProcessLifecycle lifecycle) => Live(async () =>
         {
