@@ -80,7 +80,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator A_process_that_breaks_its_cell_shows_as_a_mismatch() => Live(async () =>
         {
-            // A pause queued mid-run sends a self-terminating process to Waiting instead of the table's Terminated
+            // A pause mid-run sends a self-terminating process to Waiting instead of the table's Terminated
             var cell = Cell(EProcessControlState.Ready, EProcessLifecycle.SelfTerminating, EProcessState.Running);
             var probe = World.Probe("Rerouted");
             probe.Relay.Pause();

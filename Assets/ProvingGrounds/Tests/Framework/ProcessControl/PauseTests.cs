@@ -17,7 +17,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private const int WorkFrames = 8;
 
         /// <summary>A pause was queued for the end of the run, so a running process wasn't paused at all.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_pause_takes_effect_at_once(
             [Values(EProcessLifecycle.SelfTerminating, EProcessLifecycle.RunThenWait, EProcessLifecycle.Synchronous)] EProcessLifecycle lifecycle) => Live(async () =>
         {
@@ -35,7 +35,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A pause overwrote the queued state, so a process told to end went to Waiting instead.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_requested_terminate_outranks_a_pause() => Live(async () =>
         {
             var probe = World.Probe("Ending");
@@ -48,7 +48,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A process that says it can hold keeps its run, and carries on with what was left of it.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_run_that_can_hold_carries_on([Values] bool mono) => Live(async () =>
         {
             var work = Holding(mono, out var relay);
@@ -67,7 +67,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A process that can't hold is cancelled, and a new run starts on resume.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_run_that_cant_hold_starts_again() => Live(async () =>
         {
             var probe = World.Probe("Restarted", runFrames: 100);
@@ -85,7 +85,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A held run has nothing else to end it, so ending the process has to.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_Terminating_a_paused_process_ends_its_held_run() => Live(async () =>
         {
             var work = Holding(false, out var relay);
@@ -102,7 +102,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A run that finishes while its process is paused is over: resuming moves on, not back.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_run_that_finished_during_a_pause_doesnt_run_again() => Live(async () =>
         {
             var work = Holding(false, out var relay, holds: false, frames: 3);
@@ -119,7 +119,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Asked to pause while ProcessControl has it stopped, the pause becomes its own and outlasts that.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_pause_during_a_control_pause_outlasts_it() => Live(async () =>
         {
             var probe = World.Probe("Paused Twice", EProcessLifecycle.Synchronous);
@@ -140,7 +140,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A pause and resume in one frame starts a new run while the old one unwinds, and they shared a token
         /// source, so the old run cancelled the new one and then applied its queued state.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_12_A_pause_and_resume_in_one_frame_leaves_the_new_run_alive([Values] bool control) => Live(async () =>
         {
             var probe = World.Probe("Flicker");
@@ -165,7 +165,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>ProcessControl's resume sends back what its pause stopped, not everything that's Waiting.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_process_paused_on_its_own_stays_paused([Values] EProcessLifecycle lifecycle) => Live(async () =>
         {
             var probe = World.Probe("Paused Alone", lifecycle);
@@ -215,7 +215,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A Terminate that was on its way when ProcessControl paused still lands.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_11_A_requested_terminate_survives_a_control_pause() => Live(async () =>
         {
             var probe = World.Probe("Ending", EProcessLifecycle.RunThenWait);
