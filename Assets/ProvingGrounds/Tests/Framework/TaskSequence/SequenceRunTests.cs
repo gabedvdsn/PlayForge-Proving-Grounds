@@ -1,5 +1,6 @@
 using System.Collections;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
@@ -51,11 +52,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// A sequence waits on its stage through AttachExternalCancellation, which throws the moment the
-        /// token cancels, so CleanStage runs while the stage's tasks are still unwinding. A task that releases
-        /// something in Clean and uses it in Execute's finally sees it gone.
+        /// A sequence waited on its stage through AttachExternalCancellation, which throws the moment the
+        /// token cancels, so CleanStage ran while the stage's tasks were still unwinding. A task that releases
+        /// something in Clean and uses it in Execute's finally saw it gone.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_AA_A_cancelled_sequence_cleans_its_tasks_after_they_stop() => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Cancelled", frames: 1000);
@@ -68,6 +69,72 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
 
             Assert.That(Ledger.Violations(), Is.Empty);
+        });
+
+        /// <summary>
+        /// Everything a stage signals with sits in a finally behind its OnTerminate, so a throw there left the
+        /// sequence waiting on a signal that never came.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator TS_E_A_throwing_stage_callback_doesnt_stop_the_sequence() => Live(async () =>
+        {
+            const string Site = "Stage.OnTerminate";
+            Faults.Arm(Site, loggedAs: LogType.Error);
+
+            var next = new ProbeSequenceTask(World, "Next Stage");
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Throwing Stage Callback")
+                .Stage(stage => stage.Delay(0.05f).OnTerminate(() => Faults.Trip(Site)))
+                .Stage(stage => stage.Task(next))
+                .Build());
+
+            ProcessControl.Register(sequence, out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 20, "the next stage runs");
+        });
+
+        /// <summary>Leaving a critical stage notifies from the same finally, ahead of the signal.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator TS_E_A_throwing_critical_exit_on_a_stage_doesnt_stop_the_sequence() => Live(async () =>
+        {
+            const string Site = "Stage.CriticalExit";
+            Faults.Arm(Site, loggedAs: LogType.Error);
+
+            var next = new ProbeSequenceTask(World, "Next Stage");
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Throwing Critical Exit")
+                .Stage(stage => stage.WithCriticalFlag(true).Delay(0.05f))
+                .Stage(stage => stage.Task(next))
+                .Build());
+            sequence.OnCriticalSectionExited = () => Faults.Trip(Site);
+
+            ProcessControl.Register(sequence, out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 20, "the next stage runs");
+        });
+
+        /// <summary>
+        /// A whole-sequence critical section exits in the finally around the run, so a throw there skipped
+        /// OnComplete and OnTerminate and left the data packet marked in use.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator TS_E_A_throwing_critical_exit_on_a_sequence_still_completes_it() => Live(async () =>
+        {
+            const string Site = "Sequence.CriticalExit";
+            Faults.Arm(Site, loggedAs: LogType.Error);
+
+            bool terminated = false;
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Throwing Sequence Exit")
+                .WithCriticalFlag(true)
+                .OnTerminate((_, _) => terminated = true)
+                .Delay(0.05f)
+                .Build());
+            sequence.OnCriticalSectionExited = () => Faults.Trip(Site);
+
+            ProcessControl.Register(sequence, out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => terminated, 20, "the sequence's OnTerminate fires");
         });
     }
 }
