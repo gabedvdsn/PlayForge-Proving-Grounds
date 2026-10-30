@@ -139,10 +139,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// A failed targeting task sets TargetingFailed and nobody reads it. Its cancellation stays inside the
-        /// targeting sequence, so to the ability targeting just finished, and the stages run.
+        /// A failed targeting task set TargetingFailed and nobody read it. Its cancellation stayed inside the
+        /// targeting sequence, so to the ability targeting just finished, and the stages ran.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_C_Failed_targeting_runs_no_stages([Values] Hub hub) => Live(async () =>
         {
             var targeting = new ProbeTargetingTask(World, "Failing Targeting", frames: 1, invalid: true);
@@ -156,10 +156,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Interrupting cancels the wait on targeting, but the proxy catches that itself, so again targeting
-        /// just looks finished and the stages run.
+        /// Interrupting cancelled the wait on targeting, but the proxy caught that itself, so again targeting
+        /// just looked finished and the stages ran.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_C_An_interrupt_during_targeting_runs_no_stages([Values] Hub hub) => Live(async () =>
         {
             var targeting = new ProbeTargetingTask(World, "Waiting Targeting", frames: 1000);
@@ -173,6 +173,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(5);
 
             Assert.That(Ledger.Prepares("Stage Task"), Is.EqualTo(0), "the interrupt ended the ability");
+        });
+
+        /// <summary>BreakRuntimeOnInvalid is the task's say: off, the ability goes on with no valid target.</summary>
+        [UnityTest]
+        public IEnumerator Targeting_set_not_to_break_goes_on_after_failing([Values] Hub hub) => Live(async () =>
+        {
+            var targeting = new ProbeTargetingTask(World, "Lenient Targeting", frames: 1, invalid: true) { BreakRuntimeOnInvalid = false };
+            var abilities = GrantTargeted(hub, targeting, out int index);
+
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
         });
 
         /// <summary>The control for the two above: targeting that succeeds does go on to the stages.</summary>
