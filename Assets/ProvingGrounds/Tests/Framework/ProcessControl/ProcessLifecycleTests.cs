@@ -159,7 +159,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// for WhenTerminate, and the process never leaves Running. That includes every runtime GAS, and a
         /// runtime GAS's death is a queued Terminate.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_05_A_queued_terminate_ends_a_running_Lazy_process([Values] LazyKind kind) => Live(async () =>
         {
             var relay = SpawnLazy(kind);
@@ -173,7 +173,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A cascade queues the same Terminate on a child, so a Lazy child has to hear of it too.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_05_A_cascaded_terminate_ends_a_running_Lazy_child() => Live(async () =>
         {
             var parent = SpawnLazy(LazyKind.Mono);
@@ -209,6 +209,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(probe.Recorder.RunsCompleted, Is.EqualTo(1), "it ran to its end");
             Assert.That(probe.Recorder.RunsCancelled, Is.EqualTo(0), "nothing cut it short");
         });
+
+        /// <summary>The hook is the process's own code, so a throw there is reported and the Terminate stands.</summary>
+        [UnityTest]
+        public IEnumerator A_throw_in_WhenTerminateQueued_is_reported() => Live(async () =>
+        {
+            var relay = World.Register(new BrokenTerminateHook(World));
+            Faults.Arm(BrokenTerminateHook.Site);
+            await Frames.Step();
+
+            Assert.DoesNotThrow(() => relay.Terminate());
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 5, "the process still ends");
+        });
+
+        private sealed class BrokenTerminateHook : LazyRuntimeProcess
+        {
+            public const string Site = "Broken Hook.WhenTerminateQueued";
+
+            private readonly World _world;
+
+            public BrokenTerminateHook(World world)
+                : base("Broken Hook", EProcessStepPriorityMethod.Manual, 0, EProcessStepTiming.Update, EProcessLifecycle.SelfTerminating)
+            {
+                _world = world;
+            }
+
+            public override void WhenTerminateQueued()
+            {
+                base.WhenTerminateQueued();
+                _world.Faults.Trip(Site);
+            }
+        }
 
         /// <summary>A run with work of its own, which doesn't wait on processActive as a Lazy process does.</summary>
         private sealed class SteadyRun : AbstractRuntimeProcess
