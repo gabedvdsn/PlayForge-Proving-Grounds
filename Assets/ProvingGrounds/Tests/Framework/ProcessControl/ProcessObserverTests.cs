@@ -94,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The first watcher returned before calling back, so only later ones heard they'd started.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_14_The_first_watcher_is_told_it_has_started() => Live(async () =>
         {
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
@@ -107,7 +107,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A second subscription edited a copy of the first, so it never took.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_14_One_watcher_can_add_a_second_callback() => Live(async () =>
         {
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
@@ -124,7 +124,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Unwatching from inside a callback changed the collection it was being walked from.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_14_A_watcher_can_unwatch_from_its_own_callback() => Live(async () =>
         {
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
