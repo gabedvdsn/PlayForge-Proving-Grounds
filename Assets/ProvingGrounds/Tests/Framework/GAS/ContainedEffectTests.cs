@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A contained effect lands where the effect carrying it landed, as OnApply and OnTick ones do. An
         /// OnRemove one went to the source, so an enemy's poison ending put its aftermath on the enemy.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_08_An_OnRemove_effect_lands_on_the_target([Values] Hub hub) => Live(async () =>
         {
             var carried = Carried(out var marked);
