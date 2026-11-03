@@ -17,9 +17,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var host = new GameObject("Never Active");
             host.SetActive(false);
             World.Register(host.AddComponent<ProbeMonoProcess>());
-            Object.Destroy(host);
             await Frames.Step();
 
+            // Destroyed at once, and the next registered within the frame: PC-30 ends such a process when the next
+            // frame starts, and until then its root is still there to read
+            Object.DestroyImmediate(host);
             ProbeMonoProcess next = null;
             Assert.DoesNotThrow(() => next = World.MonoProbe("Next"), "it registers");
             await Frames.Step(2);
