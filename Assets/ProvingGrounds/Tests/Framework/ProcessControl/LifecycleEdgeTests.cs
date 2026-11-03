@@ -94,6 +94,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(World.Control.IsRegistered(relay.CacheIndex), Is.False, "and gone with its object");
         });
 
+        /// <summary>The control for the test above: a class that leaves OnDestroy alone isn't warned about.</summary>
+        [UnityTest]
+        public IEnumerator PC_31_A_process_that_leaves_OnDestroy_alone_isnt_warned_about() => Live(async () =>
+        {
+            int warned = 0;
+            void Count(string message, string stack, LogType type)
+            {
+                if (type == LogType.Warning && message.Contains("declares its own OnDestroy")) warned++;
+            }
+
+            Application.logMessageReceived += Count;
+            try
+            {
+                World.MonoProbe("Plain");
+                await Frames.Step();
+            }
+            finally
+            {
+                Application.logMessageReceived -= Count;
+            }
+
+            Assert.That(warned, Is.EqualTo(0));
+        });
+
         private sealed class HidingProcess : AbstractMonoProcess
         {
             // Hides the base's, as a class with a use of its own for the message would
