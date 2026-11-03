@@ -157,7 +157,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The task kept its relays on itself, and a task is shared by every activation, so the second
         /// activation lost the first's relays and the process was never ended.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_U_Overlapping_activations_keep_their_own_processes([Values] Hub hub) => Live(async () =>
         {
             var probe = World.NewProbe("Run By Ability");
