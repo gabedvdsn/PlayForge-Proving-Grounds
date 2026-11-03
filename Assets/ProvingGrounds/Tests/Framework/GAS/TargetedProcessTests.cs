@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A shot registered with no target warned about it, then used the target anyway, and the throw refused
         /// the shot. It ends quietly instead, having nothing to fly at.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_31_A_shot_with_no_target_ends() => Live(async () =>
         {
             var template = World.Template<ProbeShot>("Aimless");
