@@ -128,7 +128,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             int received = 0;
             gas.GetCallbacks().OnImpactReceived += impact =>
             {
-                if (impact.Attribute == power) received++;
+                if (ReferenceEquals(impact.Attribute, power)) received++;
             };
 
             gas.TryModifyAttribute(strength, SourcedModifiedAttributeValue.GenerateSimple(gas, strength, 5f, 5f));
