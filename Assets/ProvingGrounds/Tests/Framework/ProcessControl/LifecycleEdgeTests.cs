@@ -55,7 +55,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Unity sends no OnDestroy to an object that was never active, so a process registered on one went on after the
         /// object was destroyed: its block kept stepping with nothing behind it.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_30_A_process_on_an_object_that_never_woke_ends_with_it() => Live(async () =>
         {
             var host = new GameObject("Never Active");
