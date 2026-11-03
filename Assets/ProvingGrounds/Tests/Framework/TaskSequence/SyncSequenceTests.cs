@@ -103,7 +103,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>With no sequence packet to step with, a sync sequence made a new one for every step.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_P_A_sync_sequence_keeps_one_packet() => Live(async () =>
         {
             var seen = new HashSet<SequenceDataPacket>();
@@ -126,7 +126,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A plain packet made an async run throw, and was swapped for an empty one on a sync run, so what it
         /// carried never reached the tasks.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_P_A_plain_packet_reaches_the_tasks([Values] bool synchronous) => Live(async () =>
         {
             var carried = Make.NewTag("Test.Data.Carried");
@@ -145,7 +145,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A sync sequence ended part way through left the stage it was in uncleaned.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_P_Ending_a_sync_sequence_part_way_cleans_it([Values] bool immediately) => Live(async () =>
         {
             var relay = Run(Sync("Ended Early").Task(new ProbeSequenceTask(World, "Long", frames: 100)));
@@ -159,7 +159,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Interrupt went to a runtime that a sync sequence doesn't have, and did nothing.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_P_A_sync_sequence_can_be_interrupted([Values] bool fromRunner) => Live(async () =>
         {
             var builder = Sync("Interrupted").Task(new ProbeSequenceTask(World, "Long", frames: 100));
