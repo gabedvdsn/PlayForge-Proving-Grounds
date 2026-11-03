@@ -19,6 +19,13 @@ python Tools/test-report.py results.xml
 Exit code 0 means everything passed and 2 means tests failed. A run takes about 10 seconds. In the editor, use
 Window → General → Test Runner → PlayMode.
 
+The editor tests, for PlayForge's editor code and for the framework outside play mode, are EditMode tests. Run them
+the same way, with `-testPlatform EditMode`:
+
+```bash
+"/c/Program Files/Unity/Hub/Editor/6000.0.33f1/Editor/Unity.exe" -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testResults editmode.xml -logFile editmode.log
+```
+
 **The green gate.** A test for a bug not fixed yet carries the `Red` category, so a full run stays red until the bug
 is fixed. The report lists those apart from new failures. To check nothing else broke, leave them out:
 
@@ -47,6 +54,7 @@ python Tools/check-planted.py planted.xml
 | `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
 | `Tests/Framework` | Framework behaviour by area, with tests for a bug named after its tracker ID. Each red test has been shown to go green when its bug is fixed |
 | `Tests/Planted` | Tests that must fail, proving the harness's checks work |
+| `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change |
 
 ## Writing a test
 
