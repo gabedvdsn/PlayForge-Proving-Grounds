@@ -170,9 +170,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         }
 
         /// <summary>Registers a template and returns the clone ProcessControl made of it.</summary>
-        public T Spawn<T>(T template) where T : AbstractMonoProcess
+        public T Spawn<T>(T template) where T : AbstractMonoProcess => Spawn(template, null);
+
+        /// <summary>Spawns a clone of the template, registered with the given data.</summary>
+        public T Spawn<T>(T template, ProcessDataPacket data) where T : AbstractMonoProcess
         {
-            var relay = Register(template);
+            var relay = Register(template, data);
             if (!relay.TryGetProcess<T>(out var clone)) throw new AssertionException($"Registering {template.name} made no {typeof(T).Name}");
 
             _objects.Add(clone.gameObject);
