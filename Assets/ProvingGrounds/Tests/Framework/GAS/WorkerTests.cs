@@ -128,7 +128,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The rescale the system makes to keep Current in proportion to Base was typed AllowImpact, which passes every
         /// type filter, so a worker that takes unworkable impacts acted on it as if whoever changed Base had dealt it.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_35_A_rescale_reaches_no_typed_worker([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
