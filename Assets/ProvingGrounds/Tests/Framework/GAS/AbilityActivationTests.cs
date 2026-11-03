@@ -261,6 +261,53 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Ledger.Cleans("Stage Task"), Is.EqualTo(distance < 5f ? 1 : 0), distance < 5f ? "in range" : "out of range");
         });
 
+        /// <summary>
+        /// Auto-targeting measured from the caster's transform, which a runtime GAS doesn't have, so a runtime caster
+        /// searched the whole scene, whatever its range, and didn't sort what it found.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_38_A_runtime_caster_auto_targets_within_its_range([Values] bool byAffinity) => Live(async () =>
+        {
+            var far = World.MonoEntity(name: "Far");
+            far.transform.position = new Vector3(10f, 0f, 0f);
+            far.gameObject.AddComponent<SphereCollider>();
+            Physics.SyncTransforms();
+
+            var abilities = GrantAutoTargeted(byAffinity, out int index);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(5);
+
+            Assert.That(Ledger.Cleans("Stage Task"), Is.EqualTo(0), "nothing within 5, so targeting failed");
+        });
+
+        /// <summary>The control for the test above: a target within range is found.</summary>
+        [UnityTest]
+        public IEnumerator A_runtime_caster_auto_targets_what_is_in_range([Values] bool byAffinity) => Live(async () =>
+        {
+            var near = World.MonoEntity(name: "Near");
+            near.transform.position = new Vector3(3f, 0f, 0f);
+            near.gameObject.AddComponent<SphereCollider>();
+            Physics.SyncTransforms();
+
+            var abilities = GrantAutoTargeted(byAffinity, out int index);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
+        });
+
+        private AbilitySystemComponent GrantAutoTargeted(bool byAffinity, out int index)
+        {
+            var requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() };
+            AbstractTargetingAbilityTask targeting = byAffinity
+                ? new AutoTargetByAffinityTask
+                {
+                    Range = 5f, MaxTargets = 1, Mode = EAutoTargetMode.Nearest, AffinityFilter = EAffinityFilter.AlliesAndEnemies,
+                    Requirements = requirements,
+                }
+                : new AutoTargetTask { Range = 5f, MaxTargets = 1, Mode = EAutoTargetMode.Nearest, Requirements = requirements };
+            return GrantTargeted(Hub.Runtime, targeting, out index);
+        }
+
         private AbilitySystemComponent GrantTargeted(Hub hub, AbstractTargetingAbilityTask targeting, out int index)
         {
             var ability = Make.Ability("Targeted", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));

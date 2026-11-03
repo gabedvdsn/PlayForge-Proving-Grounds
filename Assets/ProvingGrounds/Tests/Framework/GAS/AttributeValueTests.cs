@@ -157,6 +157,73 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Current(gas, power), Is.EqualTo(30f), "Base went from 20 to 30, so Current did too");
         });
 
+        /// <summary>
+        /// The rescale took its share of Current after the bounds had clamped it, not before. Under ZeroToBase an 80/100
+        /// attribute that lost half its Base was clamped to 50, and a quarter of that, taken off the 80 under the clamp,
+        /// left it above the new Base, so it stayed at 50, not 40. The other two shares were right by luck or by nothing
+        /// clamped.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_37_A_clamped_attribute_keeps_its_share_of_Base([Values] Hub hub, [Values(100f, 80f, 30f)] float current) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var element = Make.Element(health, current, 100f, EAttributeOverflowPolicy.ZeroToBase);
+            element.Constraints.AutoScaleWithBase = true;
+            var gas = World.Entity(hub, Make.Set(element));
+            await Frames.Step();
+
+            World.Apply(gas, gas, Make.Effect("Frailty", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Infinite, Target = health, Slot = EAttributeTarget.Base, Magnitude = -50f,
+            }));
+            await Frames.Step(2);
+
+            gas.TryGetAttributeValue(health, out var value);
+            Assert.That(value.BaseValue, Is.EqualTo(50f), "Base halved");
+            Assert.That(value.CurrentValue, Is.EqualTo(current / 2f).Within(1e-3f), "and Current kept its share");
+        });
+
+        /// <summary>
+        /// The control for the test above: with nothing clamped, a change to Current and Base together adds first and
+        /// then scales, as it always has.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator A_change_to_Current_and_Base_adds_then_scales([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var element = Make.Element(health, 50f, 100f);
+            element.Constraints.AutoScaleWithBase = true;
+            var gas = World.Entity(hub, Make.Set(element));
+            await Frames.Step();
+
+            World.Apply(gas, gas, Make.Effect("Growth", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Slot = EAttributeTarget.CurrentAndBase, Magnitude = 50f,
+            }));
+            await Frames.Step(2);
+
+            gas.TryGetAttributeValue(health, out var value);
+            Assert.That(value.BaseValue, Is.EqualTo(150f), "Base");
+            Assert.That(value.CurrentValue, Is.EqualTo(150f), "Current: 50 and 50 more, then half again");
+        });
+
+        /// <summary>A set settling colliding elements by UseAverage took the first alone, and one set to Ignore threw.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_40_A_set_averages_or_ignores_colliding_elements(
+            [Values] Hub hub, [Values(EValueCollisionPolicy.UseAverage, EValueCollisionPolicy.Ignore)] EValueCollisionPolicy policy) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var set = Make.Set(Make.Element(health, 50f, 50f));
+            set.SubSets.Add(Make.Set(Make.Element(health, 30f, 30f)));
+            set.CollisionResolutionPolicy = policy;
+
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+
+            float expected = policy == EValueCollisionPolicy.UseAverage ? 40f : 50f;
+            Assert.That(Current(gas, health), Is.EqualTo(expected), policy == EValueCollisionPolicy.UseAverage ? "the average" : "the first");
+        });
+
         /// <summary>Golden S8's derived attribute: Base is twice Strength.</summary>
         private AttributeSetElement Derived(Attribute power, Attribute strength, bool linkCurrentToBase, float current = 0f)
         {

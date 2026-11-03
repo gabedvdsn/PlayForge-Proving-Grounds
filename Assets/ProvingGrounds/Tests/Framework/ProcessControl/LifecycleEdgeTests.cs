@@ -50,5 +50,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(probe.Recorder[ProbeHook.Update], Is.EqualTo(updates), "resumed, it steps in Update no more");
             Assert.That(probe.Recorder[ProbeHook.LateUpdate] - lateUpdates, Is.EqualTo(2), "but in LateUpdate, once a frame");
         });
+
+        /// <summary>
+        /// Unity sends no OnDestroy to an object that was never active, so a process registered on one went on after the
+        /// object was destroyed: its block kept stepping with nothing behind it.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_30_A_process_on_an_object_that_never_woke_ends_with_it() => Live(async () =>
+        {
+            var host = new GameObject("Never Active");
+            host.SetActive(false);
+            var relay = World.Register(host.AddComponent<ProbeMonoProcess>());
+            await Frames.Step();
+            Assert.That(World.Control.IsRegistered(relay.CacheIndex), "registered");
+
+            Object.Destroy(host);
+            await Frames.Step(2);
+
+            Assert.That(World.Control.IsRegistered(relay.CacheIndex), Is.False, "and gone with its object");
+        });
     }
 }

@@ -155,6 +155,47 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         });
 
+        /// <summary>
+        /// A ProcessControl set to start Closed refused GameRoot as well, so no StartState that refuses processes could
+        /// work. GameRoot registers while ProcessControl is Ready, and StartState follows.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_29_A_closed_start_still_admits_GameRoot(
+            [Values(EProcessControlState.Closed, EProcessControlState.ClosedWaiting)] EProcessControlState start) => Live(async () =>
+        {
+            Object.Destroy(World.Control.gameObject);
+            Object.Destroy(World.Root.gameObject);
+            await Frames.Step(2);
+
+            // A prefab's stand-in: under an object that isn't active, so it never starts, while its clone does
+            var templates = new GameObject("Control Templates") { hideFlags = HideFlags.HideAndDontSave };
+            templates.SetActive(false);
+            var template = new GameObject("Closed Control").AddComponent<ProcessControl>();
+            template.transform.SetParent(templates.transform, false);
+            typeof(ProcessControl).GetField("StartState", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(template, start);
+
+            ProcessControl control = null;
+            GameRoot root = null;
+            try
+            {
+                var host = NewBootstrapper();
+                host.GetComponent<Bootstrapper>().ProcessControlPrefab = template;
+                host.SetActive(true);
+                control = ProcessControl.Instance;
+                root = GameRoot.Instance;
+
+                Assert.That((bool)root && control.IsRegistered(root.ProcessRelay.CacheIndex), "GameRoot registered");
+                Assert.That(control.State, Is.EqualTo(start), "and ProcessControl started as it was set to");
+                await Frames.Step();
+            }
+            finally
+            {
+                if (root) Object.Destroy(root.gameObject);
+                if (control) Object.Destroy(control.gameObject);
+                Object.Destroy(templates);
+            }
+        });
+
         private static bool HoldsUnityObjects(Type type)
         {
             var element = type.IsArray ? type.GetElementType()

@@ -204,6 +204,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             public override IEnumerable<IRootAction> CreateDeferredActions(ImpactWorkerContext ctx) => Array.Empty<IRootAction>();
         }
 
+        /// <summary>
+        /// A relative-operation worker set to InlineAndDeferred did its work in both halves, so lifesteal healed twice.
+        /// Both halves do the same work, so it runs deferred.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_41_A_relative_worker_does_its_work_once([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var mana = Make.Attribute("Mana");
+            var set = Make.Set(Make.Element(health, 100f, 100f), Make.Element(mana, 0f, 0f));
+            set.WorkerGroup.ImpactWorkers.Add(new RelativeOperationContextImpactWorker
+            {
+                ImpactedAttribute = health, AnyImpactType = true, ImpactType = new List<Tag>(),
+                ImpactTarget = EAttributeTargetExpanded.CurrentOrBase, ImpactSign = ESignPolicy.Negative,
+                AnyContextTag = true, ImpactAbilityContextTags = new List<Tag>(),
+                WorkAttribute = mana, WorkImpactType = new List<Tag>(), WorkSignPolicy = ESignPolicy.Positive,
+                Operation = ECalculationOperation.Override, WithRespectTo = ESourceTarget.Source,
+                ExecutionMode = EWorkerExecution.InlineAndDeferred,
+            });
+
+            var source = World.Entity(hub, set, "Source");
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            World.Apply(source, target, Make.Effect("Hit", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f }));
+            await Frames.Step(2);
+
+            Assert.That(Current(source, mana), Is.EqualTo(100f), "the source's Health, taken once");
+        });
+
         private static float Current(IGameplayAbilitySystem gas, Attribute attribute)
         {
             gas.TryGetAttributeValue(attribute, out var value);
