@@ -147,12 +147,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Committed history joins the BASELINE, so transient % modifiers scale permanent gains. This pins
-        /// today's answer to the refactor plan's open Decision 4 (GAS-15); change it with that decision:
-        /// 50 +(instant ×1.2 → +10 committed) → baseline 60; ×1.5 modifier → 90 (not 85).
+        /// Committed history lands where it was measured, after the % modifiers, so they don't scale it
+        /// (Decision 4, GAS-15): 50 +(instant ×1.2 → +10 committed) → 60; ×1.5 modifier → 50×1.5 + 10 = 85.
+        /// It joined the baseline before, and the aura made it 90.
         /// </summary>
         [UnityTest]
-        public IEnumerator S6_CommittedHistoryJoinsBaseline([Values] Hub hub) => Live(async () =>
+        public IEnumerator S6_CommittedHistoryLandsAfterModifiers([Values] Hub hub) => Live(async () =>
         {
             var attr = Make.Attribute("Damage");
             var gas = Entity(hub, Make.Element(attr, 50f, 50f));
@@ -170,7 +170,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await ValueHolds(gas, attr, "permanent ×1.2 commit", 60f);
 
             Apply(gas, aura);
-            await ValueHolds(gas, attr, "aura multiplies committed history: (50+10)×1.5", 90f);
+            await ValueHolds(gas, attr, "the aura leaves committed history alone: 50×1.5 + 10", 85f);
 
             await Remove(gas, aura);
             await ValueHolds(gas, attr, "aura removed", 60f);
