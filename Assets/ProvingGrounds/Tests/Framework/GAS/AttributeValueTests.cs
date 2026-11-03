@@ -69,7 +69,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Elements set to Combine ended up as the first alone, since combining did nothing. They add up (Decision 13),
         /// and the first combined itself and each of the others twice, which would have counted them double.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_27_Combined_elements_add_up([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
