@@ -10,7 +10,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// </summary>
     public class SubStageTests : ProvingGroundsTest
     {
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_N_A_sub_stage_runs_its_callbacks() => Live(async () =>
         {
             int started = 0, ended = 0;
@@ -29,7 +29,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(ended, Is.EqualTo(1));
         });
 
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_N_A_sub_stage_repeats() => Live(async () =>
         {
             int iterations = 0;
@@ -121,7 +121,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A sub-stage's own handler can take its error, as a top-level stage's can.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_N_A_sub_stage_handles_its_own_error() => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Inner", frames: 1);
@@ -140,7 +140,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A critical sub-stage was never on the active list, so it held no critical section.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_N_A_critical_sub_stage_holds_the_critical_section() => Live(async () =>
         {
             int exits = 0;
