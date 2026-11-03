@@ -79,7 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A class that declares its own OnDestroy hides AbstractMonoProcess's, which Unity then never calls, so its
         /// process outlived its object. ProcessControl watches such a class's processes, and says once that it does.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_31_A_process_that_hides_OnDestroy_ends_with_its_object() => Live(async () =>
         {
             LogAssert.Expect(LogType.Warning, new Regex(nameof(HidingProcess)));
