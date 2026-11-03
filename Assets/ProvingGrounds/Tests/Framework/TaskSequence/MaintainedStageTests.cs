@@ -16,7 +16,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Maintaining a stage moved the sequence on, and moving on cleaned the stage it left, whose tasks were
         /// still running. Clean belongs at the end of a stage, wherever that comes.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_J_A_maintained_stage_is_cleaned_when_it_ends() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Maintaining")
@@ -42,7 +42,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Interrupted, the sequence cleaned all it had at once, a maintained stage's tasks with the rest while
         /// they were still unwinding. It waits for them now, and each stage cleans its own.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_J_Interrupting_cleans_a_maintained_stage_once_it_stops() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Interrupted While Maintaining")
@@ -67,7 +67,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Past the last stage there's nothing to maintain, and the sequence counted one all the same, so it
         /// waited for ever on a stage that wasn't running.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_J_Only_a_running_stage_can_be_maintained() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Maintained Last")
@@ -83,7 +83,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Jumping back to a stage that's still maintained ran its tasks a second time while they ran.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_J_A_maintained_stage_cant_be_jumped_to() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Jumped Back")
@@ -107,7 +107,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A stage left the active list only from the top, so one maintained and ending under a later stage
         /// stayed on it, and a critical one held the critical section for the rest of the run.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_J_A_maintained_critical_stage_lets_go_when_it_ends() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Critical Then Maintained")
