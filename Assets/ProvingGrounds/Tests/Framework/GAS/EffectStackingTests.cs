@@ -189,7 +189,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A stack running out didn't refresh the effect's modifiers, though gaining one did, so a per-stack bonus
         /// kept the old count until something else recomputed the attribute, and that change took the credit.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_34_A_stack_running_out_lowers_a_per_stack_bonus(
             [Values] Hub hub,
             [Values(EEffectStackPolicy.DurationTakenFromOneStack, EEffectStackPolicy.StacksHaveIndependentDurations)] EEffectStackPolicy policy) => Live(async () =>
@@ -211,7 +211,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Independent durations extend by adding a stack, and that one didn't refresh the bonus either.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_34_A_stack_added_by_extending_raises_a_per_stack_bonus([Values] Hub hub) => Live(async () =>
         {
             var armor = Make.Attribute("Armor");
