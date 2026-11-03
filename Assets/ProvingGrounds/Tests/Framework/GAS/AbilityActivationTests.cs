@@ -224,7 +224,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Targeting checked a target through its GameObject, which a runtime GAS doesn't have, so an entity
         /// targeting itself threw, and the ability ended before any stage.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_29_An_entity_can_target_itself([Values] Hub hub) => Live(async () =>
         {
             var targeting = new AutoTargetSelfTask
@@ -239,7 +239,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The range check measured between GameObjects, so with a runtime GAS at either end it always failed.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_29_A_range_check_measures_any_entity([Values] Hub hub, [Values(3f, 10f)] float distance) => Live(async () =>
         {
             var range = Make.NewTag("Test.Data.Range");
