@@ -265,7 +265,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Auto-targeting measured from the caster's transform, which a runtime GAS doesn't have, so a runtime caster
         /// searched the whole scene, whatever its range, and didn't sort what it found.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_38_A_runtime_caster_auto_targets_within_its_range([Values] bool byAffinity) => Live(async () =>
         {
             var far = World.MonoEntity(name: "Far");
