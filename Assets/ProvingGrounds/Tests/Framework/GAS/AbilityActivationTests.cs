@@ -295,6 +295,56 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
         });
 
+        /// <summary>
+        /// AutoTargetTask's collider buffer was MaxTargets long, so 0, which means every match, had no room and found
+        /// nothing.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_43_Auto_targeting_every_match_finds_them([Values] Hub hub) => Live(async () =>
+        {
+            foreach (float x in new[] { 2f, 3f })
+            {
+                var target = World.MonoEntity(name: $"Target at {x}");
+                target.transform.position = new Vector3(x, 0f, 0f);
+                target.gameObject.AddComponent<SphereCollider>();
+            }
+            Physics.SyncTransforms();
+
+            var abilities = GrantTargeted(hub, AutoTarget(maxTargets: 0), out int index);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "targeting found them, and the stage ran");
+        });
+
+        /// <summary>
+        /// At MaxTargets 1 the buffer had room for one collider, which could be the caster's own, so a target in range
+        /// went unfound.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_43_A_caster_with_a_collider_still_finds_its_target() => Live(async () =>
+        {
+            var caster = World.MonoEntity(name: "Caster");
+            caster.gameObject.AddComponent<SphereCollider>();
+            var target = World.MonoEntity(name: "Target");
+            target.transform.position = new Vector3(3f, 0f, 0f);
+            target.gameObject.AddComponent<SphereCollider>();
+            Physics.SyncTransforms();
+
+            var ability = Make.Ability("Targeted", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));
+            ability.Behaviour.Targeting = AutoTarget(maxTargets: 1);
+            var abilities = caster.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "granted");
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
+        });
+
+        private static AutoTargetTask AutoTarget(int maxTargets) => new AutoTargetTask
+        {
+            Range = 5f, MaxTargets = maxTargets, Mode = EAutoTargetMode.Nearest,
+            Requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() },
+        };
+
         private AbilitySystemComponent GrantAutoTargeted(bool byAffinity, out int index)
         {
             var requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() };

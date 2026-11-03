@@ -1,4 +1,7 @@
 using System.Collections;
+using System.Text.RegularExpressions;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -71,5 +74,32 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.That(World.Control.IsRegistered(relay.CacheIndex), Is.False, "and gone with its object");
         });
+
+        /// <summary>
+        /// A class that declares its own OnDestroy hides AbstractMonoProcess's, which Unity then never calls, so its
+        /// process outlived its object. ProcessControl watches such a class's processes, and says once that it does.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator PC_31_A_process_that_hides_OnDestroy_ends_with_its_object() => Live(async () =>
+        {
+            LogAssert.Expect(LogType.Warning, new Regex(nameof(HidingProcess)));
+            var host = new GameObject("Hiding");
+            var relay = World.Register(host.AddComponent<HidingProcess>());
+            await Frames.Step();
+            Assert.That(World.Control.IsRegistered(relay.CacheIndex), "registered");
+
+            Object.Destroy(host);
+            await Frames.Step(2);
+
+            Assert.That(World.Control.IsRegistered(relay.CacheIndex), Is.False, "and gone with its object");
+        });
+
+        private sealed class HidingProcess : AbstractMonoProcess
+        {
+            // Hides the base's, as a class with a use of its own for the message would
+            private void OnDestroy() { }
+
+            public override UniTask RunProcess(CancellationToken token) => UniTask.WaitUntilCanceled(token);
+        }
     }
 }
