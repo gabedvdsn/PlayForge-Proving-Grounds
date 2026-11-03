@@ -51,7 +51,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A sub-stage's own timeout stops it and leaves the rest of its parent running. A timer applied its
         /// injection to the current top-level stage, so here it stopped the parent.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_K_A_sub_stages_timeout_stops_just_it() => Live(async () =>
         {
             Run(new TaskSequence(TaskSequenceBuilder.Create("Outer")
@@ -75,7 +75,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A sub-stage's own condition skips it, and leaves the rest of its parent running, as its timeout does.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_K_A_sub_stages_condition_skips_just_it() => Live(async () =>
         {
             bool skip = false;
@@ -104,7 +104,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Breaking "the current stage's" repeat reached only the top-level stage, so a repeating sub-stage couldn't
         /// be broken from inside it.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_K_BreakStageRepeat_reaches_a_repeating_sub_stage() => Live(async () =>
         {
             int iterations = 0;

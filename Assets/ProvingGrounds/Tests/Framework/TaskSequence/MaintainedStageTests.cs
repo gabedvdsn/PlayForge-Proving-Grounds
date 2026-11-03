@@ -128,7 +128,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A timer applied its injection to whatever stage was current, not the stage it belonged to.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_K_A_maintained_stages_timeout_stops_that_stage() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Timed Out While Maintained")
@@ -150,7 +150,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A maintained stage's own condition skipped whatever stage was current, as its timers did.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_K_A_maintained_stages_condition_skips_that_stage() => Live(async () =>
         {
             bool skip = false;
