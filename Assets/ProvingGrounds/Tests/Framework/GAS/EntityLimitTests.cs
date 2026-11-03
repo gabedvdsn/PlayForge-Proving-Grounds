@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// An identity's max abilities and items had no default, so one that didn't set them could hold neither:
         /// a new asset's came out at 0, and a runtime identity's weren't there at all.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_23_An_identity_that_sets_no_limits_can_hold_abilities_and_items([Values] Hub hub) => Live(async () =>
         {
             IGameplayAbilitySystem gas;
