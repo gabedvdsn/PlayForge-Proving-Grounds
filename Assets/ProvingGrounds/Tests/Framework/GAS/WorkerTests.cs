@@ -200,7 +200,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>An impact worker set to run inline and deferred ran neither: the cache had no case for it.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_27_An_inline_and_deferred_impact_worker_runs_both([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
@@ -220,7 +220,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A worker group's guard read "not found, or found one", which always held, so a GAS that didn't have its
         /// systems yet was handed its workers into nothing, and threw.
         /// </summary>
-        [Test, Category("Red")]
+        [Test]
         public void GAS_27_A_GAS_without_its_systems_takes_no_workers()
         {
             var health = Make.Attribute("Health");
