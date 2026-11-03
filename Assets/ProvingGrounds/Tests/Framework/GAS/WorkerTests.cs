@@ -232,6 +232,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Current(source, mana), Is.EqualTo(100f), "the source's Health, taken once");
         });
 
+        /// <summary>
+        /// The frame's snapshot copied neither the applied and removed effects nor the deaths and ability injections, so
+        /// FrameComplete listeners never saw them. No red test came first, as the snapshot had nowhere to show them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_39_The_frame_snapshot_carries_effects_injections_and_deaths([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var abilities = gas.GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("Long", Make.Stage(new ProbeAbilityTask(World, "Long Task", frames: 30))), 1, out int index);
+            var buff = Make.Effect("Buff", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
+
+            var applied = new List<GameplayEffect>();
+            var removed = new List<GameplayEffect>();
+            var deaths = new List<IGameplayAbilitySystem>();
+            int injections = 0;
+            gas.GetCallbacks().OnFrameComplete += snapshot =>
+            {
+                applied.AddRange(snapshot.AppliedEffects.Select(spec => spec.Base));
+                removed.AddRange(snapshot.RemovedEffects);
+                deaths.AddRange(snapshot.Deaths);
+                injections += snapshot.AbilityInjections.Count;
+            };
+
+            World.Apply(gas, gas, buff);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(2);
+            abilities.Inject(index, SkipStageInjection.Instance);
+            gas.RemoveGameplayEffect(buff.GetAssetTag());
+            await Frames.Step(2);
+            gas.MarkDead();
+            await Frames.Step(2);
+
+            Assert.That(applied, Is.EqualTo(new[] { buff }), "the application");
+            Assert.That(removed, Is.EqualTo(new[] { buff }), "the removal");
+            Assert.That(injections, Is.EqualTo(1), "the injection");
+            Assert.That(deaths, Is.EqualTo(new[] { gas }), "and the death");
+        });
+
         private static float Current(IGameplayAbilitySystem gas, Attribute attribute)
         {
             gas.TryGetAttributeValue(attribute, out var value);
