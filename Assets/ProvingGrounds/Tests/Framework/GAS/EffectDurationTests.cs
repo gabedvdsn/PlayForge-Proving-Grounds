@@ -10,7 +10,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The duration was read before its scaler was initialized, and a scaler backed by an attribute reads
         /// nothing until then, so the effect was over as it began.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_22_A_scaled_duration_is_read_once_its_scaler_is_ready([Values] Hub hub) => Live(async () =>
         {
             var gas = World.Entity(hub);
@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The number of ticks had a scaler that was never initialized at all.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_22_A_scaled_tick_count_is_read_once_its_scaler_is_ready([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
