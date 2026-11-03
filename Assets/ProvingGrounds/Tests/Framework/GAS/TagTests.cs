@@ -74,7 +74,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The hierarchy helpers, and a name made into a tag, gave deterministic tags, which pad the name with a
         /// hash. So a tag's parent wasn't the tag of that name, and a root query never found its own children.
         /// </summary>
-        [Test, Category("Red")]
+        [Test]
         public void GAS_17_A_tags_relatives_are_the_tags_of_their_names()
         {
             string root = Make.Unique("Hierarchy");
