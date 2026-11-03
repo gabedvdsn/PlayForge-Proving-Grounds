@@ -108,6 +108,92 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A run took over its packet and cleared it at the end, so a run nested on the same packet, as
+        /// RunSequenceTask's is, left the outer run with no runtime and its packet marked unused.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator TS_F_A_nested_run_gives_the_packet_back() => Live(async () =>
+        {
+            var inner = new TaskSequence(TaskSequenceBuilder.Create("Inner").Delay(0.05f).Build());
+
+            TaskSequenceRuntime before = null, after = null;
+            bool inUse = false;
+
+            var outer = new TaskSequence(TaskSequenceBuilder.Create("Outer")
+                .Task(async (SequenceDataPacket data, CancellationToken token) =>
+                {
+                    before = data.Runtime;
+                    await inner.Run(data, token);
+                    after = data.Runtime;
+                    inUse = data.InUse;
+                })
+                .Build());
+
+            ProcessControl.Register(outer, out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 12, "the sequence ends");
+
+            Assert.That(after, Is.SameAs(before), "the outer run has its packet back");
+            Assert.That(inUse, "and it's still in use");
+        });
+
+        /// <summary>Between two sequences a chain has no runtime to ask, and asking threw.</summary>
+        [UnityTest]
+        public IEnumerator TS_O_A_chain_between_sequences_isnt_critical() => Live(async () =>
+        {
+            var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Delay(100f).Build())
+                .Then(new TaskSequence(TaskSequenceBuilder.Create("Second").Task(new ProbeSequenceTask(World, "Second")).Build()));
+
+            ProcessControl.Register(chain, out var relay);
+            World.Own(relay);
+            await Frames.Step(2);
+
+            relay.Pause();
+            relay.TryGetProcess<TaskSequenceProcess>(out var process);
+            process.SkipCurrentSequence();
+            await Frames.Step(3);
+
+            bool critical = true;
+            Assert.DoesNotThrow(() => critical = chain.IsCriticalSection);
+            Assert.That(critical, Is.False);
+
+            relay.Unpause();
+            await Frames.Step(3);
+        });
+
+        /// <summary>A chain repeated by calling itself, one more level every time. It loops now, and repeats the same.</summary>
+        [UnityTest]
+        public IEnumerator A_repeating_chain_runs_until_it_is_interrupted() => Live(async () =>
+        {
+            int runs = 0;
+            var chain = new TaskSequence(TaskSequenceBuilder.Create("Repeated").Do(_ => runs++).Build())
+                .Then(new TaskSequence(TaskSequenceBuilder.Create("Again").Do(_ => { }).Build()))
+                .WithRepeat(true);
+
+            ProcessControl.Register(chain, out var relay);
+            World.Own(relay);
+            await Frames.Step(12);
+
+            Assert.That(runs, Is.GreaterThanOrEqualTo(3), "it goes round");
+
+            relay.TryGetProcess<TaskSequenceProcess>(out var process);
+            Assert.That(process.Interrupt(), "the interrupt is accepted");
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 5, "and stops");
+        });
+
+        /// <summary>An empty chain has nothing to repeat. Repeating, it called itself until the stack overflowed.</summary>
+        [UnityTest]
+        public IEnumerator TS_O_An_empty_repeating_chain_ends() => Live(async () =>
+        {
+            ProcessControl.Register(new TaskSequenceChain().WithRepeat(true), out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 3, "it ends");
+        });
+
+        /// <summary>
         /// A sequence waited on its stage through AttachExternalCancellation, which throws the moment the
         /// token cancels, so CleanStage ran while the stage's tasks were still unwinding. A task that releases
         /// something in Clean and uses it in Execute's finally saw it gone.
