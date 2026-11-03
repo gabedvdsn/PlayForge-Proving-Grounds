@@ -17,7 +17,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A task's error was rethrown with <c>throw e</c> at every level it passed through, which starts its stack
         /// trace again from there, so the error a sequence reported no longer said where it happened.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_R_A_tasks_error_keeps_its_stack_trace([Values] bool subStage) => Live(async () =>
         {
             var task = new ProbeSequenceTask(World, "Broken", frames: 1);

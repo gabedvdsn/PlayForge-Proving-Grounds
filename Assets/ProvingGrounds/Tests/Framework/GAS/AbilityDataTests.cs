@@ -9,7 +9,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class AbilityDataTests : ProvingGroundsTest
     {
         /// <summary>An injection that came while the ability's sequence wasn't running took the legacy path, which threw.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_S_Injecting_into_a_targeting_ability_is_safe([Values] Hub hub) => Live(async () =>
         {
             var ability = Make.Ability("Targeted", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));
