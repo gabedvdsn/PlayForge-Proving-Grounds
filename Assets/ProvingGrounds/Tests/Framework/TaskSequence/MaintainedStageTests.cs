@@ -178,7 +178,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A timer waited on a source that was disposed and never cancelled, so it outlived what it timed and
         /// fired into whatever came next: here, the next round of a repeating sequence.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_AD_A_timer_ends_with_what_it_timed([Values] bool stageTimer) => Live(async () =>
         {
             int timeouts = 0;
