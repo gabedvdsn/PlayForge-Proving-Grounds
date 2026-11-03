@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A randomized scaler rolled on every evaluation, and a modifier is evaluated whenever its attribute recomputes,
         /// so a random buff re-rolled with every change to the attribute. It keeps one roll per application (Decision 12).
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_27_A_randomized_buff_keeps_its_roll([Values] Hub hub) => Live(async () =>
         {
             var strength = Make.Attribute("Strength");
@@ -26,6 +26,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Hits(gas, strength, 3);
 
             Assert.That(Current(gas, strength), Is.EqualTo(rolled - 3f).Within(1e-3f), "each hit took 1, and the buff held");
+        });
+
+        /// <summary>The control for the test above: set to roll every time, a buff re-rolls when its attribute recomputes.</summary>
+        [UnityTest]
+        public IEnumerator A_randomized_scaler_set_to_roll_every_time_rerolls([Values] Hub hub) => Live(async () =>
+        {
+            UnityEngine.Random.InitState(27);
+            var strength = Make.Attribute("Strength");
+            var gas = World.Entity(hub, Make.Set(Make.Element(strength, 10f, 10f)));
+            World.Apply(gas, gas, Lucky(strength, new RandomizedScaler
+            {
+                VarianceMode = EVarianceMode.Multiplier, MinMultiplier = 0f, MaxMultiplier = 100f, RollOncePerSpec = false,
+            }));
+            await Frames.Step();
+            float rolled = Current(gas, strength);
+
+            await Hits(gas, strength, 3);
+
+            Assert.That(Current(gas, strength), Is.Not.EqualTo(rolled - 3f).Within(1e-3f));
         });
 
         private GameplayEffect Lucky(Attribute strength, RandomizedScaler scaler)
