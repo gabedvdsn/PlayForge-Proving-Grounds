@@ -159,7 +159,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A ProcessControl set to start Closed refused GameRoot as well, so no StartState that refuses processes could
         /// work. GameRoot registers while ProcessControl is Ready, and StartState follows.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_29_A_closed_start_still_admits_GameRoot(
             [Values(EProcessControlState.Closed, EProcessControlState.ClosedWaiting)] EProcessControlState start) => Live(async () =>
         {
