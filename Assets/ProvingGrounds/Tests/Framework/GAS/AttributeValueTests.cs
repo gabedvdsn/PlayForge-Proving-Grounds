@@ -163,7 +163,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// left it above the new Base, so it stayed at 50, not 40. The other two shares were right by luck or by nothing
         /// clamped.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_37_A_clamped_attribute_keeps_its_share_of_Base([Values] Hub hub, [Values(100f, 80f, 30f)] float current) => Live(async () =>
         {
             var health = Make.Attribute("Health");
