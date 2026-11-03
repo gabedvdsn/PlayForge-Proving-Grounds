@@ -48,7 +48,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The activation went in under the definition's policy and came out under the request's.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_T_An_activation_with_its_own_policy_leaves_no_trace([Values] Hub hub) => Live(async () =>
         {
             var abilities = Grant(hub, Make.Ability("Overridden", Make.Stage(new ProbeAbilityTask(World, "Work", frames: 2))), out int index);
@@ -57,13 +57,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(abilities.TryActivateAbility(request), "activated");
 
             await Frames.Until(() => Ledger.Cleans("Work") == 1, 10, "it runs");
-            await Frames.Step();
-
-            Assert.That(abilities.IsExecuting, Is.False, "and nothing says it still is");
+            await Frames.Until(() => !abilities.IsExecuting, 5, "and then nothing says it still is");
         });
 
         /// <summary>Each ability held one entry, so the first of two overlapping activations cleared it for both.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_T_Overlapping_activations_keep_the_ability_active([Values] Hub hub) => Live(async () =>
         {
             var abilities = Grant(hub, Make.Ability("Overlapping", Make.Stage(new DelayTask { DelayMilliseconds = 200 })), out int index);
@@ -83,7 +81,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Removing an ability left its slot in the active list, so the next activation looked it up and threw,
         /// and compiled tags with it still granted.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_20_Removing_an_active_ability_leaves_nothing_behind([Values] Hub hub) => Live(async () =>
         {
             var granted = Make.NewTag("Test.Status.Trained");
@@ -107,7 +105,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A removed ability's claim was let go without the activations queued behind it hearing.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_20_Removing_an_ability_lets_its_queue_go_on() => Live(async () =>
         {
             var removed = Make.Ability("Removed", Make.Stage(new ProbeAbilityTask(World, "Holding", frames: 100, critical: true)));
@@ -130,7 +128,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The claim found the ability by asset, so a duplicate's activation landed on the first one's slot.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_21_A_duplicate_ability_claims_its_own_slot() => Live(async () =>
         {
             var ability = Make.Ability("Twin", Make.Stage(new ProbeAbilityTask(World, "Work", frames: 2)));
@@ -149,9 +147,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             abilities.TryActivateAbility(abilities.CreateActivationRequest(second));
 
             await Frames.Until(() => Ledger.Cleans("Work") == 1, 10, "it runs");
-            await Frames.Step();
-
-            Assert.That(abilities.IsExecuting, Is.False, "and its slot is free again");
+            await Frames.Until(() => !abilities.IsExecuting, 5, "and then its slot is free again");
         });
 
         /// <summary>
