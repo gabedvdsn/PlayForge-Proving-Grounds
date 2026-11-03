@@ -17,7 +17,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A second GameRoot destroyed itself and then took Instance anyway, so a frame later Instance was a
         /// destroyed object, and every overload that defaults to GameRoot handed its processes to that.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_23_A_second_GameRoot_leaves_Instance_alone() => Live(async () =>
         {
             var host = new GameObject("Second Root");
@@ -32,7 +32,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A Bootstrapper whose GameRoot was refused read the relay it never got and threw, so it never finished.
         /// The bare clone it meant to fall back on would never have initialized or stepped anyway.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_23_A_refused_GameRoot_is_reported() => Live(async () =>
         {
             var host = NewBootstrapper();
@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A ProcessControl nothing bootstrapped had no step groups, so it threw in every Update, LateUpdate and
         /// FixedUpdate. It steps nothing, and says once that it isn't in use.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_23_A_ProcessControl_nothing_bootstrapped_steps_nothing() => Live(async () =>
         {
             var host = new GameObject("Stray ProcessControl");
@@ -79,7 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Unity serializes a field that holds Unity objects as a plain reference, [SerializeReference] or not, so
         /// the attribute on the Bootstrapper's sets, and on ten fields like them, only misled.
         /// </summary>
-        [Test, Category("Red")]
+        [Test]
         public void PC_23_No_field_of_Unity_objects_is_marked_SerializeReference()
         {
             var marked = typeof(ProcessControl).Assembly.GetTypes()
