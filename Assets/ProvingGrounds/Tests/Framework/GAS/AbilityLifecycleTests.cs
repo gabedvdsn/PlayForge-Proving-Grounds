@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -181,7 +182,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A targeting task that throws is broken, not invalid, so BreakRuntimeOnInvalid has no say. The throw
         /// stayed inside the targeting sequence, so the ability went on with no target.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_V_A_throw_in_targeting_ends_the_ability(
             [Values] Hub hub,
             [Values] bool breaksOnInvalid,
@@ -202,10 +203,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Targeting that ends before its task finishes has no target to give, whatever ended it. Here ProcessControl
-        /// closes, which ends the targeting with it.
+        /// Targeting that ends before its task finishes has no target to give, whatever ended it. Here its process is
+        /// ended from outside, part way through.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_V_Targeting_cut_short_ends_the_ability() => Live(async () =>
         {
             var ability = Make.Ability("Cut Short", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));
@@ -213,11 +214,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             var abilities = Grant(Hub.Runtime, ability, out int index);
             Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "it activates");
-            await Frames.Step();
+            await Frames.Step(2);
 
-            World.Control.SetControlState(EProcessControlState.Closed);
-            await Frames.Step(3);
-            World.Control.SetControlState(EProcessControlState.Ready);
+            var targeting = World.Control.FetchActiveProcesses().Values
+                .First(block => block.Wrapper.ProcessName.StartsWith("Targeting:"));
+            targeting.Relay.TerminateImmediate();
             await Frames.Step(3);
 
             Assert.That(Ledger.Prepares("Stage Task"), Is.EqualTo(0), "the ability goes no further");
