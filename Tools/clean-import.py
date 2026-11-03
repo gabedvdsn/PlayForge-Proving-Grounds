@@ -22,7 +22,7 @@ import sys
 
 UNITY = r"C:\Program Files\Unity\Hub\Editor\6000.0.33f1\Editor\Unity.exe"
 PACKAGE = r"C:\Users\17074\Documents\GitHub\PlayForge\Assets\PlayForge"
-UNITASK = "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask"
+UNITASK = "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#2.5.11"
 INPUT_SYSTEM = "1.11.2"
 
 # Opens every scene, prefab and data asset under Assets/Samples and logs what doesn't resolve, one line each
