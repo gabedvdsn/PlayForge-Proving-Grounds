@@ -25,7 +25,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Tag workers ticked in Update and again at the end of the frame, so at twice their rate.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_19_A_tag_worker_ticks_once_a_frame([Values] Hub hub) => Live(async () =>
         {
             var set = Make.Set(Make.Element(Make.Attribute("Unused"), 1f, 1f));
