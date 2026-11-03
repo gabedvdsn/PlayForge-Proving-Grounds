@@ -199,7 +199,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The stage being stopped was picked from all the running stages, the current one among them.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_L_Stopping_maintained_stages_leaves_the_current_one([Values] Stopper stopper) => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Nothing Maintained")
@@ -217,7 +217,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>An index was checked against how many stages were running, not which.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_L_A_late_stage_can_be_stopped_by_its_index() => Live(async () =>
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Stopped By Index")
