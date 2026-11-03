@@ -15,7 +15,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// OnAbilityEnd fired when the claim was released, which for an ability with no critical stage is as it
         /// starts. Nothing reported the real end.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_9_OnAbilityEnd_fires_when_the_ability_ends([Values] Hub hub) => Live(async () =>
         {
             var abilities = Grant(hub, Make.Ability("Timed", Make.Stage(new ProbeAbilityTask(World, "Work", frames: TaskFrames))), out int index);
@@ -31,7 +31,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Task callbacks only ever fired on the legacy path, which a compiled ability doesn't take.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_9_Task_callbacks_fire_for_a_compiled_ability([Values] Hub hub) => Live(async () =>
         {
             var abilities = Grant(hub, Make.Ability("Timed", Make.Stage(new ProbeAbilityTask(World, "Work", frames: 2))), out int index);
