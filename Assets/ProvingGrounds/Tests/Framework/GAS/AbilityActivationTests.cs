@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
@@ -216,6 +218,47 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
 
             await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
+        });
+
+        /// <summary>
+        /// Targeting checked a target through its GameObject, which a runtime GAS doesn't have, so an entity
+        /// targeting itself threw, and the ability ended before any stage.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_29_An_entity_can_target_itself([Values] Hub hub) => Live(async () =>
+        {
+            var targeting = new AutoTargetSelfTask
+            {
+                Requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() },
+            };
+            var abilities = GrantTargeted(hub, targeting, out int index);
+
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+
+            await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
+        });
+
+        /// <summary>The range check measured between GameObjects, so with a runtime GAS at either end it always failed.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_29_A_range_check_measures_any_entity([Values] Hub hub, [Values(3f, 10f)] float distance) => Live(async () =>
+        {
+            var range = Make.NewTag("Test.Data.Range");
+            var ability = Make.Ability("Ranged", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));
+            ability.LocalData.Add(new DataWrapper { Key = range, floatValue = 5f });
+            ability.TargetActivationRules.Add(new CheckRangeValidation { Tag = range });
+
+            var caster = World.Entity(hub, name: "Caster");
+            var target = World.Entity(hub, name: "Target");
+            target.GetTargetingPacket().position = new Vector3(distance, 0f, 0f);
+
+            var abilities = caster.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "granted");
+            var request = ProcessDataPacket.Default();
+            request.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index, request));
+            await Frames.Step(5);
+
+            Assert.That(Ledger.Cleans("Stage Task"), Is.EqualTo(distance < 5f ? 1 : 0), distance < 5f ? "in range" : "out of range");
         });
 
         private AbilitySystemComponent GrantTargeted(Hub hub, AbstractTargetingAbilityTask targeting, out int index)

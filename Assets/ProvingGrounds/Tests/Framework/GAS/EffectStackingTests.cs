@@ -185,6 +185,69 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>
+        /// A stack running out didn't refresh the effect's modifiers, though gaining one did, so a per-stack bonus
+        /// kept the old count until something else recomputed the attribute, and that change took the credit.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_34_A_stack_running_out_lowers_a_per_stack_bonus(
+            [Values] Hub hub,
+            [Values(EEffectStackPolicy.DurationTakenFromOneStack, EEffectStackPolicy.StacksHaveIndependentDurations)] EEffectStackPolicy policy) => Live(async () =>
+        {
+            var armor = Make.Attribute("Armor");
+            var gas = World.Entity(hub, Make.Set(Make.Element(armor, 50f, 50f)));
+            var buff = PerStack(armor, policy);
+
+            World.Apply(gas, gas, buff);
+            await Frames.Seconds(0.5f);
+            World.Apply(gas, gas, buff);
+            await Frames.Step();
+            Assert.That(Value(gas, armor), Is.EqualTo(70f), "two stacks");
+
+            await Frames.Until(() => Stacks(gas, buff) == 1, 120, "a stack runs out");
+            await Frames.Step();
+
+            Assert.That(Value(gas, armor), Is.EqualTo(60f), "one stack's bonus");
+        });
+
+        /// <summary>Independent durations extend by adding a stack, and that one didn't refresh the bonus either.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_34_A_stack_added_by_extending_raises_a_per_stack_bonus([Values] Hub hub) => Live(async () =>
+        {
+            var armor = Make.Attribute("Armor");
+            var gas = World.Entity(hub, Make.Set(Make.Element(armor, 50f, 50f)));
+            var buff = PerStack(armor, EEffectStackPolicy.StacksHaveIndependentDurations);
+            buff.DurationSpecification.ReApplicationPolicy = EEffectReApplicationPolicy.DoNothing;
+            buff.DurationSpecification.ReApplicationInteraction = EEffectInteractionPolicy.ExtendContainerDuration;
+
+            World.Apply(gas, gas, buff);
+            World.Apply(gas, gas, buff);
+            await Frames.Step();
+
+            Assert.That(Stacks(gas, buff), Is.EqualTo(2), "extending added a stack");
+            Assert.That(Value(gas, armor), Is.EqualTo(70f), "and its bonus");
+        });
+
+        private GameplayEffect PerStack(Attribute armor, EEffectStackPolicy policy)
+        {
+            return Make.Effect("Per Stack", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 1f,
+                Target = armor, Op = ECalculationOperation.Add,
+                Magnitude = 10f, MagnitudeScaler = new StackCountScaler(), MagnitudeOp = EMagnitudeOperation.MultiplyWithScaler,
+                Reapply = EEffectReApplicationPolicy.StackExistingContainers,
+                StackPolicy = policy,
+            });
+        }
+
+        /// <summary>Golden S7's scaler: the magnitude follows the container's stack count.</summary>
+        private sealed class StackCountScaler : AbstractScaler
+        {
+            public override void Initialize(IAttributeImpactCarrier deriv) { }
+            public override float Evaluate(IAttributeImpactCarrier deriv) => 1f;
+            public override float Evaluate(AbstractStackingEffectContainer container) => container.Stacks;
+        }
+
         private GameplayEffect Stacking(EEffectStackPolicy policy, int stackAmount = 1)
         {
             return Make.Effect("Stacking", new EffectConfig

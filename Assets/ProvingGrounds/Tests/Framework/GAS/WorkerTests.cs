@@ -1,4 +1,7 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -38,5 +41,196 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.That(Faults.Hits("Ticker.Tick") - before, Is.EqualTo(10));
         });
+
+        /// <summary>
+        /// An instant effect's removal workers were handed an impact even when it made none: an empty one, on no
+        /// attribute, so a worker that read the attribute threw.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_28_Removal_workers_get_no_impact_when_none_was_made([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var removal = new RemovalWatcher();
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
+
+            World.Apply(gas, gas, Make.Effect("Hit", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f,
+                Workers = new List<AbstractEffectWorker> { removal },
+            }));
+            Assert.That(removal.Seen, Has.Count.EqualTo(1), "the hit's removal ran");
+            Assert.That(removal.Seen[0].ImpactData?.Attribute, Is.SameAs(health), "with the impact it made");
+
+            World.Apply(gas, gas, Make.Effect("Utility", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = null,
+                Workers = new List<AbstractEffectWorker> { removal },
+            }));
+            Assert.That(removal.Seen, Has.Count.EqualTo(2), "the utility's removal ran");
+            Assert.That(removal.Seen[1].ImpactData.HasValue, Is.False, "with no impact, as it made none");
+
+            await Frames.Step();
+        });
+
+        private sealed class RemovalWatcher : AbstractEffectWorker
+        {
+            public readonly List<EffectWorkerContext> Seen = new();
+
+            public override IEnumerable<IRootAction> OnEffectApplication(EffectWorkerContext ctx) => Array.Empty<IRootAction>();
+
+            public override IEnumerable<IRootAction> OnEffectTick(EffectWorkerContext ctx) => Array.Empty<IRootAction>();
+
+            public override IEnumerable<IRootAction> OnEffectRemoval(EffectWorkerContext ctx)
+            {
+                Seen.Add(ctx);
+                return Array.Empty<IRootAction>();
+            }
+
+            public override IEnumerable<IRootAction> OnEffectImpact(EffectWorkerContext ctx) => Array.Empty<IRootAction>();
+        }
+
+        /// <summary>Nothing recorded an effect applied or removed, so analysis workers always found both lists empty.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_28_The_frame_summary_records_applied_and_removed_effects([Values] Hub hub) => Live(async () =>
+        {
+            var set = Make.Set(Make.Element(Make.Attribute("Unused"), 1f, 1f));
+            var analyst = new EffectAnalyst();
+            set.WorkerGroup.AnalysisWorkers.Add(analyst);
+            var gas = World.Entity(hub, set);
+            var buff = Make.Effect("Buff", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
+            await Frames.Step();
+
+            World.Apply(gas, gas, buff);
+            await Frames.Step(2);
+            Assert.That(analyst.Applied, Is.EqualTo(new[] { buff }), "the application was recorded");
+
+            gas.RemoveGameplayEffect(buff.GetAssetTag());
+            await Frames.Step(2);
+            Assert.That(analyst.Removed, Is.EqualTo(new[] { buff }), "and the removal");
+        });
+
+        private sealed class EffectAnalyst : AbstractAnalysisWorker
+        {
+            public readonly List<GameplayEffect> Applied = new();
+            public readonly List<GameplayEffect> Removed = new();
+
+            public override IEnumerable<IRootAction> Analyze(IGameplayAbilitySystem system, FrameSummary frameSummary)
+            {
+                Applied.AddRange(frameSummary.AppliedEffects.Select(spec => spec.Base));
+                Removed.AddRange(frameSummary.RemovedEffects);
+                return Array.Empty<IRootAction>();
+            }
+        }
+
+        /// <summary>
+        /// The rescale the system makes to keep Current in proportion to Base was typed AllowImpact, which passes every
+        /// type filter, so a worker that takes unworkable impacts acted on it as if whoever changed Base had dealt it.
+        /// </summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_35_A_rescale_reaches_no_typed_worker([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var fire = Make.NewTag("Test.Impact.Fire");
+            var element = Make.Element(health, 100f, 100f);
+            element.Constraints.AutoScaleWithBase = true;
+            var set = Make.Set(element);
+            set.WorkerGroup.ImpactWorkers.Add(new FireWorker(health, fire, Faults));
+
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+
+            World.Apply(gas, gas, Make.Effect("Vigor", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Infinite, Target = health, Slot = EAttributeTarget.Base, Magnitude = 50f,
+            }));
+            await Frames.Step(2);
+
+            Assert.That(Current(gas, health), Is.EqualTo(150f), "the rescale still lands");
+            Assert.That(Faults.Hits("Fire.Inline"), Is.EqualTo(0), "but a worker for fire doesn't see it");
+        });
+
+        /// <summary>The control for the test above: the worker does see a fire impact.</summary>
+        [UnityTest]
+        public IEnumerator A_typed_worker_sees_its_own_type([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var fire = Make.NewTag("Test.Impact.Fire");
+            var set = Make.Set(Make.Element(health, 50f, 100f));
+            set.WorkerGroup.ImpactWorkers.Add(new FireWorker(health, fire, Faults));
+            var gas = World.Entity(hub, set);
+
+            var burn = Make.Effect("Burn", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = 10f });
+            burn.ImpactSpecification.ImpactTypes = new List<Tag> { fire };
+            World.Apply(gas, gas, burn);
+            await Frames.Step(2);
+
+            Assert.That(Faults.Hits("Fire.Inline"), Is.EqualTo(1));
+        });
+
+        private sealed class FireWorker : AbstractContextImpactWorker
+        {
+            private readonly FaultInjector _faults;
+
+            public override EWorkerExecution Execution => EWorkerExecution.Inline;
+
+            public FireWorker(Attribute health, Tag fire, FaultInjector faults)
+            {
+                _faults = faults;
+                ImpactedAttribute = health;
+                AcceptUnworkableImpact = true;
+                AnyImpactType = false;
+                ImpactType = new List<Tag> { fire };
+                ImpactTarget = EAttributeTargetExpanded.CurrentOrBase;
+                ImpactSign = ESignPolicy.Positive;
+                AllowSelfImpact = true;
+                AnyContextTag = true;
+                ImpactAbilityContextTags = new List<Tag>();
+                WorkImpactType = new List<Tag>();
+            }
+
+            public override void ActivateInline(ImpactData impactData) => _faults.Trip("Fire.Inline");
+
+            public override IEnumerable<IRootAction> CreateDeferredActions(ImpactWorkerContext ctx) => Array.Empty<IRootAction>();
+        }
+
+        private static float Current(IGameplayAbilitySystem gas, Attribute attribute)
+        {
+            gas.TryGetAttributeValue(attribute, out var value);
+            return value.CurrentValue;
+        }
+
+        /// <summary>An impact worker set to run inline and deferred ran neither: the cache had no case for it.</summary>
+        [UnityTest, Category("Red")]
+        public IEnumerator GAS_27_An_inline_and_deferred_impact_worker_runs_both([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var set = Make.Set(Make.Element(health, 100f, 100f));
+            set.WorkerGroup.ImpactWorkers.Add(new ProbeImpactWorker("Both", health, Faults, EWorkerExecution.InlineAndDeferred));
+
+            var source = World.Entity(hub, set, "Source");
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            World.Apply(source, target, Make.Effect("Hit", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f }));
+            await Frames.Step(2);
+
+            Assert.That(Faults.Hits("Both.Inline"), Is.EqualTo(1), "the inline half");
+            Assert.That(Faults.Hits("Both.Deferred"), Is.EqualTo(1), "and the deferred half");
+        });
+
+        /// <summary>
+        /// A worker group's guard read "not found, or found one", which always held, so a GAS that didn't have its
+        /// systems yet was handed its workers into nothing, and threw.
+        /// </summary>
+        [Test, Category("Red")]
+        public void GAS_27_A_GAS_without_its_systems_takes_no_workers()
+        {
+            var health = Make.Attribute("Health");
+            var set = Make.Set(Make.Element(health, 100f, 100f));
+            set.WorkerGroup.AttributeWorkers.Add(new ProbeAttributeWorker("Attribute", health, Faults));
+            set.WorkerGroup.ImpactWorkers.Add(new ProbeImpactWorker("Impact", health, Faults));
+
+            var gas = World.NewMonoEntity(set);
+
+            Assert.DoesNotThrow(() => set.InitWorkers(gas));
+        }
     }
 }
