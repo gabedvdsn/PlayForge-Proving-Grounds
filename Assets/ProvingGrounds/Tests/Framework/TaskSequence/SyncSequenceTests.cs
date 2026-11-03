@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>Only Update stepped the runner, so a sequence set to step anywhere else never ran.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_H_A_sync_sequence_steps_at_its_timing(
             [Values(EProcessStepTiming.FixedUpdate, EProcessStepTiming.LateUpdate, EProcessStepTiming.LateAndFixed)]
             EProcessStepTiming timing) => Live(async () =>
@@ -54,7 +54,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Conditions were checked from Update alone too, whatever timing they were given.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_H_Conditions_are_checked_at_their_timing(
             [Values(EProcessStepTiming.FixedUpdate, EProcessStepTiming.LateUpdate)] EProcessStepTiming timing,
             [Values] bool chain) => Live(async () =>
@@ -87,7 +87,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>OnStep callbacks were kept by timing and never called.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_H_OnStep_fires_at_each_timing_of_a_composite() => Live(async () =>
         {
             int updates = 0, lates = 0;
