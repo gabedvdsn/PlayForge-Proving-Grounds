@@ -46,7 +46,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// An instant effect's removal workers were handed an impact even when it made none: an empty one, on no
         /// attribute, so a worker that read the attribute threw.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_28_Removal_workers_get_no_impact_when_none_was_made([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
@@ -60,6 +60,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }));
             Assert.That(removal.Seen, Has.Count.EqualTo(1), "the hit's removal ran");
             Assert.That(removal.Seen[0].ImpactData?.Attribute, Is.SameAs(health), "with the impact it made");
+            Assert.That(removal.Seen[0].Impacts.Select(impact => impact.Attribute), Is.EqualTo(new[] { health }), "which is every impact");
 
             World.Apply(gas, gas, Make.Effect("Utility", new EffectConfig
             {
@@ -68,6 +69,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }));
             Assert.That(removal.Seen, Has.Count.EqualTo(2), "the utility's removal ran");
             Assert.That(removal.Seen[1].ImpactData.HasValue, Is.False, "with no impact, as it made none");
+            Assert.That(removal.Seen[1].Impacts, Is.Empty, "in the list either");
 
             await Frames.Step();
         });
@@ -90,7 +92,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>Nothing recorded an effect applied or removed, so analysis workers always found both lists empty.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_28_The_frame_summary_records_applied_and_removed_effects([Values] Hub hub) => Live(async () =>
         {
             var set = Make.Set(Make.Element(Make.Attribute("Unused"), 1f, 1f));

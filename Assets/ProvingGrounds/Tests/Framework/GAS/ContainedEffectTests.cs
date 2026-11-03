@@ -56,7 +56,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// An effect that contains itself applied itself inside its own application, and so on until the stack
         /// overflowed, which nothing can catch. It applies once, and says why.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_28_An_effect_that_contains_itself_applies_once([Values] Hub hub) => Live(async () =>
         {
             var echo = Make.Effect("Echo", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = null });
