@@ -94,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// With domain reload off, statics outlive play mode, so a second session began with each Instance on the
         /// last session's destroyed object. Each clears its own when play mode starts.
         /// </summary>
-        [Test, Category("Red")]
+        [Test]
         public void PC_26_Play_mode_starts_with_no_singletons()
         {
             var control = ProcessControl.Instance;
@@ -124,7 +124,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// The Bootstrapper asked `is null` of the singletons, which a destroyed one isn't, so once a scene took them
         /// the next Bootstrapper made nothing and initialized the destroyed pair.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_26_A_Bootstrapper_replaces_destroyed_singletons() => Live(async () =>
         {
             Object.Destroy(World.Control.gameObject);

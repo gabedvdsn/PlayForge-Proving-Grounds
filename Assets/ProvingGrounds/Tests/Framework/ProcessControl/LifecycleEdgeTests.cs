@@ -11,7 +11,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Unity sends no OnDestroy to an object that was never active, so a process registered on one outlived it
         /// in the hierarchy, and the next process registered on an object of its own read the destroyed root and threw.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_26_A_destroyed_root_doesnt_break_the_next_registration() => Live(async () =>
         {
             var host = new GameObject("Never Active");
@@ -31,7 +31,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A block left its step groups by its process's timing as it was then, not as it was when the block joined
         /// them, so changing a running process's timing left it stepping where it had been, paused or not.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_26_A_timing_changed_mid_run_takes_effect_cleanly() => Live(async () =>
         {
             var probe = World.MonoProbe("Retimed", EProcessLifecycle.Synchronous);
