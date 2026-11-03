@@ -43,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Elapsed time was kept by the sequence's timers, so one without a timer read 0 throughout, and one whose
         /// timer had fired stopped where it fired.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_W_A_run_knows_how_long_it_has_run([Values] Timer timer) => Live(async () =>
         {
             float elapsed = -1f;
