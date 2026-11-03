@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
@@ -57,6 +60,36 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(World.Control.GetChildProcessIds(World.Root.ProcessRelay.CacheIndex), Has.Member(spawned.ProcessRelay.CacheIndex));
         });
 
-        private List<int> Children(ProbeMonoProcess probe) => World.Control.GetChildProcessIds(probe.ProcessRelay.CacheIndex);
+        /// <summary>
+        /// A class that declares its own OnTransformParentChanged hides the base's, which Unity then never calls. It's
+        /// still filed where its data put it, as registering files a process again once it has initialized.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PC_28_A_process_hiding_the_parent_message_is_still_filed_where_its_data_put_it() => Live(async () =>
+        {
+            var parent = World.MonoProbe("Parent");
+            var deaf = new GameObject("Deaf").AddComponent<DeafProcess>();
+            try
+            {
+                World.Register(deaf, ProcessDataPacket.SceneLocal(parent.transform));
+                await Frames.Step();
+
+                Assert.That(Children(parent), Has.Member(deaf.ProcessRelay.CacheIndex));
+            }
+            finally
+            {
+                if (deaf) Object.Destroy(deaf.gameObject);
+            }
+        });
+
+        private sealed class DeafProcess : AbstractMonoProcess
+        {
+            // Hides the base's, as a class with a use of its own for the message would
+            private void OnTransformParentChanged() { }
+
+            public override UniTask RunProcess(CancellationToken token) => UniTask.WaitUntilCanceled(token);
+        }
+
+        private List<int> Children(AbstractMonoProcess process) => World.Control.GetChildProcessIds(process.ProcessRelay.CacheIndex);
     }
 }

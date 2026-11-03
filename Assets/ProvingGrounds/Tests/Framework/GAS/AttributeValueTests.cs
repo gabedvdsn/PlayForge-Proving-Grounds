@@ -88,6 +88,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value.BaseValue, Is.EqualTo(80f), "and Base");
         });
 
+        /// <summary>A combined element scaled from another attribute follows it, as a lone one does.</summary>
+        [UnityTest]
+        public IEnumerator GAS_27_A_combined_part_follows_what_it_scales_from([Values] Hub hub) => Live(async () =>
+        {
+            var strength = Make.Attribute("Strength");
+            var health = Make.Attribute("Health");
+            var mine = Make.Element(health, 50f, 50f);
+            mine.CollisionPolicy = EAttributeElementCollisionPolicy.Combine;
+            var theirs = Derived(health, strength, linkCurrentToBase: true);
+            theirs.CollisionPolicy = EAttributeElementCollisionPolicy.Combine;
+            var set = Make.Set(Make.Element(strength, 10f, 10f), mine);
+            set.SubSets.Add(Make.Set(theirs));
+
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+            Assert.That(Current(gas, health), Is.EqualTo(70f), "50, and twice Strength's 10");
+
+            gas.TryModifyAttribute(strength, SourcedModifiedAttributeValue.GenerateSimple(gas, strength, 5f, 5f));
+            await Frames.Step();
+
+            Assert.That(Current(gas, health), Is.EqualTo(80f), "50, and twice Strength's 15");
+        });
+
         /// <summary>
         /// A derived attribute's refresh fired OnAttributeChanged alone: no post-change worker saw it and the frame
         /// summary never heard of it. It's the system's own change, typed DisallowImpact (Decision 14), and takes the

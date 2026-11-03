@@ -71,6 +71,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(removal.Seen[1].ImpactData.HasValue, Is.False, "with no impact, as it made none");
             Assert.That(removal.Seen[1].Impacts, Is.Empty, "in the list either");
 
+            World.Apply(gas, gas, Make.Effect("Elsewhere", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = Make.Attribute("Mana"), Magnitude = -10f,
+                Workers = new List<AbstractEffectWorker> { removal },
+            }));
+            Assert.That(removal.Seen, Has.Count.EqualTo(3), "the removal of a hit on an attribute the entity lacks ran");
+            Assert.That(removal.Seen[2].ImpactData.HasValue, Is.False, "with no impact, as nothing committed");
+            Assert.That(removal.Seen[2].Impacts, Is.Empty, "in the list either");
+
             await Frames.Step();
         });
 
