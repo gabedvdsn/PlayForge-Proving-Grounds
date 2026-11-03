@@ -208,7 +208,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A set settling colliding elements by UseAverage took the first alone, and one set to Ignore threw.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_40_A_set_averages_or_ignores_colliding_elements(
             [Values] Hub hub, [Values(EValueCollisionPolicy.UseAverage, EValueCollisionPolicy.Ignore)] EValueCollisionPolicy policy) => Live(async () =>
         {
