@@ -176,7 +176,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A stage's callbacks were left behind when the runner was built.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_A_sync_stage_runs_its_callbacks() => Live(async () =>
         {
             int inits = 0, repeats = 0;
@@ -198,7 +198,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>WhenN came across as WhenAll.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_A_sync_WhenN_stage_ends_at_N() => Live(async () =>
         {
             var relay = Run(Sync("Two Of Three").Stage(stage =>
@@ -214,7 +214,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A stage that repeats by its policy ran once.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_RepeatUntilSkipped_repeats_a_sync_stage() => Live(async () =>
         {
             int iterations = 0;
@@ -229,7 +229,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>Stage timeouts were dropped, so a stage waited out its slowest task.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_A_timeout_ends_a_sync_stage() => Live(async () =>
         {
             Run(Sync("Timed Out")
@@ -241,7 +241,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The sequence's OnComplete never fired.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_OnComplete_fires_for_a_sync_sequence() => Live(async () =>
         {
             bool? completed = null;
@@ -257,7 +257,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A sequence that's critical as a whole came across with no critical stage, so its critical section
         /// never ended. An ability waits on that to let the next activation in.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_Q_A_critical_sync_sequence_reports_its_exit() => Live(async () =>
         {
             int exits = 0;
@@ -274,7 +274,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>What a runner can't do was left out without a word. Each such thing is named as the runner is built.</summary>
-        [Test, Category("Red")]
+        [Test]
         public void TS_Q_What_a_sync_sequence_cant_run_is_named([Values] Unsupported feature)
         {
             var builder = WithUnsupported(TaskSequenceBuilder.Create("Unsupported"), feature);
