@@ -31,7 +31,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// GAS asked through the list, which has no weights. So "at least two" meant two grants of a tag or two
         /// different tags, depending on how it was asked.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_16_A_query_counts_a_tags_weight([Values] Hub hub, [Values] ETagMatchMode mode) => Live(async () =>
         {
             var gas = World.Entity(hub);
