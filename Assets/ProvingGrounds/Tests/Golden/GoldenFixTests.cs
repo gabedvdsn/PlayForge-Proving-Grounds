@@ -143,8 +143,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await ValueHolds(gas, health, "heal after an overkill hit", 50f);
 
             // Raw deltas go through the same path. The pre-change callback is the original repro: it
-            // halves a −30 delta, and Health must fall by 15. Workers skip GenerateSimple deltas, whose
-            // DisallowImpact type fails validation, so only the callback acts
+            // halves a −30 delta to −15. Workers see raw deltas too (Decision 9), so the armor worker then
+            // halves what the callback left, and Health falls by 7.5
             AttributeSystemCallbacks.AttributeChangeDelegate halveLoss = (attribute, change) =>
             {
                 if (ReferenceEquals(attribute, health) && change.Value.CurrentValue < 0f)
@@ -153,7 +153,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             attrSystem.Callbacks.OnAttributePreChange += halveLoss;
             gas.TryModifyAttribute(health, SourcedModifiedAttributeValue.GenerateSimple(gas, health, -30f, 0f));
             attrSystem.Callbacks.OnAttributePreChange -= halveLoss;
-            await ValueHolds(gas, health, "pre-change callback halves a raw −30", 35f, 100f);
+            await ValueHolds(gas, health, "the callback and then armor halve a raw −30", 42.5f, 100f);
         });
 
         /// <summary>
