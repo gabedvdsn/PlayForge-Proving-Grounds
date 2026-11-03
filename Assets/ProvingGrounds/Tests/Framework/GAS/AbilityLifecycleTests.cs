@@ -229,7 +229,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A closed ProcessControl takes no new processes, and the ability fell back to running outside it, where
         /// nothing could pause or end it.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_AC_A_closed_ProcessControl_refuses_an_ability(
             [Values(EProcessControlState.Closed, EProcessControlState.ClosedWaiting)] EProcessControlState closed) => Live(async () =>
         {
@@ -249,7 +249,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The same once the ability is past its checks, with ProcessControl closing as it starts its stages.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_AC_An_ability_ProcessControl_refuses_doesnt_run_outside_it() => Live(async () =>
         {
             var ability = Make.Ability("Closed On", Make.Stage(new ProbeAbilityTask(World, "Late Task")));
