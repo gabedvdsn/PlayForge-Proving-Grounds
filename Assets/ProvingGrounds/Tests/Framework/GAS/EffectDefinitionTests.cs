@@ -6,7 +6,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class EffectDefinitionTests : ProvingGroundsTest
     {
         /// <summary>A copied impact dropped its affiliation, and one with no contained effects couldn't be copied.</summary>
-        [Test, Category("Red")]
+        [Test]
         public void ED_14_A_copied_impact_keeps_its_affiliation_and_needs_no_packets()
         {
             var impact = new GameplayEffectImpact
