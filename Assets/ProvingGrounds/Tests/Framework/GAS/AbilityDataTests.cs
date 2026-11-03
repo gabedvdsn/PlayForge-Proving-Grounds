@@ -25,7 +25,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>An activation's packet took its request's payload lists as they were, so writing to one wrote to both.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_X_An_activation_keeps_its_requests_payload_apart([Values] Hub hub) => Live(async () =>
         {
             var key = Make.NewTag("Test.Data.Hits");
