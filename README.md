@@ -91,7 +91,8 @@ Hand-stepping is how the golden tests hid GAS-1.
 | State oracle | `ProcessStateOracle` | The 96 transitions ProcessControl means to make, written out, and a driver that checks a cell against a live process |
 
 **Probes** are the instruments. `ProbeProcess` and `ProbeMonoProcess` count their hooks, and `ProbeSequenceTask`,
-`ProbeAbilityTask` and the `Probe…Worker` classes report to the ledger or the fault injector.
+`ProbeAbilityTask` and the `Probe…Worker` classes report to the ledger or the fault injector. `ProbeShot` is a
+homing shot that lands its effects on whatever it's aimed at, for the disjoint tests.
 
 ## What the batch environment does differently
 

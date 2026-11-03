@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -61,6 +63,35 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Ledger.Cleans("Maintained"), Is.EqualTo(1));
             Assert.That(Ledger.Cleans("Current"), Is.EqualTo(1));
             Assert.That(Ledger.Violations(), Is.Empty, "nothing cleaned while it ran");
+        });
+
+        /// <summary>
+        /// A run that ends early waits for its maintained stages to stop. Ending at once, it left one running behind it,
+        /// and cleaned that stage's tasks before they stopped.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_J_A_run_ends_once_its_maintained_stages_stop() => Live(async () =>
+        {
+            bool stopped = false;
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Slow To Stop")
+                .Task(async (SequenceDataPacket data, CancellationToken token) =>
+                {
+                    // Stops a few frames after it's told to, as a task waiting on something of its own does
+                    while (!token.IsCancellationRequested) await UniTask.Yield();
+                    await UniTask.DelayFrame(5);
+                    stopped = true;
+                })
+                .Task(new ProbeSequenceTask(World, "Current", frames: 1000))
+                .Build());
+            var relay = Run(sequence);
+            await Frames.Step(2);
+
+            sequence.Inject(SkipAndMaintainInjection.Instance);
+            await Frames.Step();
+            sequence.Interrupt();
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 12, "the run ends");
+            Assert.That(stopped, "once its maintained stage has stopped");
         });
 
         /// <summary>
@@ -214,6 +245,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(3);
 
             Assert.That(Ledger.Cleans("Current"), Is.EqualTo(0), "the current stage goes on");
+        });
+
+        /// <summary>A stage that isn't maintained, the current one among them, can't be stopped by its index.</summary>
+        [UnityTest]
+        public IEnumerator TS_L_Stopping_by_index_leaves_the_current_stage() => Live(async () =>
+        {
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Stopped By Its Own Index")
+                .Task(new ProbeSequenceTask(World, "Current", frames: 30))
+                .Build());
+            Run(sequence);
+            await Frames.Step(2);
+
+            Assert.That(sequence.Inject(new StopMaintainedAtIndexInjection(0)), Is.False, "the stop is refused");
+            await Frames.Step(2);
+
+            Assert.That(Ledger.Cleans("Current"), Is.EqualTo(0), "and the current stage goes on");
         });
 
         /// <summary>An index was checked against how many stages were running, not which.</summary>

@@ -57,6 +57,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(gas.Data.Count(Tags.TARGETED_INTENT), Is.EqualTo(0), "and none is still aimed at it");
         });
 
+        /// <summary>A shot that has landed isn't aimed anywhere, one that lives on after its run included.</summary>
+        [UnityTest]
+        public IEnumerator GAS_26_A_landed_shot_withdraws_its_intent(
+            [Values(EProcessLifecycle.SelfTerminating, EProcessLifecycle.RunThenWait)] EProcessLifecycle lifecycle) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(Hub.Runtime, Make.Set(Make.Element(health, 100f, 100f)));
+            Shoot(gas, Hit(health), frames: 2, lifecycle);
+
+            await Frames.Until(() => gas.TryGetAttributeValue(health, out var value) && value.CurrentValue < 100f, 6, "the shot lands");
+            Assert.That(gas.Data.Count(Tags.TARGETED_INTENT), Is.EqualTo(0), "and isn't aimed at it any more");
+        });
+
         /// <summary>A shot aimed somewhere else stayed on its old target's list, and that target's disjoint took it back.</summary>
         [UnityTest]
         public IEnumerator GAS_26_A_reaimed_shot_stays_on_its_new_target([Values] Hub hub) => Live(async () =>
@@ -76,10 +89,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(shot.Target, Is.SameAs(second), "it's still aimed at the second");
         });
 
-        private ProbeShot Shoot(IGameplayAbilitySystem target, GameplayEffect effect, int frames)
+        private ProbeShot Shoot(IGameplayAbilitySystem target, GameplayEffect effect, int frames,
+            EProcessLifecycle lifecycle = EProcessLifecycle.SelfTerminating)
         {
             var template = World.Template<ProbeShot>("Shot");
-            template.ProcessLifecycle = EProcessLifecycle.SelfTerminating;
+            template.ProcessLifecycle = lifecycle;
             template.ProcessTiming = EProcessStepTiming.None;
             template.RunFrames = frames;
             template.Effects = new List<GameplayEffect> { effect };

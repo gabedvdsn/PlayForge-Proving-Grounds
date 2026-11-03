@@ -175,6 +175,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Ledger.Cleans("Long"), Is.EqualTo(1), "cleaned");
         });
 
+        /// <summary>A task can end its own sync sequence from inside its step, and its stage is cleaned once.</summary>
+        [UnityTest]
+        public IEnumerator TS_P_A_task_that_ends_its_sequence_is_cleaned_once() => Live(async () =>
+        {
+            ProcessRelay relay = default;
+            relay = Run(Sync("Ends Itself").Stage(stage =>
+            {
+                stage.Task(new ProbeSequenceTask(World, "Beside", frames: 1));
+                stage.SyncTask(_ =>
+                {
+                    relay.TerminateImmediate();
+                    return true;
+                });
+            }));
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 3, "it ends");
+            Assert.That(Ledger.Cleans("Beside"), Is.EqualTo(1));
+        });
+
+        /// <summary>A sync stage with no tasks has nothing to wait for. An Any stage waited for one to finish, for ever.</summary>
+        [UnityTest]
+        public IEnumerator TS_Q_A_sync_stage_with_no_tasks_ends([Values] bool whenAny) => Live(async () =>
+        {
+            var relay = Run(Sync("Empty").Stage(stage =>
+            {
+                if (whenAny) stage.WhenAny();
+            }));
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 4, "it ends");
+        });
+
         /// <summary>A stage's callbacks were left behind when the runner was built.</summary>
         [UnityTest]
         public IEnumerator TS_Q_A_sync_stage_runs_its_callbacks() => Live(async () =>
@@ -194,6 +225,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.That(inits, Is.EqualTo(1), "started once");
             Assert.That(repeats, Is.EqualTo(3), "told of each repeat");
+            Assert.That(Ledger.Prepares("Stepped"), Is.EqualTo(3), "with none after the break");
             Assert.That(ended, Is.True, "and of its end");
         });
 
