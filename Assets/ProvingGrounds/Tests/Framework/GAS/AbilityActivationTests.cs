@@ -299,7 +299,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// AutoTargetTask's collider buffer was MaxTargets long, so 0, which means every match, had no room and found
         /// nothing.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_43_Auto_targeting_every_match_finds_them([Values] Hub hub) => Live(async () =>
         {
             foreach (float x in new[] { 2f, 3f })
@@ -320,7 +320,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// At MaxTargets 1 the buffer had room for one collider, which could be the caster's own, so a target in range
         /// went unfound.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_43_A_caster_with_a_collider_still_finds_its_target() => Live(async () =>
         {
             var caster = World.MonoEntity(name: "Caster");
