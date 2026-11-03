@@ -111,7 +111,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A run took over its packet and cleared it at the end, so a run nested on the same packet, as
         /// RunSequenceTask's is, left the outer run with no runtime and its packet marked unused.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator TS_F_A_nested_run_gives_the_packet_back() => Live(async () =>
         {
             var inner = new TaskSequence(TaskSequenceBuilder.Create("Inner").Delay(0.05f).Build());
