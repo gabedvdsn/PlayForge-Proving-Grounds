@@ -93,7 +93,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// summary never heard of it. It's the system's own change, typed DisallowImpact (Decision 14), and takes the
         /// post-change half of the pipeline.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_27_A_derived_change_reaches_post_change_workers([Values] Hub hub) => Live(async () =>
         {
             var strength = Make.Attribute("Strength");
@@ -118,7 +118,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>A derived Base moves Current with it when the attribute scales with Base, as any change to Base does.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_27_A_derived_Base_scales_Current([Values] Hub hub) => Live(async () =>
         {
             var strength = Make.Attribute("Strength");
