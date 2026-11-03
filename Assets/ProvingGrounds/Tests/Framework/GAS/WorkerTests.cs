@@ -208,7 +208,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A relative-operation worker set to InlineAndDeferred did its work in both halves, so lifesteal healed twice.
         /// Both halves do the same work, so it runs deferred.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_41_A_relative_worker_does_its_work_once([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
