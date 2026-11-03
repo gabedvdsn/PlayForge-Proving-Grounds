@@ -49,7 +49,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>An infinite effect's tick interval was read as its bare magnitude, past its scaler.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_24_An_infinite_effect_ticks_at_its_scaled_interval([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
