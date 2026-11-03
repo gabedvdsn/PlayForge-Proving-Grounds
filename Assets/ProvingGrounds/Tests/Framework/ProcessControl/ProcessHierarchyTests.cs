@@ -12,7 +12,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// the parent its data asked for, so a process parented through its data was no one's child, and pausing its
         /// parent passed it by.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_28_A_process_parented_through_its_data_is_its_parents_child() => Live(async () =>
         {
             var parent = World.MonoProbe("Parent");
@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>The hierarchy never heard of a later move either, so a process moved under another stayed where it was.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_28_A_moved_process_follows_its_transform() => Live(async () =>
         {
             var first = World.MonoProbe("First");
@@ -48,7 +48,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// Decision 11: the hierarchy follows transforms everywhere, GameRoot included, so a process spawned at
         /// SceneRoot is GameRoot's child, and ending or pausing GameRoot reaches it.
         /// </summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator PC_28_A_SceneRoot_process_is_GameRoots_child() => Live(async () =>
         {
             var spawned = World.Spawn(World.MonoProbeTemplate("Spawned"), ProcessDataPacket.SceneRoot());
