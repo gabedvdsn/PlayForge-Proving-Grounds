@@ -7,7 +7,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class WorkerTests : ProvingGroundsTest
     {
         /// <summary>A set's workers were given to the GAS by the set and again by the GAS, so each ran twice.</summary>
-        [UnityTest, Category("Red")]
+        [UnityTest]
         public IEnumerator GAS_18_A_sets_impact_worker_runs_once_per_impact([Values] Hub hub) => Live(async () =>
         {
             var health = Make.Attribute("Health");
