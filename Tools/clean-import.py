@@ -178,10 +178,11 @@ RULES = [
                                  r"is not a valid type", re.I)),
     # A line that starts with an exception's name; the stack frames under it aren't counted again
     ("exceptions", re.compile(r"^[\w.]+Exception\b")),
-    ("asset warnings", re.compile(r"^(?!.*warning CS).*\b(warning|Warning)\b")),
+    # Unity's own import warnings, and the USS parser's, which don't say "warning"
+    ("asset warnings", re.compile(r"^(?!.*warning CS).*(\b(warning|Warning)\b|Unknown pseudo class|Unknown property)")),
 ]
-IGNORE = re.compile(r"Licensing|licensing|\[Licensing|Curl error|Unable to connect|Package Manager|Shader warning in",
-                    re.I)
+IGNORE = re.compile(r"Licensing|licensing|\[Licensing|Curl error|Unable to connect|Package Manager|Shader warning in|"
+                    r"^SAMPLE CHECK done", re.I)
 
 found = {name: [] for name, _ in RULES}
 for line in log.splitlines():
