@@ -91,6 +91,53 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         });
 
+        /// <summary>
+        /// Only the Mono GAS applied its entity's affiliation as tags, so a requirement on a side's tag held for one hub
+        /// and failed for the other. The two kept copies of the same code, which had drifted.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_S1_Both_hubs_apply_the_affiliation_as_tags([Values] Hub hub) => Live(async () =>
+        {
+            var red = Make.NewTag("Test.Team.Red");
+            var gas = Kind(hub, identity => identity.Affiliation.Add(red));
+            await Frames.Step();
+
+            Assert.That(gas.GetTagWeight(red), Is.EqualTo(1));
+        });
+
+        /// <summary>
+        /// A runtime GAS made from an Entity asset lost the asset's Local Data, because its copy of the identity gave
+        /// none. The Mono GAS kept it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_S1_Both_hubs_keep_the_entity_s_local_data([Values] Hub hub) => Live(async () =>
+        {
+            var key = Make.NewTag("Test.Data.Marker");
+            var gas = Kind(hub, identity => identity.LocalData.Add(new DataWrapper { Key = key, Type = EDataWrapperType.Int, intValue = 7 }));
+            await Frames.Step();
+
+            Assert.That(gas.TryGetLocalData(key, out var data), "the entity's Local Data");
+            Assert.That(data.intValue, Is.EqualTo(7));
+        });
+
+        // A registered entity made from an Entity asset, set up first, on either hub
+        private IGameplayAbilitySystem Kind(Hub hub, System.Action<EntityIdentity> setUp)
+        {
+            if (hub == Hub.Mono)
+            {
+                var mono = World.NewMonoEntity(name: "Kind");
+                setUp(mono.EntityData);
+                World.Register(mono);
+                return mono;
+            }
+
+            var identity = Make.Identity("Kind", Make.UnusedSet());
+            setUp(identity);
+            var runtime = new RuntimeGameplayAbilitySystem(identity);
+            World.Register(runtime);
+            return runtime;
+        }
+
         private EntityIdentity Filled(out Item sword)
         {
             sword = Make.Item("Starting Sword");

@@ -38,5 +38,27 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(body);
             }
         }
+
+        /// <summary>
+        /// The debugger named an entity through <c>ToGASObject</c>, which a runtime GAS answers with null, having no
+        /// MonoBehaviour, so every runtime entity showed as "unknown".
+        /// </summary>
+        [Test]
+        public void GAS_S1_The_debugger_names_a_runtime_entity()
+        {
+            var identity = ScriptableObject.CreateInstance<EntityIdentity>();
+            try
+            {
+                identity.Name = "Runtime Foe";
+                var gas = new RuntimeGameplayAbilitySystem(identity);
+
+                var resolve = typeof(GASDebugger).GetMethod("ResolveDisplayNameFor", BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.That(resolve.Invoke(null, new object[] { gas }), Is.EqualTo("Runtime Foe"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(identity);
+            }
+        }
     }
 }
