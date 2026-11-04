@@ -1088,6 +1088,119 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // A set whose one element starts Current at 150, above the 100 its bounds allow
+        private static AttributeSet OverflowingSet(Attribute rage)
+        {
+            var set = ScriptableObject.CreateInstance<AttributeSet>();
+            set.Name = "Berserker";
+            set.Attributes.Add(new AttributeSetElement
+            {
+                Attribute = rage,
+                Current = new AttributeMagnitudeSpec { Magnitude = 150f },
+                Base = new AttributeMagnitudeSpec { Magnitude = 100f },
+                Overflow = new AttributeOverflowData
+                {
+                    Policy = EAttributeOverflowPolicy.ZeroToCeil, Ceil = new AttributeValue(100f, 100f),
+                },
+            });
+            return set;
+        }
+
+        // Waits real time, for work a drawer schedules
+        private static IEnumerator Wait(double seconds)
+        {
+            var until = EditorApplication.timeSinceStartup + seconds;
+            while (EditorApplication.timeSinceStartup < until) yield return null;
+        }
+
+        /// <summary>
+        /// Opening an attribute set wrote to it: 50 ms after an element drew, and on every change to the set, the element
+        /// drawer clamped a magnitude outside its bounds into the asset, so looking at a set changed it (ED-39). Drawing
+        /// writes nothing now, and neither does an edit elsewhere in the set; a help box says the runtime clamps it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_39_Opening_an_attribute_set_writes_nothing()
+        {
+            var rage = ScriptableObject.CreateInstance<Attribute>();
+            rage.Name = "Rage";
+            var set = OverflowingSet(rage);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, set, $"{nameof(AttributeSet.Attributes)}.Array.data[0]");
+                yield return Frames();
+                yield return Wait(0.3);
+
+                Assert.AreEqual(150f, set.Attributes[0].Current.Magnitude, "drawing the element leaves its Current alone");
+
+                var serialized = new SerializedObject(set);
+                serialized.FindProperty(nameof(AttributeSet.Description)).stringValue = "Angry.";
+                serialized.ApplyModifiedProperties();
+                yield return Frames();
+                yield return Wait(0.1);
+                Assert.AreEqual(150f, set.Attributes[0].Current.Magnitude, "and so does an edit elsewhere in the set");
+
+                Assert.That(field.Query<HelpBox>().ToList().Select(box => box.text), Has.Some.Contains("outside its bounds"),
+                    "a help box says it's outside its bounds");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(set);
+                Object.DestroyImmediate(rage);
+            }
+        }
+
+        /// <summary>
+        /// Typing a magnitude outside the bounds keeps it inside them, as part of the same edit, so one Undo takes it back
+        /// (ED-39). The element drawer takes its look from the style sheet: it drew a tinted, rounded box with a border in
+        /// its collision policy's color, tab buttons and 9 px text, from styles set in C#.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_39_A_typed_magnitude_stays_in_bounds()
+        {
+            var rage = ScriptableObject.CreateInstance<Attribute>();
+            rage.Name = "Rage";
+            var set = OverflowingSet(rage);
+            set.Attributes[0].Current.Magnitude = 50f;
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, set, $"{nameof(AttributeSet.Attributes)}.Array.data[0]");
+                yield return Frames();
+
+                var own = field.Query<VisualElement>().ToList()
+                    .Where(element => element.GetFirstAncestorOfType<PropertyField>() == field)
+                    .SelectMany(element => ForgeInspectorTests.LookSetInCode(element).Select(style => $"{element.GetType().Name} \"{element.name}\" sets {style}"))
+                    .ToList();
+                Assert.That(own, Is.Empty, "the drawer sets no look in code");
+
+                var magnitude = field.Q<FloatField>("CurrentMagnitude");
+                Assert.IsNotNull(magnitude, "the element shows Current's Magnitude");
+                // Typed: the field has the focus as a value goes in
+                magnitude.Focus();
+                yield return null;
+                Undo.IncrementCurrentGroup();
+                magnitude.value = 160f;
+                yield return Frames();
+                Assert.AreEqual(100f, set.Attributes[0].Current.Magnitude, "a typed 160 stays within the bounds' 100");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(50f, set.Attributes[0].Current.Magnitude, "and one Undo takes the edit back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(set);
+                Object.DestroyImmediate(rage);
+            }
+        }
+
         // A property drawn as the Inspector draws it, in the host's panel
         private static PropertyField Draw(Host host, Object target, string path)
         {
