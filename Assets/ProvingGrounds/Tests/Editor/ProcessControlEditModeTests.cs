@@ -19,6 +19,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// PooledMonoProcessInstantiator was a stub. It gave back no process, and when a process made through it ended
+        /// it kept the process's object rather than destroying it, so the GameObject leaked. Nothing used it, and it's
+        /// gone, rather than built into a pool (Decision 23).
+        /// </summary>
+        [Test]
+        public void PC_24_The_pooled_instantiator_stub_is_gone()
+        {
+            var runtime = typeof(AbstractMonoProcessInstantiator).Assembly;
+
+            Assert.That(runtime.GetType("FarEmerald.PlayForge.PooledMonoProcessInstantiator"), Is.Null, "the stub");
+        }
+
+        /// <summary>
         /// Terminating a Mono process destroyed its object with Object.Destroy, which Unity refuses outside play mode:
         /// it logged an error, and the object stayed.
         /// </summary>
