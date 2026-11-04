@@ -339,6 +339,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
         });
 
+        /// <summary>
+        /// Targeting stores a targeting packet under Target, and Apply Effects asks Target Real for the entity, which
+        /// nothing wrote. So an ability authored the documented way, a target and then Apply Effects, applied nothing,
+        /// whether the target came from implicit targeting or a targeting task.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_46_Apply_Effects_reaches_the_target_targeting_found([Values] Hub hub, [Values] bool targetingTask) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
+            var hurt = Make.Effect("Hurt", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Op = ECalculationOperation.Add, Magnitude = -30f,
+            });
+
+            // With no targeting task, implicit targeting makes the caster the target
+            var ability = Make.Ability("Self Harm", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { hurt } }));
+            if (targetingTask) ability.Behaviour.Targeting = new AutoTargetSelfTask();
+
+            var abilities = gas.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "granted");
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "activated");
+            await Frames.Step(5);
+
+            gas.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(70f), "the effect landed on the target");
+        });
+
         private static AutoTargetTask AutoTarget(int maxTargets) => new AutoTargetTask
         {
             Range = 5f, MaxTargets = maxTargets, Mode = EAutoTargetMode.Nearest,
