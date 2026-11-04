@@ -533,25 +533,108 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.AreEqual(before, shown(), $"and {label}'s field shows it");
                 }
 
+                // Leveling holds the level link since ED-37, with the provider in an object field
                 var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
                 Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
-                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone entity offers no provider");
+                Assume.That(root.Q("LevelProvider"), Is.Null, "a standalone entity offers no provider");
                 Undo.IncrementCurrentGroup();
                 linkMode.value = EItemLinkMode.LinkedToProvider;
                 Assert.AreEqual(EItemLinkMode.LinkedToProvider, entity.LinkMode, "Link Mode is written");
                 yield return Frames();
-                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+                Assert.IsNotNull(root.Q("LevelProvider"), "Leveling offers a provider");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
                 Assert.AreEqual(EItemLinkMode.Standalone, entity.LinkMode, "one Undo takes back Link Mode");
                 yield return Frames();
-                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+                Assert.IsNull(root.Q("LevelProvider"), "and Leveling shows the mode Undo brought back");
             }
             finally
             {
                 host.Destroy();
                 Object.DestroyImmediate(entity);
+            }
+        }
+
+        /// <summary>
+        /// The Entity inspector let Allow Duplicate Equipped Items be turned on while Allow Duplicate Items was off,
+        /// though an inventory that holds one of each item never has a second copy to equip (ED-37). As the Entity mockup
+        /// draws it, Equipped Too sits under Allow Duplicates and waits for it, with a note saying so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_37_Equipped_Too_needs_Allow_Duplicates()
+        {
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(goblin);
+                yield return Frames();
+
+                var duplicates = root.Q<Toggle>("AllowDuplicateItems");
+                var equipped = root.Q<Toggle>("AllowDuplicateEquippedItems");
+                Assert.AreEqual("Allow Duplicates", duplicates?.label, "Items shows Allow Duplicates");
+                Assert.AreEqual("Equipped Too", equipped?.label, "and Equipped Too under it");
+                var needs = root.Query<Label>().ToList().FirstOrDefault(label => label.text == "Needs Allow Duplicates");
+                Assert.IsNotNull(needs, "with a note");
+                Assert.IsFalse(equipped.enabledSelf, "Equipped Too waits for Allow Duplicates");
+                Assert.AreEqual(DisplayStyle.Flex, needs.resolvedStyle.display, "and the note says so");
+
+                Undo.IncrementCurrentGroup();
+                duplicates.value = true;
+                yield return Frames();
+                Assert.IsTrue(goblin.AllowDuplicateItems, "Allow Duplicates is written");
+                Assert.IsTrue(equipped.enabledSelf, "and Equipped Too can be set");
+                Assert.AreEqual(DisplayStyle.None, needs.resolvedStyle.display, "with no note");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(goblin);
+            }
+        }
+
+        /// <summary>
+        /// A starting item drew as a foldout holding its Item and Equip On Init (ED-37). It takes one row, as the Entity
+        /// mockup draws it: the item, then an Equip checkbox, which writes through its binding, so one Undo takes it back.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_37_A_starting_item_takes_one_row()
+        {
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            var cleaver = ScriptableObject.CreateInstance<Item>();
+            goblin.StartingItems.Add(new StartingItemContainer { Item = cleaver });
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(goblin);
+                var field = new PropertyField(serialized.FindProperty($"{nameof(EntityIdentity.StartingItems)}.Array.data[0]"));
+                host.Document.rootVisualElement.Add(field);
+                field.Bind(serialized);
+                yield return Frames();
+
+                Assert.IsNull(field.Q<Foldout>(), "a starting item doesn't fold");
+                var equip = field.Q<Toggle>(nameof(StartingItemContainer.EquipOnInit));
+                Assert.IsNotNull(equip, "it shows Equip");
+                Assert.AreEqual("Equip", equip.text, "beside the item");
+
+                Undo.IncrementCurrentGroup();
+                equip.value = true;
+                Assert.IsTrue(goblin.StartingItems[0].EquipOnInit, "Equip is written");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsFalse(goblin.StartingItems[0].EquipOnInit, "one Undo takes it back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(goblin);
+                Object.DestroyImmediate(cleaver);
             }
         }
 

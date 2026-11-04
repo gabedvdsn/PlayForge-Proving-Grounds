@@ -165,14 +165,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
                     Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
                     Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved item");
-
-                    foreach (var section in sections.Where(section => section.name != "UsedBy_CONTAINER"))
-                    {
-                        var actions = section.Query<Button>(className: "pf-section__action").ToList().Select(button => button.tooltip).ToList();
-                        Assert.That(actions, Has.Some.StartsWith("Import "), $"{section.name} has Import");
-                        Assert.That(actions, Has.Some.StartsWith("Reset "), $"{section.name} has Clear");
-                        Assert.That(actions, Has.None.Contains("not configured"), $"{section.name}'s Import and Clear work");
-                    }
+                    AssertEachSectionImportsAndClears(sections);
                 });
                 Inspect(lamp, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
                     "a linked item's range is its provider's"));
@@ -210,23 +203,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 var wrong = new List<string>();
                 foreach (var target in new Object[][] { new Object[] { standalone }, new Object[] { linked }, new Object[] { unlit }, new Object[] { standalone, unlit } })
-                {
-                    var editor = UnityEditor.Editor.CreateEditor(target);
-                    try
-                    {
-                        var root = editor.CreateInspectorGUI();
-                        Assert.IsNotNull(root, "the inspector builds");
-                        wrong.AddRange(root.Query<VisualElement>().ToList()
-                            .Where(element => element.GetFirstAncestorOfType<PropertyField>() == null && element is not PropertyField)
-                            .SelectMany(element => LookSetInCode(element).Select(style =>
-                                $"{string.Join(", ", target.Select(each => ((Item)each).Definition.Name))}: " +
-                                $"{element.GetType().Name} \"{(element as TextElement)?.text ?? element.name}\" sets {style}")));
-                    }
-                    finally
-                    {
-                        Object.DestroyImmediate(editor);
-                    }
-                }
+                    wrong.AddRange(LookSetInCode(string.Join(", ", target.Select(each => ((Item)each).Definition.Name)), target));
                 Assert.That(wrong, Is.Empty, "styles the style sheet gives");
             }
             finally
@@ -235,6 +212,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(standalone);
                 Object.DestroyImmediate(linked);
                 Object.DestroyImmediate(unlit);
+            }
+        }
+
+        // What an inspector, outside the drawers it hosts, sets of the look the style sheet gives
+        private static IEnumerable<string> LookSetInCode(string label, params Object[] targets)
+        {
+            var editor = UnityEditor.Editor.CreateEditor(targets);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assert.IsNotNull(root, "the inspector builds");
+                return root.Query<VisualElement>().ToList()
+                    .Where(element => element.GetFirstAncestorOfType<PropertyField>() == null && element is not PropertyField)
+                    .SelectMany(element => LookSetInCode(element).Select(style =>
+                        $"{label}: {element.GetType().Name} \"{(element as TextElement)?.text ?? element.name}\" sets {style}"))
+                    .ToList();
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
+
+        // Every section but Used By imports and clears: their buttons only logged a warning (ED-37)
+        private static void AssertEachSectionImportsAndClears(List<VisualElement> sections)
+        {
+            foreach (var section in sections.Where(section => section.name != "UsedBy_CONTAINER"))
+            {
+                var actions = section.Query<Button>(className: "pf-section__action").ToList().Select(button => button.tooltip).ToList();
+                Assert.That(actions, Has.Some.StartsWith("Import "), $"{section.name} has Import");
+                Assert.That(actions, Has.Some.StartsWith("Reset "), $"{section.name} has Clear");
+                Assert.That(actions, Has.None.Contains("not configured"), $"{section.name}'s Import and Clear work");
             }
         }
 
@@ -286,6 +295,134 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 Assert.That(UsedBy(torch), Is.EqualTo(new[] { "Burning", "Hero" }), "the effect linked to the torch and the entity that starts with it");
                 Assert.That(UsedBy(lamp), Is.Empty, "nothing uses the lamp");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        /// <summary>
+        /// The Entity inspector strayed from Docs/EDITOR_STYLE.md as the Item inspector did (ED-37): Level Source sat
+        /// apart from Leveling, which was called Level, the Attribute Set sat in Definition, a collapsed section showed
+        /// nothing, and all but one section's Import and Clear only logged a warning. Its sections keep the style doc's
+        /// order now, with the Entity mockup's Attributes, Abilities and Items as its own, each collapsed section shows
+        /// one line, and every section but Used By imports and clears.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Entity_inspector_keeps_the_style_docs_sections()
+        {
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            var cleave = ScriptableObject.CreateInstance<Ability>();
+            goblin.StartingAbilities.Add(cleave);
+            var cleaver = ScriptableObject.CreateInstance<Item>();
+            goblin.StartingItems.Add(new StartingItemContainer { Item = cleaver, EquipOnInit = true });
+            var health = ScriptableObject.CreateInstance<Attribute>();
+            var stats = ScriptableObject.CreateInstance<AttributeSet>();
+            stats.Name = "Goblin Stats";
+            stats.Attributes.Add(new AttributeSetElement { Attribute = health });
+            goblin.AttributeSet = stats;
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            var minion = ScriptableObject.CreateInstance<EntityIdentity>();
+            minion.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<EntityIdentity>();
+            stray.LinkMode = EItemLinkMode.LinkedToProvider;
+            try
+            {
+                Inspect(goblin, root =>
+                {
+                    var sections = root.Query(className: "pf-section").ToList();
+                    Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
+                    {
+                        "Identity", "Leveling", "Tags", "Attributes", "Abilities", "Items", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order: Identity, Leveling, Tags, the entity's own, Workers, Local Data");
+
+                    Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–99"), "Leveling's range");
+                    Assert.That(Summary(root, "Tags"), Is.EqualTo("None"), "no tags");
+                    Assert.That(Summary(root, "Attributes"), Is.EqualTo("Goblin Stats · 1 attribute"), "the set and its size");
+                    Assert.That(Summary(root, "Abilities"), Is.EqualTo("1 ability"), "the starting abilities");
+                    Assert.That(Summary(root, "Items"), Is.EqualTo("1 item · 1 equipped"), "the starting items, and how many it equips");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
+                    Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
+                    Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved entity");
+                    AssertEachSectionImportsAndClears(sections);
+
+                    Assert.IsNotNull(root.Q(name: "Attributes_CONTAINER").Q<PropertyField>("AttributeSet"),
+                        "the Attribute Set sits in Attributes");
+                    Assert.IsNotNull(root.Q(name: "Identity_CONTAINER").Q<TextField>("AssetTag"), "and the asset tag in Identity");
+                });
+                Inspect(minion, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
+                    "a linked entity's range is its provider's"));
+                Inspect(stray, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–99 · no provider"),
+                    "an entity linked to nothing keeps its own range"));
+            }
+            finally
+            {
+                foreach (var each in new Object[] { goblin, cleave, cleaver, health, stats, hero, minion, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Entity inspector drew its link state in tinted boxes with colored borders, its hints in small colored text,
+        /// and dividers between its fields, from styles set in C# (ED-37). Outside the drawers it hosts, it takes its look
+        /// from the style sheet.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Entity_inspector_sets_no_look_in_code()
+        {
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            var minion = ScriptableObject.CreateInstance<EntityIdentity>();
+            minion.Name = "Minion";
+            minion.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<EntityIdentity>();
+            stray.Name = "Stray";
+            stray.LinkMode = EItemLinkMode.LinkedToProvider;
+            try
+            {
+                var wrong = new List<string>();
+                foreach (var entity in new[] { goblin, minion, stray }) wrong.AddRange(LookSetInCode(entity.Name, entity));
+                Assert.That(wrong, Is.Empty, "styles the style sheet gives");
+            }
+            finally
+            {
+                foreach (var each in new Object[] { hero, goblin, minion, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Entity inspector lists the assets that use the entity, as the Item inspector does (ED-37): here an ability
+        /// and an item linked to it.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Entity_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-37 Entity Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-37 Entity Used By");
+            try
+            {
+                var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+                goblin.Name = "Goblin";
+                AssetDatabase.CreateAsset(goblin, $"{folder}/Goblin.asset");
+                var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+                hero.Name = "Hero";
+                AssetDatabase.CreateAsset(hero, $"{folder}/Hero.asset");
+                var cleave = ScriptableObject.CreateInstance<Ability>();
+                cleave.LinkToProvider(goblin);
+                AssetDatabase.CreateAsset(cleave, $"{folder}/Cleave.asset");
+                var cleaver = ScriptableObject.CreateInstance<Item>();
+                cleaver.Definition.Name = "Cleaver";
+                cleaver.LinkToProvider(goblin);
+                AssetDatabase.CreateAsset(cleaver, $"{folder}/Cleaver.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(goblin), Is.EqualTo(new[] { "Cleave", "Cleaver" }), "the ability and the item linked to the goblin");
+                Assert.That(UsedBy(hero), Is.Empty, "nothing uses the hero");
             }
             finally
             {
