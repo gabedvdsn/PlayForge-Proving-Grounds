@@ -83,21 +83,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// Opening the source requirements on one effect opened them on every effect, since the state was kept by
-        /// property path alone.
+        /// property path alone. The requirements are a table now, which doesn't fold (ED-37); an effect's additional
+        /// impact folds, and keeps its state per asset as they did.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_18_Opening_a_drawer_on_one_asset_leaves_another_as_it_was()
         {
             var first = ScriptableObject.CreateInstance<GameplayEffect>();
             var second = ScriptableObject.CreateInstance<GameplayEffect>();
-            first.SourceRequirements = new EffectTagRequirements();
-            second.SourceRequirements = new EffectTagRequirements();
+            foreach (var effect in new[] { first, second })
+            {
+                effect.ImpactSpecification = new GameplayEffectImpact();
+                effect.ImpactSpecification.AdditionalImpacts.Add(new AttributeImpactEntry());
+            }
             var host = new Host();
             try
             {
                 yield return null;
                 Assume.That(host.Panel, Is.Not.Null, "the document has a panel");
-                const string path = nameof(GameplayEffect.SourceRequirements);
+                const string path = "ImpactSpecification.AdditionalImpacts.Array.data[0]";
                 var firstField = host.Draw(new SerializedObject(first), path);
                 var secondSerialized = new SerializedObject(second);
                 var secondField = host.Draw(secondSerialized, path);

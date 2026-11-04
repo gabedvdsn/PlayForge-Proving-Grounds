@@ -172,7 +172,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 effect.LinkToProvider(provider);
                 yield return Frames();
                 var linkContained = root.Query<Button>().ToList().FirstOrDefault(button => button.text == "Link Contained Effects");
-                Assert.IsNotNull(linkContained, "Level Source offers Link Contained Effects");
+                Assert.IsNotNull(linkContained, "Leveling offers Link Contained Effects");
                 Undo.IncrementCurrentGroup();
                 Press(linkContained);
                 Assert.AreSame(provider, contained.LinkedProvider, "the contained effect is linked");
@@ -181,11 +181,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(EEffectLinkMode.Standalone, contained.LinkMode, "one Undo takes back the contained effect's link");
 
                 yield return Frames();
-                var unlink = root.Query<Button>().ToList().FirstOrDefault(button => button.text == "Unlink");
-                Assert.IsNotNull(unlink, "a linked effect offers Unlink");
+                // The provider's field unlinks it, as in the other inspectors; a status box had an Unlink button (ED-37)
+                var providerField = root.Q<ObjectField>("LevelProvider");
+                Assert.IsNotNull(providerField, "a linked effect shows its provider");
                 Undo.IncrementCurrentGroup();
-                Press(unlink);
-                Assert.AreEqual(EEffectLinkMode.Standalone, effect.LinkMode, "Unlink unlinks the effect");
+                providerField.value = null;
+                Assert.IsNull(effect.LinkedProvider, "clearing the provider unlinks the effect");
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
                 Assert.AreSame(provider, effect.LinkedProvider, "one Undo links it again");
@@ -330,18 +331,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
                 Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
-                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone effect offers no provider");
+                Assume.That(root.Q("LevelProvider"), Is.Null, "a standalone effect offers no provider");
                 Undo.IncrementCurrentGroup();
                 linkMode.value = EEffectLinkMode.LinkedToProvider;
                 Assert.AreEqual(EEffectLinkMode.LinkedToProvider, effect.LinkMode, "Link Mode is written");
                 yield return Frames();
-                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+                Assert.IsNotNull(root.Q("LevelProvider"), "Leveling offers a provider");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
                 Assert.AreEqual(EEffectLinkMode.Standalone, effect.LinkMode, "one Undo takes back Link Mode");
                 yield return Frames();
-                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+                Assert.IsNull(root.Q("LevelProvider"), "and Leveling shows the mode Undo brought back");
             }
             finally
             {
@@ -871,28 +872,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        // Clears a drawer type's static rebuild state, which is keyed by property path and outlives a test. Its collapse
-        // state is kept per asset (ED-18), so a new asset starts as the drawer's default
-        private static void ClearDrawerState(System.Type drawer)
-        {
-            var field = drawer.GetField("RebuildingProperties", BindingFlags.Static | BindingFlags.NonPublic);
-            Assert.IsNotNull(field, $"{drawer.Name} keeps RebuildingProperties");
-            field.GetValue(null).GetType().GetMethod("Clear").Invoke(field.GetValue(null), null);
-        }
-
         /// <summary>
         /// A drawer that rebuilds itself made a SerializedObject of its own over the first selected asset, so after the
-        /// rebuild an edit reached only that asset. The tag requirements drawer rebuilds when it opens; its group's Name
-        /// then wrote to the first effect alone.
+        /// rebuild an edit reached only that asset. The tag requirements drawer rebuilt when it opened, and its group's
+        /// Name then wrote to the first effect alone. Its table builds a cell's editor as the cell opens; the group's
+        /// Sync With Template there writes to both effects.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_12_A_rebuilt_drawer_edits_every_selected_asset()
         {
-            ClearDrawerState(typeof(AbstractTagRequirementsDrawer<EffectTagRequirements>));
             var first = ScriptableObject.CreateInstance<GameplayEffect>();
             var second = ScriptableObject.CreateInstance<GameplayEffect>();
-            first.SourceRequirements = new EffectTagRequirements { Name = "A" };
-            second.SourceRequirements = new EffectTagRequirements { Name = "B" };
+            first.SourceRequirements = new EffectTagRequirements { ApplicationRequirements = new AvoidRequireTagGroup() };
+            second.SourceRequirements = new EffectTagRequirements { ApplicationRequirements = new AvoidRequireTagGroup() };
             var host = new Host();
             try
             {
@@ -904,23 +896,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 field.Bind(serialized);
                 yield return Frames();
 
-                var expand = field.Query<Button>().ToList().FirstOrDefault(button => button.tooltip == "Expand");
-                Assert.IsNotNull(expand, "the requirements start closed");
-                Press(expand);
+                Press(field.Q<Button>("ApplicationRequirementsRequires"));
                 yield return Frames();
-                var groupName = field.Query<TextField>().ToList().FirstOrDefault(text =>
-                    text.tooltip == "Optional name for this requirement group (helps identify when importing)");
-                Assert.IsNotNull(groupName, "opening them shows the group's Name");
+                var sync = field.Query<Toggle>().ToList().FirstOrDefault(toggle => toggle.label == "Sync With Template");
+                Assert.IsNotNull(sync, "opening a cell shows its group's template");
 
                 Undo.IncrementCurrentGroup();
-                Commit(groupName, "Shared");
-                Assert.AreEqual("Shared", first.SourceRequirements.Name, "the edit reaches the first effect");
-                Assert.AreEqual("Shared", second.SourceRequirements.Name, "and the second");
+                sync.value = true;
+                Assert.IsTrue(first.SourceRequirements.ApplicationRequirements.SyncWithTemplate, "the edit reaches the first effect");
+                Assert.IsTrue(second.SourceRequirements.ApplicationRequirements.SyncWithTemplate, "and the second");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
-                Assert.AreEqual("A", first.SourceRequirements.Name, "one Undo takes it back from both");
-                Assert.AreEqual("B", second.SourceRequirements.Name);
+                Assert.IsFalse(first.SourceRequirements.ApplicationRequirements.SyncWithTemplate, "one Undo takes it back from both");
+                Assert.IsFalse(second.SourceRequirements.ApplicationRequirements.SyncWithTemplate);
             }
             finally
             {
@@ -1502,6 +1491,122 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(1, burning.ImpactSpecification.AdditionalImpacts.Count, "one Undo brings it back");
                 Undo.PerformUndo();
                 Assert.AreEqual(0, burning.ImpactSpecification.AdditionalImpacts.Count, "and another takes back the add");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+            }
+        }
+
+        /// <summary>
+        /// The tag requirements drew a tinted box with colored subsections, a type badge and import buttons of their own
+        /// (ED-37). They're the Effect mockup's table now: a row for each group, Applying, While On and Removed By, with
+        /// what it requires and what it must not have, each a cell that lists its tags. A cell opens its list under the
+        /// table. An ability's table has a row for the caster and one for the target, and the Effect inspector shows the
+        /// target's table, then the source's on its switch.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_37_The_requirements_table_opens_a_cell_to_edit_it()
+        {
+            var burning = MakeEffect(EEffectDurationPolicy.Durational);
+            burning.TargetRequirements = new EffectTagRequirements
+            {
+                ApplicationRequirements = new AvoidRequireTagGroup
+                {
+                    RequireTags = new List<TagQuery>(),
+                    AvoidTags = new List<TagQuery> { new TagQuery { Tag = Tag.Generate("Status.Fireproof") } },
+                },
+                OngoingRequirements = new AvoidRequireTagGroup(),
+                RemovalRequirements = new AvoidRequireTagGroup(),
+            };
+            burning.SourceRequirements = new EffectTagRequirements();
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, burning, nameof(GameplayEffect.TargetRequirements));
+                yield return Frames();
+
+                Assert.That(field.Query(className: "pf-table__row").ToList().Select(row => row.name),
+                    Is.EqualTo(new[] { "ApplicationRequirements", "OngoingRequirements", "RemovalRequirements" }), "a row for each group");
+                var avoids = field.Q<Button>("ApplicationRequirementsAvoids");
+                Assert.AreEqual("Status.Fireproof", avoids?.text, "a cell lists its tags");
+                Assert.AreEqual("None", field.Q<Button>("ApplicationRequirementsRequires")?.text, "and an empty one says None");
+                Assert.That(OwnLook(field), Is.Empty, "the table sets no look in code");
+
+                Press(avoids);
+                yield return Frames();
+                var editor = field.Q(name: "RequirementEditor");
+                Assert.That(editor.Query<PropertyField>().ToList().Select(nested => nested.bindingPath),
+                    Has.Some.EndsWith("ApplicationRequirements.AvoidTags"), "the cell opens its list under the table");
+                Press(avoids);
+                yield return Frames();
+                Assert.That(editor.childCount, Is.Zero, "and closes it again");
+
+                var abilityField = Draw(host, fireball, $"{nameof(Ability.Tags)}.{nameof(AbilityTags.TagRequirements)}");
+                yield return Frames();
+                Assert.That(abilityField.Query(className: "pf-table__row").ToList().Select(row => row.name),
+                    Is.EqualTo(new[] { "SourceRequirements", "TargetRequirements" }), "an ability's rows are the caster's and the target's");
+
+                host.Document.rootVisualElement.Clear();
+                var root = host.Inspect(burning);
+                yield return Frames();
+                var requirements = root.Q(name: "Requirements_CONTAINER");
+                var target = requirements.Q<PropertyField>(nameof(GameplayEffect.TargetRequirements));
+                var source = requirements.Q<PropertyField>(nameof(GameplayEffect.SourceRequirements));
+                Assert.AreEqual(DisplayStyle.None, source.style.display.value, "the Effect inspector shows the target's first");
+                Press(requirements.Q<Button>("OnSource"));
+                Assert.AreEqual(DisplayStyle.None, target.style.display.value, "and the switch shows the source's instead");
+                Assert.AreNotEqual(DisplayStyle.None, source.style.display.value);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+                Object.DestroyImmediate(fireball);
+            }
+        }
+
+        /// <summary>
+        /// The duration drew its parts in tinted boxes with colored headings, under sentences that explained them, and
+        /// showed or hid them 50 ms after it drew (ED-37). It shows the fields its policy uses, by the Effect mockup's
+        /// names, and follows the policy as it changes.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_37_The_duration_shows_what_its_policy_uses()
+        {
+            var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 6);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, burning, nameof(GameplayEffect.DurationSpecification));
+                yield return Frames();
+
+                bool Shows(string name) => field.Q(name) is { } element && element.style.display.value != DisplayStyle.None;
+                Assert.That(new[] { "Duration", "PeriodicTicks", "Ticks", "TickOnApplication", "ReApplication" }.Where(name => !Shows(name)),
+                    Is.Empty, "a durational effect with ticks shows its duration and its ticks");
+                Assert.IsFalse(Shows("TickEvery"), "and not an infinite effect's Tick Every");
+                Assert.That(OwnLook(field), Is.Empty, "the drawer sets no look in code");
+
+                var serialized = new SerializedObject(burning);
+                var policy = serialized.FindProperty($"{nameof(GameplayEffect.DurationSpecification)}.{nameof(GameplayEffectDuration.DurationPolicy)}");
+                policy.enumValueIndex = (int)EEffectDurationPolicy.Infinite;
+                serialized.ApplyModifiedProperties();
+                yield return Frames();
+                Assert.IsTrue(Shows("TickEvery"), "an infinite effect ticks every so often");
+                Assert.IsFalse(Shows("Duration"), "and has no duration");
+                Assert.IsFalse(Shows("Ticks"), "or count of ticks");
+
+                policy.enumValueIndex = (int)EEffectDurationPolicy.Instant;
+                serialized.ApplyModifiedProperties();
+                yield return Frames();
+                Assert.That(new[] { "Duration", "PeriodicTicks", "Ticks", "TickEvery", "TickOnApplication", "ReApplication" }.Where(Shows),
+                    Is.Empty, "an Instant effect shows its policy alone");
             }
             finally
             {

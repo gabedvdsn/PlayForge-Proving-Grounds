@@ -763,6 +763,154 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // An effect as the Effect tests give it: Burning, 6 s with 6 ticks and one on applying, taking 8 of an attribute
+        private static GameplayEffect Burning(Attribute health)
+        {
+            var burning = ScriptableObject.CreateInstance<GameplayEffect>();
+            burning.Definition.Name = "Burning";
+            burning.ImpactSpecification = new GameplayEffectImpact
+            {
+                AttributeTarget = health,
+                MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            };
+            burning.DurationSpecification = new GameplayEffectDuration
+            {
+                DurationPolicy = EEffectDurationPolicy.Durational,
+                DurationOperation = new ScalerMagnitudeOperation { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                EnablePeriodicTicks = true,
+                TickOnApplication = true,
+                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 6 },
+                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            };
+            return burning;
+        }
+
+        /// <summary>
+        /// The Effect inspector strayed from Docs/EDITOR_STYLE.md as the other asset inspectors did (ED-37): Level Source
+        /// sat apart from Leveling, Impact came before Duration and Workers before Requirements, and the asset tag sat in
+        /// Tags. Its sections follow the style doc and the Effect mockup now: Identity, Leveling, Tags, Duration, Impact,
+        /// Requirements, Workers and Local Data, then Used By, each with a one-line summary. Requirements shows one side at
+        /// a time, the target's first.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Effect_inspector_keeps_the_style_docs_sections()
+        {
+            var health = ScriptableObject.CreateInstance<Attribute>();
+            health.Name = "Health";
+            var burning = Burning(health);
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            var linked = Burning(health);
+            linked.LinkToProvider(hero);
+            var stray = Burning(health);
+            stray.LinkMode = EEffectLinkMode.LinkedToProvider;
+            try
+            {
+                Inspect(burning, root =>
+                {
+                    var sections = root.Query(className: "pf-section").ToList();
+                    Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
+                    {
+                        "Identity", "Leveling", "Tags", "Duration", "Impact", "Requirements", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order, as the Effect mockup has it");
+
+                    Assert.That(Summary(root, "Leveling"), Is.EqualTo("From what applies it"), "a standalone effect takes its origin's level");
+                    Assert.That(Summary(root, "Tags"), Is.EqualTo("None"), "no tags");
+                    Assert.That(Summary(root, "Duration"), Is.EqualTo("Durational · 6 s · 6 ticks"), "how long, and how often it ticks");
+                    Assert.That(Summary(root, "Impact"), Is.EqualTo("Health −8 · Periodic"), "what it changes, and when");
+                    Assert.That(Summary(root, "Requirements"), Is.EqualTo("None"), "no requirements");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
+                    Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
+                    Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved effect");
+                    AssertEachSectionImportsAndClears(sections, "UsedBy");
+
+                    Assert.IsNotNull(root.Q(name: "Identity_CONTAINER").Q<TextField>("AssetTag"), "the asset tag sits in Identity");
+                    var requirements = root.Q(name: "Requirements_CONTAINER");
+                    Assert.That(requirements.Q(className: "pf-segmented")?.Query<Button>().ToList().Select(button => button.text),
+                        Is.EqualTo(new[] { "On the target", "On the source" }), "Requirements switches between the target and the source");
+                    Assert.AreNotEqual(DisplayStyle.None, requirements.Q<PropertyField>("TargetRequirements")?.style.display.value,
+                        "the target's show first");
+                    Assert.AreEqual(DisplayStyle.None, requirements.Q<PropertyField>("SourceRequirements")?.style.display.value,
+                        "and the source's wait");
+                });
+                Inspect(linked, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
+                    "a linked effect's range is its provider's"));
+                Inspect(stray, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("No provider"),
+                    "an effect linked to nothing says so"));
+            }
+            finally
+            {
+                foreach (var each in new Object[] { health, burning, hero, linked, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Effect inspector drew its link state in tinted boxes with colored borders, its hints in small italic text,
+        /// and a red-tinted Unlink button, from styles set in C# (ED-37). Outside the drawers it hosts, it takes its look
+        /// from the style sheet.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Effect_inspector_sets_no_look_in_code()
+        {
+            var health = ScriptableObject.CreateInstance<Attribute>();
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            var burning = Burning(health);
+            var linked = Burning(health);
+            linked.Definition.Name = "Linked";
+            linked.LinkToProvider(hero);
+            var instant = Burning(health);
+            instant.Definition.Name = "Instant";
+            instant.DurationSpecification.DurationPolicy = EEffectDurationPolicy.Instant;
+            try
+            {
+                var wrong = new List<string>();
+                foreach (var target in new[] { burning, linked, instant })
+                    wrong.AddRange(LookSetInCode(target.Definition.Name, target));
+                Assert.That(wrong, Is.Empty, "styles the style sheet gives");
+            }
+            finally
+            {
+                foreach (var each in new Object[] { health, hero, burning, linked, instant }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Effect inspector lists the assets that use the effect, as the other asset inspectors do (ED-37): here an
+        /// ability whose cost it is and an item that grants it.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Effect_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-37 Effect Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-37 Effect Used By");
+            try
+            {
+                var burning = Burning(null);
+                AssetDatabase.CreateAsset(burning, $"{folder}/Burning.asset");
+                var frost = Burning(null);
+                frost.Definition.Name = "Frost";
+                AssetDatabase.CreateAsset(frost, $"{folder}/Frost.asset");
+                var fireball = ScriptableObject.CreateInstance<Ability>();
+                fireball.Definition.Name = "Fireball";
+                fireball.Cost = burning;
+                AssetDatabase.CreateAsset(fireball, $"{folder}/Fireball.asset");
+                var torch = ScriptableObject.CreateInstance<Item>();
+                torch.Definition.Name = "Torch";
+                torch.GrantedEffects.Add(burning);
+                AssetDatabase.CreateAsset(torch, $"{folder}/Torch.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(burning), Is.EqualTo(new[] { "Fireball", "Torch" }), "the ability it's the cost of and the item that grants it");
+                Assert.That(UsedBy(frost), Is.Empty, "nothing uses Frost");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
         // Builds an inspector as the Inspector does, and hands it to a check
         private static void Inspect(Object target, System.Action<VisualElement> check)
         {
