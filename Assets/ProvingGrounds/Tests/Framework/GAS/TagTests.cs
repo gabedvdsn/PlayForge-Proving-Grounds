@@ -89,5 +89,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That((Tag)(root + ".Debuff.Burn"), Is.EqualTo(burn), "a name made into a tag");
             Assert.That(TagQuery.HasTag(status, ETagMatchMode.SameRoot).Validate(new List<Tag> { burn }), "and a root query finds its children");
         }
+
+        /// <summary>
+        /// A same-root query cut each side's root out as a new string, and registered it as a tag, for every tag it
+        /// compared. It now compares the roots in place and allocates nothing, and still finds what it found.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P4_A_same_root_query_allocates_nothing() => Live(async () =>
+        {
+            var gas = World.Entity(Hub.Runtime, observed: false);
+            var tags = gas.GetTagCache();
+            tags.AddTag(Make.NewTag("Test.Status.Burning"));
+            tags.AddTag(Make.NewTag("Test.Status.Wet"));
+            var asked = Make.NewTag("Test.Other");
+            var stranger = Make.NewTag("Elsewhere.Thing");
+            await Frames.Step();
+
+            using var probe = new AllocationProbe();
+            float bytes = probe.MeasureEach(() => tags.HasTag(asked, ETagMatchMode.SameRoot), runs: 500, warmup: 20);
+
+            Assert.That(bytes, Is.EqualTo(0f), "bytes per query");
+            Assert.That(tags.HasTag(asked, ETagMatchMode.SameRoot), "a tag under the same root");
+            Assert.That(tags.HasTag(stranger, ETagMatchMode.SameRoot), Is.False, "and none under another");
+        });
     }
 }

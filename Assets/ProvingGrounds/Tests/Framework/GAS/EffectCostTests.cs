@@ -6,9 +6,88 @@ using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
-    /// <summary>What applying an effect costs, as an entity carries more.</summary>
+    /// <summary>What effects cost: applying and ending them as an entity carries more, and what ticking allocates.</summary>
     public class EffectCostTests : ProvingGroundsTest
     {
+        /// <summary>
+        /// A tick looked up its effect's impacted attributes and their impacters, each lookup building a new list or set,
+        /// and walked its contained effects through LINQ: about 530 bytes a tick before anything committed. A tick now
+        /// allocates nothing up to its commit. Here the commit finds no such attribute on the entity and returns, which
+        /// leaves the tick's own work; what a commit allocates is GAS-P6.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P4_A_tick_allocates_nothing_up_to_its_commit([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub, name: "Ticking", observed: false);
+            var elsewhere = Make.Attribute("Elsewhere");
+            World.Apply(gas, gas, Make.Effect("Pulse", new EffectConfig { Target = elsewhere, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f }));
+            await Frames.Step();
+
+            var effects = gas.GetEffectSystem();
+            using var probe = new AllocationProbe();
+            float bytes = probe.MeasureEach(effects.Tick, runs: 500, warmup: 20);
+
+            Assert.That(bytes, Is.EqualTo(0f), "bytes per tick");
+        });
+
+        /// <summary>
+        /// Each recompute built a new list for the multipliers that pool their bonus, and every tick that committed
+        /// recomputed. A recompute now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P4_A_recompute_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), name: "Recomputed", observed: false);
+            World.Apply(gas, gas, Make.Effect("Plus", new EffectConfig { Target = health, Magnitude = 5f }));
+            World.Apply(gas, gas, Make.Effect("Pooled", new EffectConfig
+            {
+                Target = health, Op = ECalculationOperation.Multiply, MultiplyBehaviour = EMultiplyBehaviour.AdditiveBonus, Magnitude = 1.1f,
+            }));
+            World.Apply(gas, gas, Make.Effect("Flat", new EffectConfig { Target = health, Op = ECalculationOperation.FlatBonus, Magnitude = 2f }));
+            await Frames.Step();
+
+            var attributes = gas.GetAttributeSystem();
+            attributes.TryGetCachedValue(health, out var cached);
+            var cache = attributes.GetAttributeCache();
+            using var probe = new AllocationProbe();
+            float bytes = probe.MeasureEach(() => cached.Recompute(cache), runs: 500, warmup: 20);
+
+            Assert.That(bytes, Is.EqualTo(0f), "bytes per recompute");
+        });
+
+        /// <summary>
+        /// Re-registering a carrier's modifiers, as a stack change does, removed its old entries through a lambda that
+        /// captured the carrier and built new ones, allocating each time. Refreshing now reuses them and allocates nothing,
+        /// as does taking a carrier's modifiers away and registering them again.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P4_Refreshing_a_modifier_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), name: "Refreshed", observed: false);
+            var aura = Make.Effect("Aura", new EffectConfig { Target = health, Magnitude = 5f });
+            World.Apply(gas, gas, aura);
+            await Frames.Step();
+
+            gas.TryGetEffectContainer(aura, out var container);
+            var spec = container.Spec;
+            var impacters = spec.GetImpactersFor(health, EImpactDelivery.Continuous);
+            var attributes = gas.GetAttributeSystem();
+            attributes.TryGetCachedValue(health, out var cached);
+            var cache = attributes.GetAttributeCache();
+            using var probe = new AllocationProbe();
+            float refresh = probe.MeasureEach(() => cached.RegisterModifier(spec, impacters, cache), runs: 500, warmup: 20);
+            float cycle = probe.MeasureEach(() =>
+            {
+                cached.UnregisterModifier(spec, cache);
+                cached.RegisterModifier(spec, impacters, cache);
+            }, runs: 500, warmup: 20);
+
+            Assert.That(refresh, Is.EqualTo(0f), "bytes per refresh");
+            Assert.That(cycle, Is.EqualTo(0f), "bytes per removal and registration again");
+        });
+
         /// <summary>
         /// Each application re-checked the requirements of every effect already on the entity and rebuilt all its tags,
         /// twice over for an instant effect, and a re-application walked the whole shelf to find its own containers. An
