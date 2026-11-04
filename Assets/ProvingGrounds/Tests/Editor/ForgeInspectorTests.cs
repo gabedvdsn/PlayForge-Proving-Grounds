@@ -624,6 +624,145 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // The text an enum field shows for its value
+        private static string Shown(EnumField field) => field?.Q<TextElement>(className: "unity-enum-field__text")?.text;
+
+        /// <summary>
+        /// The Ability inspector strayed from Docs/EDITOR_STYLE.md as the other asset inspectors did (ED-37): Level
+        /// Source sat apart from Leveling, under the same section name, Cost and Cooldown sat in a tinted box in
+        /// Definition, Runtime Behaviour came before Tags, and the tag requirements sat in Tags, apart from the
+        /// validation rules. Its sections follow the style doc and the Ability mockup now: Activation holds When Busy,
+        /// Activate At Start, Cost, Cooldown and targeting, and Requirements holds the tag requirements and the checks.
+        /// The mockup's Activate When Granted says Activate At Start, since only a Starting Ability tries it.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Ability_inspector_keeps_the_style_docs_sections()
+        {
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            fireball.Definition.Name = "Fireball";
+            var cost = ScriptableObject.CreateInstance<GameplayEffect>();
+            cost.Definition.Name = "Fireball Cost";
+            fireball.Cost = cost;
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            var linked = ScriptableObject.CreateInstance<Ability>();
+            linked.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<Ability>();
+            stray.LinkMode = EAbilityLinkMode.LinkedToProvider;
+            try
+            {
+                Inspect(fireball, root =>
+                {
+                    var sections = root.Query(className: "pf-section").ToList();
+                    Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
+                    {
+                        "Identity", "Leveling", "Tags", "Activation", "Stages", "Requirements", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order: Identity, Leveling, Tags, the ability's own, Requirements, Workers, Local Data");
+
+                    Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4"), "Leveling's range");
+                    Assert.That(Summary(root, "Tags"), Is.EqualTo("None"), "no tags");
+                    Assert.That(Summary(root, "Activation"), Is.EqualTo("Entity's Policy · Fireball Cost"), "how it activates, and what it costs");
+                    Assert.That(Summary(root, "Stages"), Is.EqualTo("None"), "no stages");
+                    Assert.That(Summary(root, "Requirements"), Is.EqualTo("4 checks"), "its three caster checks and one target check");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
+                    Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
+                    Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved ability");
+                    AssertEachSectionImportsAndClears(sections, "UsedBy");
+
+                    Assert.IsNotNull(root.Q(name: "Identity_CONTAINER").Q<TextField>("AssetTag"), "the asset tag sits in Identity");
+                    var activation = root.Q(name: "Activation_CONTAINER");
+                    Assert.IsNotNull(activation.Q<PropertyField>("Cost"), "Cost sits in Activation");
+                    var policy = activation.Q<EnumField>("ActivationPolicy");
+                    Assert.AreEqual("When Busy", policy?.label, "as When Busy, as the mockup names it");
+                    Assert.AreEqual("Entity's Policy", Shown(policy), "showing its choice by its own name");
+                    Assert.AreEqual("Activate At Start", activation.Q<Toggle>("ActivateImmediately")?.label, "and Activate At Start");
+                    Assert.IsNotNull(root.Q(name: "Requirements_CONTAINER").Q<PropertyField>("SourceActivationRules"), "the checks sit in Requirements");
+                });
+                Inspect(linked, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
+                    "a linked ability's range is its provider's"));
+                Inspect(stray, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4 · no provider"),
+                    "an ability linked to nothing keeps its own range"));
+                Inspect(hero, root =>
+                {
+                    var policy = root.Q<EnumField>("ActivationPolicy");
+                    Assert.AreEqual("When Busy", policy?.label, "the entity's policy is When Busy too");
+                    Assert.AreEqual("Queue", Shown(policy), "showing Queue");
+                });
+            }
+            finally
+            {
+                foreach (var each in new Object[] { fireball, cost, hero, linked, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Ability inspector drew its link state in tinted boxes with colored borders, its hints in small colored
+        /// text, Cost and Cooldown and the granted tags in tinted boxes, and dividers between its fields, from styles set
+        /// in C# (ED-37). Outside the drawers it hosts, it takes its look from the style sheet.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Ability_inspector_sets_no_look_in_code()
+        {
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            fireball.Definition.Name = "Fireball";
+            var linked = ScriptableObject.CreateInstance<Ability>();
+            linked.Definition.Name = "Linked";
+            linked.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<Ability>();
+            stray.Definition.Name = "Stray";
+            stray.LinkMode = EAbilityLinkMode.LinkedToProvider;
+            try
+            {
+                var wrong = new List<string>();
+                foreach (var target in new Object[][] { new Object[] { fireball }, new Object[] { linked }, new Object[] { stray }, new Object[] { fireball, stray } })
+                    wrong.AddRange(LookSetInCode(string.Join(", ", target.Select(each => ((Ability)each).Definition.Name)), target));
+                Assert.That(wrong, Is.Empty, "styles the style sheet gives");
+            }
+            finally
+            {
+                foreach (var each in new Object[] { hero, fireball, linked, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Ability inspector lists the assets that use the ability, as the other asset inspectors do (ED-37): here an
+        /// entity that starts with it and an item that grants it.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Ability_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-37 Ability Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-37 Ability Used By");
+            try
+            {
+                var fireball = ScriptableObject.CreateInstance<Ability>();
+                fireball.Definition.Name = "Fireball";
+                AssetDatabase.CreateAsset(fireball, $"{folder}/Fireball.asset");
+                var frost = ScriptableObject.CreateInstance<Ability>();
+                frost.Definition.Name = "Frost";
+                AssetDatabase.CreateAsset(frost, $"{folder}/Frost.asset");
+                var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+                goblin.Name = "Goblin";
+                goblin.StartingAbilities.Add(fireball);
+                AssetDatabase.CreateAsset(goblin, $"{folder}/Goblin.asset");
+                var torch = ScriptableObject.CreateInstance<Item>();
+                torch.Definition.Name = "Torch";
+                torch.ActiveAbility = fireball;
+                AssetDatabase.CreateAsset(torch, $"{folder}/Torch.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(fireball), Is.EqualTo(new[] { "Goblin", "Torch" }), "the entity that starts with it and the item that grants it");
+                Assert.That(UsedBy(frost), Is.Empty, "nothing uses Frost");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
         // Builds an inspector as the Inspector does, and hands it to a check
         private static void Inspect(Object target, System.Action<VisualElement> check)
         {

@@ -746,20 +746,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.AreEqual(before, shown(), $"and {label}'s field shows it");
                 }
 
+                // Leveling holds the level link since ED-37, with the provider in an object field
                 var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
                 Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
-                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone ability offers no provider");
+                Assume.That(root.Q("LevelProvider"), Is.Null, "a standalone ability offers no provider");
                 Undo.IncrementCurrentGroup();
                 linkMode.value = EAbilityLinkMode.LinkedToProvider;
                 Assert.AreEqual(EAbilityLinkMode.LinkedToProvider, ability.LinkMode, "Link Mode is written");
                 yield return Frames();
-                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+                Assert.IsNotNull(root.Q("LevelProvider"), "Leveling offers a provider");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
                 Assert.AreEqual(EAbilityLinkMode.Standalone, ability.LinkMode, "one Undo takes back Link Mode");
                 yield return Frames();
-                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+                Assert.IsNull(root.Q("LevelProvider"), "and Leveling shows the mode Undo brought back");
             }
             finally
             {
