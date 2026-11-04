@@ -277,6 +277,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(Current(gas, health), Is.EqualTo(expected), policy == EValueCollisionPolicy.UseAverage ? "the average" : "the first");
         });
 
+        /// <summary>
+        /// A set element with no attribute, as a list's "+" leaves one, threw as the entity started: the set's elements
+        /// were filed in a dictionary by their attribute, and a null key throws, so the entity got none of its attributes.
+        /// An element with no attribute gives nothing, and the rest of the set stands.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_54_An_element_with_no_attribute_gives_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var set = Make.Set(Make.Element(health, 100f, 100f), Make.Element(null, 5f, 5f));
+
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+
+            Assert.That(Current(gas, health), Is.EqualTo(100f), "the set's other attributes stand");
+        });
+
+        /// <summary>
+        /// A set settling colliding elements by UseMinimum took the first: the search for the lowest began at the lowest
+        /// float, so no value was ever below it. It takes the element with the lowest Base, as UseMaximum takes the highest.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_55_Use_Minimum_takes_the_lowest([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var set = Make.Set(Make.Element(health, 100f, 100f));
+            set.SubSets.Add(Make.Set(Make.Element(health, 60f, 60f)));
+            set.CollisionResolutionPolicy = EValueCollisionPolicy.UseMinimum;
+
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+
+            Assert.That(Current(gas, health), Is.EqualTo(60f), "the lower Base");
+        });
+
         /// <summary>Golden S8's derived attribute: Base is twice Strength.</summary>
         private AttributeSetElement Derived(Attribute power, Attribute strength, bool linkCurrentToBase, float current = 0f)
         {
