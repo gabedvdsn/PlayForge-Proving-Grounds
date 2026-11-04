@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -64,6 +65,53 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             gas.TryGetAttributeValue(health, out var value);
             Assert.That(value.CurrentValue, Is.EqualTo(70f).Within(0.001f), "a raw 30 lands whole");
         });
+
+        /// <summary>
+        /// A raw delta allocated on its way through the GAS: a carrier to wrap its delta in, with a list and a constant
+        /// impacter, and an origin each time something asked its own carrier for one. A raw delta made every frame with
+        /// a carrier kept for it, as regeneration might be, now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P8_A_frame_in_which_a_raw_delta_lands_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            var gas = World.Entity(hub, Make.Set(Make.Element(mana, 0f, 1e6f)), name: "Regenerating", observed: false);
+            var carrier = IAttributeImpactCarrier.GenerateSourceDerivation(gas, mana);
+            using var regenerating = new EveryUpdate(() =>
+                gas.TryModifyAttribute(mana, new SourcedModifiedAttributeValue(carrier, 1f, 0f)));
+            await Frames.Step(20);
+
+            gas.TryGetAttributeValue(mana, out var before);
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 600);
+            gas.TryGetAttributeValue(mana, out var after);
+
+            Assert.That(after.CurrentValue - before.CurrentValue, Is.GreaterThanOrEqualTo(600f), "it landed every frame");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        // Runs an action at the start of every Update until disposed, where the frame's measure counts it, as it counts
+        // PlayForge's own stepping
+        private sealed class EveryUpdate : IPlayerLoopItem, System.IDisposable
+        {
+            private readonly System.Action _action;
+            private bool _disposed;
+
+            public EveryUpdate(System.Action action)
+            {
+                _action = action;
+                PlayerLoopHelper.AddAction(PlayerLoopTiming.Update, this);
+            }
+
+            public bool MoveNext()
+            {
+                if (_disposed) return false;
+                _action();
+                return true;
+            }
+
+            public void Dispose() => _disposed = true;
+        }
 
         // A loss of 30, made the two ways a caller would make one
         private static SourcedModifiedAttributeValue Loss(IGameplayAbilitySystem gas, Attribute health, RawDelta made)
