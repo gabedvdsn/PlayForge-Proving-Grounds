@@ -838,6 +838,61 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Ability inspector refused a multiple selection. It takes one now: a field the abilities disagree on shows
+        /// as mixed and an edit reaches both. What acts on one ability steps aside: Name, the asset tag, linking, and the
+        /// lists each ability keeps of its own, its stages, asset loaders and activation rules, which a note replaces.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Ability_inspector_edits_every_selected_ability()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(AbilityEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            fireball.Definition.Name = "Fireball";
+            fireball.Definition.Description = "Hurls fire.";
+            var frost = ScriptableObject.CreateInstance<Ability>();
+            frost.Definition.Name = "Frost Bolt";
+            frost.Definition.Description = "Hurls ice.";
+            frost.Definition.ActivateImmediately = true;
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(fireball, frost);
+                yield return Frames();
+
+                var description = root.Q<TextField>("Description");
+                Assert.IsNotNull(description, "the inspector edits a multiple selection");
+                Assert.IsTrue(description.showMixedValue, "descriptions that differ show as mixed");
+                Assert.IsTrue(root.Q<Toggle>("ActivateImmediately").showMixedValue, "and so does Activate Immediately");
+                Assert.IsFalse(root.Q<TextField>("Name").enabledSelf, "a multiple selection can't rename");
+                var linking = root.Query<Button>().ToList()
+                    .Where(button => button.text.StartsWith("Link ") || button.text.StartsWith("Unlink")).ToList();
+                Assert.IsEmpty(linking, "linking waits for one ability");
+                Assert.IsNull(root.Q<Button>("AssetTagUpdate"), "nor does an asset tag offer Update");
+                var ownLists = root.Query<PropertyField>().ToList().Where(field => field.bindingPath is
+                    "Behaviour.Stages" or "Behaviour.AssetLoaders" or "SourceActivationRules" or "TargetActivationRules").ToList();
+                Assert.IsEmpty(ownLists, "and each ability's own lists wait for one ability");
+
+                Undo.IncrementCurrentGroup();
+                Commit(description, "Hurls.");
+                Assert.AreEqual("Hurls.", fireball.Definition.Description, "the edit reaches the first ability");
+                Assert.AreEqual("Hurls.", frost.Definition.Description, "and the second");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Hurls fire.", fireball.Definition.Description, "one Undo takes it back from both");
+                Assert.AreEqual("Hurls ice.", frost.Definition.Description);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(fireball);
+                Object.DestroyImmediate(frost);
+            }
+        }
+
+        /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
         /// </summary>
