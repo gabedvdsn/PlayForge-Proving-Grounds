@@ -97,6 +97,56 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Attribute inspector's Find All References opened a dialog telling the user how to search, under a list of
+        /// sentences about where attributes can go (ED-15). It lists the assets that use the attribute instead, in a
+        /// Used By section: Docs/EDITOR_STYLE.md's "a list that shows what uses what".
+        /// </summary>
+        [Test]
+        public void ED_15_The_Attribute_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-15 Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-15 Used By");
+            try
+            {
+                var mana = ScriptableObject.CreateInstance<Attribute>();
+                mana.Name = "Mana";
+                AssetDatabase.CreateAsset(mana, $"{folder}/Mana.asset");
+                var speed = ScriptableObject.CreateInstance<Attribute>();
+                speed.Name = "Speed";
+                AssetDatabase.CreateAsset(speed, $"{folder}/Speed.asset");
+                var casters = ScriptableObject.CreateInstance<AttributeSet>();
+                casters.Attributes.Add(new AttributeSetElement { Attribute = mana });
+                AssetDatabase.CreateAsset(casters, $"{folder}/Caster Set.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(mana), Is.EqualTo(new[] { "Caster Set" }), "the set that holds Mana");
+                Assert.That(UsedBy(speed), Is.Empty, "nothing uses Speed");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        // The names a Used By section lists
+        private static string[] UsedBy(Object target)
+        {
+            var editor = UnityEditor.Editor.CreateEditor(target);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assert.IsNotNull(root, "the inspector builds");
+                var section = root.Q(name: "UsedBy_CONTAINER");
+                Assert.IsNotNull(section, "the inspector has a Used By section");
+                return section.Query<Label>(className: "pf-used-by__name").ToList().Select(label => label.text).ToArray();
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
+
+        /// <summary>
         /// The process inspector hides the process fields from the default inspector and draws them itself, but it left
         /// out ParticipateInSiblingCascade, so the field ProcessControl reads couldn't be set.
         /// </summary>
