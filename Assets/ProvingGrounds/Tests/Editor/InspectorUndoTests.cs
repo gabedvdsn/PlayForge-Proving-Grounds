@@ -379,25 +379,85 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Frames();
                 Assert.AreEqual("Lights the way.", description.value, "and its field shows it");
 
+                // Leveling holds the level link since ED-37, with the provider in an object field
                 var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
                 Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
-                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone item offers no provider");
+                Assume.That(root.Q("LevelProvider"), Is.Null, "a standalone item offers no provider");
                 Undo.IncrementCurrentGroup();
                 linkMode.value = EItemLinkMode.LinkedToProvider;
                 Assert.AreEqual(EItemLinkMode.LinkedToProvider, item.LinkMode, "Link Mode is written");
                 yield return Frames();
-                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+                Assert.IsNotNull(root.Q("LevelProvider"), "Leveling offers a provider");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();
                 Assert.AreEqual(EItemLinkMode.Standalone, item.LinkMode, "one Undo takes back Link Mode");
                 yield return Frames();
-                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+                Assert.IsNull(root.Q("LevelProvider"), "and Leveling shows the mode Undo brought back");
             }
             finally
             {
                 host.Destroy();
                 Object.DestroyImmediate(item);
+            }
+        }
+
+        /// <summary>
+        /// The Item inspector showed its level provider as a name in a tinted box, under a row of Link to buttons, one per
+        /// type of provider (ED-37). Leveling shows it in Unity's object field: choosing a provider links the item, one
+        /// Undo takes the link back, a provider that would make a loop is refused, and a help box says when none is set.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_37_The_Level_Provider_field_links_the_item()
+        {
+            var item = ScriptableObject.CreateInstance<Item>();
+            item.Definition.Name = "Torch";
+            item.LinkMode = EItemLinkMode.LinkedToProvider;
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            // An effect linked to the torch, so linking the torch to it would make a loop
+            var burning = ScriptableObject.CreateInstance<GameplayEffect>();
+            burning.LinkToProvider(item);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(item);
+                yield return Frames();
+
+                var provider = root.Q<ObjectField>("LevelProvider");
+                Assert.IsNotNull(provider, "Leveling shows the provider in an object field");
+                Assert.That(root.Query<HelpBox>().ToList().Select(box => box.text), Has.Some.StartsWith("No level provider"),
+                    "and a help box says none is set");
+
+                Undo.IncrementCurrentGroup();
+                provider.value = hero;
+                Assert.AreEqual(hero, item.LinkedProvider, "choosing a provider links the item");
+                yield return Frames();
+                Assert.AreEqual(20, root.Q<IntegerField>("MaxLevel")?.value, "and Leveling shows the provider's range");
+                Assert.That(root.Query<HelpBox>().ToList(), Is.Empty, "with no help box");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsNull(item.LinkedProvider, "one Undo takes the link back");
+                yield return Frames();
+                provider = root.Q<ObjectField>("LevelProvider");
+                Assert.IsNull(provider.value, "and the field shows it");
+
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("circular dependency"));
+                provider.value = burning;
+                Assert.IsNull(item.LinkedProvider, "a link that would make a loop is refused");
+                yield return Frames();
+                Assert.IsNull(root.Q<ObjectField>("LevelProvider").value, "and the field goes back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(item);
+                Object.DestroyImmediate(hero);
+                Object.DestroyImmediate(burning);
             }
         }
 

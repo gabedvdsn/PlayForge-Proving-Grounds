@@ -128,6 +128,195 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// The Item inspector strayed from Docs/EDITOR_STYLE.md (ED-37): its sections came in another order, with Level
+        /// Source apart from Leveling, a collapsed section showed nothing, and seven sections' Import and Clear only
+        /// logged a warning. Its sections keep the style doc's order now, Leveling holds the level link, each collapsed
+        /// section shows one line, and every section but Used By imports and clears.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Item_inspector_keeps_the_style_docs_sections()
+        {
+            var torch = ScriptableObject.CreateInstance<Item>();
+            torch.Definition.Name = "Torch";
+            var burning = ScriptableObject.CreateInstance<GameplayEffect>();
+            torch.GrantedEffects.Add(burning);
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            var lamp = ScriptableObject.CreateInstance<Item>();
+            lamp.LinkToProvider(hero);
+            var unlit = ScriptableObject.CreateInstance<Item>();
+            unlit.LinkMode = EItemLinkMode.LinkedToProvider;
+            try
+            {
+                Inspect(torch, root =>
+                {
+                    var sections = root.Query(className: "pf-section").ToList();
+                    Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
+                    {
+                        "Identity", "Leveling", "Tags", "Effects", "Abilities", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order: Identity, Leveling, Tags, the item's own, Workers, Local Data");
+
+                    Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4"), "Leveling's range");
+                    Assert.That(Summary(root, "Tags"), Is.EqualTo("None"), "no tags");
+                    Assert.That(Summary(root, "Effects"), Is.EqualTo("1 effect"), "the effects it grants");
+                    Assert.That(Summary(root, "Abilities"), Is.EqualTo("None"), "no active ability");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
+                    Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
+                    Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved item");
+
+                    foreach (var section in sections.Where(section => section.name != "UsedBy_CONTAINER"))
+                    {
+                        var actions = section.Query<Button>(className: "pf-section__action").ToList().Select(button => button.tooltip).ToList();
+                        Assert.That(actions, Has.Some.StartsWith("Import "), $"{section.name} has Import");
+                        Assert.That(actions, Has.Some.StartsWith("Reset "), $"{section.name} has Clear");
+                        Assert.That(actions, Has.None.Contains("not configured"), $"{section.name}'s Import and Clear work");
+                    }
+                });
+                Inspect(lamp, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
+                    "a linked item's range is its provider's"));
+                Inspect(unlit, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4 · no provider"),
+                    "an item linked to nothing keeps its own range"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(torch);
+                Object.DestroyImmediate(burning);
+                Object.DestroyImmediate(hero);
+                Object.DestroyImmediate(lamp);
+                Object.DestroyImmediate(unlit);
+            }
+        }
+
+        /// <summary>
+        /// The Item inspector drew its link state in tinted boxes with colored borders, and its hints in small colored
+        /// text, from styles set in C# (ED-37). Outside the drawers it hosts, it takes its look from the style sheet.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Item_inspector_sets_no_look_in_code()
+        {
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            var standalone = ScriptableObject.CreateInstance<Item>();
+            standalone.Definition.Name = "Torch";
+            var linked = ScriptableObject.CreateInstance<Item>();
+            linked.Definition.Name = "Lamp";
+            linked.LinkToProvider(hero);
+            var unlit = ScriptableObject.CreateInstance<Item>();
+            unlit.Definition.Name = "Candle";
+            unlit.LinkMode = EItemLinkMode.LinkedToProvider;
+            try
+            {
+                var wrong = new List<string>();
+                foreach (var target in new Object[][] { new Object[] { standalone }, new Object[] { linked }, new Object[] { unlit }, new Object[] { standalone, unlit } })
+                {
+                    var editor = UnityEditor.Editor.CreateEditor(target);
+                    try
+                    {
+                        var root = editor.CreateInspectorGUI();
+                        Assert.IsNotNull(root, "the inspector builds");
+                        wrong.AddRange(root.Query<VisualElement>().ToList()
+                            .Where(element => element.GetFirstAncestorOfType<PropertyField>() == null && element is not PropertyField)
+                            .SelectMany(element => LookSetInCode(element).Select(style =>
+                                $"{string.Join(", ", target.Select(each => ((Item)each).Definition.Name))}: " +
+                                $"{element.GetType().Name} \"{(element as TextElement)?.text ?? element.name}\" sets {style}")));
+                    }
+                    finally
+                    {
+                        Object.DestroyImmediate(editor);
+                    }
+                }
+                Assert.That(wrong, Is.Empty, "styles the style sheet gives");
+            }
+            finally
+            {
+                Object.DestroyImmediate(hero);
+                Object.DestroyImmediate(standalone);
+                Object.DestroyImmediate(linked);
+                Object.DestroyImmediate(unlit);
+            }
+        }
+
+        // The look a control may take only from the style sheet: its colors, borders and text
+        private static IEnumerable<string> LookSetInCode(VisualElement element)
+        {
+            var style = element.style;
+            if (style.backgroundColor.keyword != StyleKeyword.Null) yield return "background-color";
+            if (style.color.keyword != StyleKeyword.Null) yield return "color";
+            if (style.borderTopColor.keyword != StyleKeyword.Null || style.borderBottomColor.keyword != StyleKeyword.Null ||
+                style.borderLeftColor.keyword != StyleKeyword.Null || style.borderRightColor.keyword != StyleKeyword.Null)
+                yield return "border-color";
+            if (style.borderTopWidth.keyword != StyleKeyword.Null || style.borderBottomWidth.keyword != StyleKeyword.Null ||
+                style.borderLeftWidth.keyword != StyleKeyword.Null || style.borderRightWidth.keyword != StyleKeyword.Null)
+                yield return "border-width";
+            if (style.borderTopLeftRadius.keyword != StyleKeyword.Null || style.borderTopRightRadius.keyword != StyleKeyword.Null ||
+                style.borderBottomLeftRadius.keyword != StyleKeyword.Null || style.borderBottomRightRadius.keyword != StyleKeyword.Null)
+                yield return "border-radius";
+            if (style.fontSize.keyword != StyleKeyword.Null) yield return "font-size";
+            if (style.unityFontStyleAndWeight.keyword != StyleKeyword.Null) yield return "font-style";
+            if (style.opacity.keyword != StyleKeyword.Null) yield return "opacity";
+        }
+
+        /// <summary>
+        /// The Item inspector lists the assets that use the item, as the Attribute inspector does (ED-37): here an entity
+        /// that starts with it and an effect linked to it.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Item_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-37 Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-37 Used By");
+            try
+            {
+                var torch = ScriptableObject.CreateInstance<Item>();
+                torch.Definition.Name = "Torch";
+                AssetDatabase.CreateAsset(torch, $"{folder}/Torch.asset");
+                var lamp = ScriptableObject.CreateInstance<Item>();
+                lamp.Definition.Name = "Lamp";
+                AssetDatabase.CreateAsset(lamp, $"{folder}/Lamp.asset");
+                var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+                hero.Name = "Hero";
+                hero.StartingItems.Add(new StartingItemContainer { Item = torch });
+                AssetDatabase.CreateAsset(hero, $"{folder}/Hero.asset");
+                var burning = ScriptableObject.CreateInstance<GameplayEffect>();
+                burning.LinkToProvider(torch);
+                AssetDatabase.CreateAsset(burning, $"{folder}/Burning.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(torch), Is.EqualTo(new[] { "Burning", "Hero" }), "the effect linked to the torch and the entity that starts with it");
+                Assert.That(UsedBy(lamp), Is.Empty, "nothing uses the lamp");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        // Builds an inspector as the Inspector does, and hands it to a check
+        private static void Inspect(Object target, System.Action<VisualElement> check)
+        {
+            var editor = UnityEditor.Editor.CreateEditor(target);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assert.IsNotNull(root, "the inspector builds");
+                check(root);
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
+
+        // The one line a section's header shows while it's collapsed
+        private static string Summary(VisualElement root, string section)
+        {
+            var container = root.Q(name: $"{section}_CONTAINER");
+            Assert.IsNotNull(container, $"the inspector has a {section} section");
+            return container.Q<Label>(className: "pf-section__summary").text;
+        }
+
         // The names a Used By section lists
         private static string[] UsedBy(Object target)
         {
