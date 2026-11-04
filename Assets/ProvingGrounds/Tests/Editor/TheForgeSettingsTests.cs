@@ -31,8 +31,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         };
         private static readonly string[] IntSettings =
         {
-            "RecentlyCreatedRows", "EditorRefreshDelayMs", "EditorForceRefreshDelayMs", "Effect_DurationPolicy",
-            "Effect_StackingPolicy", "Item_DefaultMaxStack", "ForgeLogMinLevel",
+            "RecentlyCreatedRows", "Effect_DurationPolicy", "Effect_StackingPolicy", "Item_DefaultMaxStack",
+            "ForgeLogMinLevel",
         };
         private static readonly string[] FloatSettings = { "Attribute_DefaultBaseValue" };
         private static readonly string[] StringSettings = TheForge.AssetTypes
@@ -130,49 +130,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             finally
             {
-                Object.DestroyImmediate(forge);
-            }
-        }
-
-        /// <summary>
-        /// The inspector delay's number field had its range check backwards: it saved values out of range and turned
-        /// valid ones away.
-        /// </summary>
-        [UnityTest]
-        public IEnumerator ED_6_An_inspector_delay_in_range_is_saved()
-        {
-            const int refreshDelayMax = 2503; // ForgeDrawerStyles.DefaultConfigureDelayMsMax, which is internal
-            EditorPrefs.DeleteKey(Prefix + "EditorRefreshDelayMs");
-            var forge = ScriptableObject.CreateInstance<TheForge>();
-            var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
-            var host = new GameObject("ED-6") { hideFlags = HideFlags.HideAndDontSave };
-            try
-            {
-                // A field sends its change event only through a panel. Batch mode has no graphics device to give an
-                // editor window one, so a runtime panel carries the Settings tab instead
-                var document = host.AddComponent<UIDocument>();
-                document.panelSettings = panelSettings;
-                yield return null;
-                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
-
-                var settings = new VisualElement();
-                typeof(TheForge).GetField("settingsContentContainer", Private).SetValue(forge, settings);
-                Invoke(forge, "BuildGeneralSettingsTab");
-                document.rootVisualElement.Add(settings);
-
-                var row = RowOf(settings, "Inspector Refresh Delay Ms");
-                row.Q<IntegerField>().value = 1000;
-                Assert.AreEqual(1000, EditorPrefs.GetInt(Prefix + "EditorRefreshDelayMs", -1), "saved");
-                Assert.AreEqual(1000, row.Q<SliderInt>().value, "the slider follows");
-
-                row.Q<IntegerField>().value = 9000;
-                Assert.AreEqual(refreshDelayMax, EditorPrefs.GetInt(Prefix + "EditorRefreshDelayMs", -1),
-                    "out of range, it saves the nearest limit");
-            }
-            finally
-            {
-                Object.DestroyImmediate(host);
-                Object.DestroyImmediate(panelSettings);
                 Object.DestroyImmediate(forge);
             }
         }

@@ -47,6 +47,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The asset header stayed put while the content scrolled under it. The inspector hid the Inspector's own scroll
+        /// view and gave its content one of its own, sized by measuring the window on loops that rescheduled themselves
+        /// every 200 and 300 ms for as long as it stayed open (ED-11). The header scrolls with the content now (Q17), so
+        /// the inspector keeps no scroll view of its own and measures nothing.
+        /// </summary>
+        [Test]
+        public void ED_11_The_asset_header_scrolls_with_the_content()
+        {
+            var attribute = ScriptableObject.CreateInstance<Attribute>();
+            var editor = UnityEditor.Editor.CreateEditor(attribute);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assume.That(root, Is.Not.Null, "the inspector builds");
+                Assert.IsEmpty(root.Children().OfType<ScrollView>(), "the inspector keeps no scroll view of its own");
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(attribute);
+            }
+        }
+
+        /// <summary>
         /// The control for removing the Impact drawer's 250 ms timer: its Multiply Behaviour still shows for a Multiply
         /// impact alone, and follows a change to the operation, an Undo among them.
         /// </summary>
