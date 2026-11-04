@@ -58,6 +58,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>
+        /// An empty slot in an ability's activation rules, which a list's "+" leaves, threw when the ability was checked,
+        /// so it could never activate. The rule drawer hid it by writing a default into an empty slot as it drew; it no
+        /// longer writes while drawing, so an empty slot now asks nothing (ED-12).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_empty_activation_rule_asks_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var ability = Make.Ability("Ruled");
+            ability.SourceActivationRules.Add(null);
+            ability.TargetActivationRules.Add(null);
+            var abilities = gas.GetAbilitySystem();
+            abilities.GiveAbility(ability, 1, out int index);
+
+            Assert.That(abilities.CanActivateAbility(index), "an empty source rule asks nothing");
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "nor does an empty target rule");
+            await Frames.Step();
+        });
+
+        /// <summary>
         /// An Any stage ends with its first finished task, and every compiled stage carried a callback task
         /// that finished at once, so an Any stage ended as it started and cancelled its real work. The stage
         /// here has one task of a second, which is the least it can last.

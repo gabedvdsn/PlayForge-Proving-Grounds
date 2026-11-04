@@ -290,6 +290,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 linkCurrentToBase: linkCurrentToBase);
         }
 
+        /// <summary>
+        /// An empty slot in a scaler's Behaviours, which a list's "+" leaves, threw on every evaluation. The behaviour
+        /// drawer hid it by writing a default into an empty slot as it drew; it no longer writes while drawing, so an
+        /// empty slot now changes nothing (ED-12).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_empty_scaler_behaviour_changes_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var strength = Make.Attribute("Strength");
+            var withEmpty = World.Entity(hub, Make.Set(Make.Element(strength, 10f, 100f)));
+            var without = World.Entity(hub, Make.Set(Make.Element(strength, 10f, 100f)));
+            var emptySlot = new SimpleScaler { Scaling = UnityEngine.AnimationCurve.Constant(0f, 1f, 5f) };
+            emptySlot.Behaviours.Add(null);
+
+            World.Apply(withEmpty, withEmpty, Empowered(strength, emptySlot));
+            World.Apply(without, without,
+                Empowered(strength, new SimpleScaler { Scaling = UnityEngine.AnimationCurve.Constant(0f, 1f, 5f) }));
+            await Frames.Step();
+
+            Assert.That(Current(without, strength), Is.GreaterThan(10f), "the scaler's value lands");
+            Assert.That(Current(withEmpty, strength), Is.EqualTo(Current(without, strength)).Within(1e-3f),
+                "and the empty behaviour changes nothing");
+        });
+
+        private GameplayEffect Empowered(Attribute strength, AbstractScaler scaler) => Make.Effect("Empowered",
+            new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = strength, Op = ECalculationOperation.Add,
+                MagnitudeScaler = scaler, MagnitudeOp = EMagnitudeOperation.UseScaler,
+            });
+
         private static float Current(IGameplayAbilitySystem gas, Attribute attribute)
         {
             gas.TryGetAttributeValue(attribute, out var value);
