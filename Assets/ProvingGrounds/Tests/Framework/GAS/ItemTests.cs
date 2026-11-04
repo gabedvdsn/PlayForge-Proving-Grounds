@@ -29,6 +29,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>
+        /// Unequipping removed the item's Active Ability whether or not equipping had granted it. An entity that had the
+        /// ability already, where duplicates aren't allowed, lost its own when the item came off.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_48_Unequipping_removes_only_the_ability_the_item_granted([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var abilities = gas.GetAbilitySystem();
+            var slash = Make.Ability("Slash");
+            Assert.That(abilities.GiveAbility(slash, 1, out _), "the entity knows it already");
+
+            var sword = Make.Item("Sword");
+            sword.ActiveAbility = slash;
+            var items = gas.GetItemSystem();
+            Assert.That(items.GiveAndEquipItem(sword, out int index), "the sword goes on, though it can't grant a second Slash");
+            items.UnequipItem(index);
+
+            Assert.That(abilities.HasAbility(slash), "the entity keeps its own");
+            await Frames.Step();
+        });
+
         /// <summary>Having no ability to grant isn't a failed grant, so a passive item says nothing about one.</summary>
         [UnityTest]
         public IEnumerator A_passive_item_reports_no_ability([Values] Hub hub) => Live(async () =>
