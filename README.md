@@ -117,6 +117,9 @@ homing shot that lands its effects on whatever it's aimed at, for the disjoint t
   element to a `UIDocument`'s runtime panel, which works there (`TheForgeSettingsTests`, `AssetTagTests`). A button
   answers a `NavigationSubmitEvent` sent to it. A test that only reads a window, such as its title, can open it and
   set `LogAssert.ignoreFailingMessages` around the call (`MenuTests`).
+- **Bindings run in that panel too.** Add the whole inspector root, not a field taken out of it: `Bind` waits for its
+  element to reach a panel, so a field moved out first is never bound. Wait a few frames for the bindings, as
+  `InspectorUndoTests` does, before reading a field or after an Undo.
 - **A dialog would block** an interactive run, so code under test asks through a hook a test can answer, such as
   `ForgeAssetDeletion.Confirm`.
 - **A second play session** in one editor can be played from an EditMode `[UnityTest]`: turn domain reloading off in
