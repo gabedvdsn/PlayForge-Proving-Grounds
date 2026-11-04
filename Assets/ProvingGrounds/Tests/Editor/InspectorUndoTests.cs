@@ -286,6 +286,100 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Entity inspector wrote its Description, Starting and Max Level, Activation Policy, three Allow Duplicate
+        /// toggles and Link Mode straight into the asset, with no Undo, and drew Level Source from the link mode once.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_edit_in_the_Entity_inspector_undoes()
+        {
+            var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+            entity.Name = "Goblin";
+            entity.Description = "Small and mean.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(entity);
+                yield return Frames();
+
+                var description = root.Q<TextField>("Description");
+                Assert.IsNotNull(description, "the inspector shows Description");
+                Undo.IncrementCurrentGroup();
+                Commit(description, "Big and mean.");
+                Assert.AreEqual("Big and mean.", entity.Description, "Description is written");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Small and mean.", entity.Description, "one Undo takes back Description");
+                yield return Frames();
+                Assert.AreEqual("Small and mean.", description.value, "and its field shows it");
+
+                var startingLevel = root.Q<IntegerField>("StartingLevel");
+                var maxLevel = root.Q<IntegerField>("MaxLevel");
+                var policy = root.Q<EnumField>("ActivationPolicy");
+                var duplicateAbilities = root.Q<Toggle>("AllowDuplicates");
+                var duplicateItems = root.Q<Toggle>("AllowDuplicateItems");
+                var duplicateEquipped = root.Q<Toggle>("AllowDuplicateEquippedItems");
+                Assert.IsNotNull(startingLevel, "the inspector shows Starting Level");
+                Assert.IsNotNull(maxLevel, "and Max Level");
+                Assert.IsNotNull(policy, "and Activation Policy");
+                Assert.IsNotNull(duplicateAbilities, "and Allow Duplicate Abilities");
+                Assert.IsNotNull(duplicateItems, "and Allow Duplicate Items");
+                Assert.IsNotNull(duplicateEquipped, "and Allow Duplicate Equipped Items");
+
+                var edits = new (string label, System.Action edit, System.Func<object> stored, System.Func<object> shown)[]
+                {
+                    ("Starting Level", () => startingLevel.value = entity.StartingLevel + 4,
+                        () => entity.StartingLevel, () => startingLevel.value),
+                    ("Max Level", () => maxLevel.value = entity.MaxLevel - 9, () => entity.MaxLevel, () => maxLevel.value),
+                    ("Activation Policy", () => policy.value =
+                            entity.ActivationPolicy == EAbilityActivationPolicy.AlwaysActivate
+                                ? EAbilityActivationPolicy.ActivateIfIdle
+                                : EAbilityActivationPolicy.AlwaysActivate,
+                        () => entity.ActivationPolicy, () => policy.value),
+                    ("Allow Duplicate Abilities", () => duplicateAbilities.value = !entity.AllowDuplicateAbilities,
+                        () => entity.AllowDuplicateAbilities, () => duplicateAbilities.value),
+                    ("Allow Duplicate Items", () => duplicateItems.value = !entity.AllowDuplicateItems,
+                        () => entity.AllowDuplicateItems, () => duplicateItems.value),
+                    ("Allow Duplicate Equipped Items", () => duplicateEquipped.value = !entity.AllowDuplicateEquippedItems,
+                        () => entity.AllowDuplicateEquippedItems, () => duplicateEquipped.value),
+                };
+                foreach (var (label, edit, stored, shown) in edits)
+                {
+                    var before = stored();
+                    Undo.IncrementCurrentGroup();
+                    edit();
+                    Assert.AreNotEqual(before, stored(), $"{label} is written");
+                    Undo.FlushUndoRecordObjects();
+                    Undo.PerformUndo();
+                    Assert.AreEqual(before, stored(), $"one Undo takes back {label}");
+                    yield return Frames();
+                    Assert.AreEqual(before, shown(), $"and {label}'s field shows it");
+                }
+
+                var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
+                Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
+                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone entity offers no provider");
+                Undo.IncrementCurrentGroup();
+                linkMode.value = EItemLinkMode.LinkedToProvider;
+                Assert.AreEqual(EItemLinkMode.LinkedToProvider, entity.LinkMode, "Link Mode is written");
+                yield return Frames();
+                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EItemLinkMode.Standalone, entity.LinkMode, "one Undo takes back Link Mode");
+                yield return Frames();
+                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(entity);
+            }
+        }
+
+        /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
         /// </summary>
