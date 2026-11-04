@@ -102,21 +102,33 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             button.SendEvent(submit);
         }
 
-        // The inspectors' link questions, answered yes while a test runs, since a dialog would block it
-        private sealed class AnswerLinksYes : System.IDisposable
+        // The inspectors' link questions, answered while a test runs, since a dialog would block it. Each question's
+        // message is kept, and the answer is yes unless the test says no.
+        private class AnswerLinks : System.IDisposable
         {
             private static readonly FieldInfo Hook =
                 typeof(BasePlayForgeEditor).GetField("ConfirmLinkChange", BindingFlags.Static | BindingFlags.NonPublic);
             private readonly object original;
 
-            public AnswerLinksYes()
+            public List<string> Messages { get; } = new List<string>();
+
+            public AnswerLinks(bool answer)
             {
                 Assert.IsNotNull(Hook, "the inspectors ask through a hook a test can answer");
                 original = Hook.GetValue(null);
-                Hook.SetValue(null, (System.Func<string, string, string, bool>)((_, _, _) => true));
+                Hook.SetValue(null, (System.Func<string, string, string, bool>)((_, message, _) =>
+                {
+                    Messages.Add(message);
+                    return answer;
+                }));
             }
 
             public void Dispose() => Hook.SetValue(null, original);
+        }
+
+        private sealed class AnswerLinksYes : AnswerLinks
+        {
+            public AnswerLinksYes() : base(true) { }
         }
 
         // Calls one of the base inspector's internal steps, as the provider and template pickers do
@@ -609,6 +621,108 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 host.Destroy();
                 Object.DestroyImmediate(ability);
+            }
+        }
+
+        // An asset with one child its Unlink All would unlink, and everything made for it
+        public sealed class LinkedChild
+        {
+            public string Label;
+            public System.Func<List<Object>, ScriptableObject> Make;
+            public override string ToString() => Label;
+        }
+
+        private static IEnumerable<LinkedChild> LinkedChildren()
+        {
+            // An effect unlinks the contained effects linked to its own provider
+            yield return new LinkedChild
+            {
+                Label = "Effect", Make = made =>
+                {
+                    var provider = ScriptableObject.CreateInstance<Ability>();
+                    var contained = ScriptableObject.CreateInstance<GameplayEffect>();
+                    var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+                    made.AddRange(new Object[] { provider, contained, effect });
+                    effect.ImpactSpecification ??= new GameplayEffectImpact();
+                    effect.ImpactSpecification.Packets = new[] { new ContainedEffectPacket { ContainedEffect = contained } };
+                    effect.LinkToProvider(provider);
+                    contained.LinkToProvider(provider);
+                    return effect;
+                },
+            };
+            // An ability unlinks its cost and cooldown when they are linked to it
+            yield return new LinkedChild
+            {
+                Label = "Ability", Make = made =>
+                {
+                    var cost = ScriptableObject.CreateInstance<GameplayEffect>();
+                    var ability = ScriptableObject.CreateInstance<Ability>();
+                    made.AddRange(new Object[] { cost, ability });
+                    ability.Cost = cost;
+                    cost.LinkToProvider(ability);
+                    return ability;
+                },
+            };
+            // An item unlinks the granted effects and active ability linked to it
+            yield return new LinkedChild
+            {
+                Label = "Item", Make = made =>
+                {
+                    var granted = ScriptableObject.CreateInstance<GameplayEffect>();
+                    var item = ScriptableObject.CreateInstance<Item>();
+                    made.AddRange(new Object[] { granted, item });
+                    item.GrantedEffects.Add(granted);
+                    granted.LinkToProvider(item);
+                    return item;
+                },
+            };
+            // An entity unlinks the starting items and abilities linked to it
+            yield return new LinkedChild
+            {
+                Label = "Entity", Make = made =>
+                {
+                    var starting = ScriptableObject.CreateInstance<Ability>();
+                    var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+                    made.AddRange(new Object[] { starting, entity });
+                    entity.StartingAbilities.Add(starting);
+                    starting.LinkToProvider(entity);
+                    return entity;
+                },
+            };
+        }
+
+        /// <summary>
+        /// Each inspector's Unlink All question counted the children linked to the editor rather than to the asset, so it
+        /// always said it would affect 0 (ED-31). It counts the children the unlink would change.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_31_The_unlink_question_counts_the_linked_children()
+        {
+            foreach (var child in LinkedChildren())
+            {
+                var made = new List<Object>();
+                var asset = child.Make(made);
+                var host = new Host();
+                var answers = new AnswerLinks(false);
+                try
+                {
+                    yield return null;
+                    Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                    var root = host.Inspect(asset);
+                    yield return Frames();
+
+                    var unlinkAll = root.Query<Button>().ToList().FirstOrDefault(button => button.text.StartsWith("Unlink "));
+                    Assert.IsNotNull(unlinkAll, $"the {child} inspector offers Unlink All");
+                    Press(unlinkAll);
+                    Assert.AreEqual(1, answers.Messages.Count, $"the {child} inspector asks first");
+                    StringAssert.Contains("This will affect 1 ", answers.Messages[0], $"and the {child} question counts its linked child");
+                }
+                finally
+                {
+                    answers.Dispose();
+                    host.Destroy();
+                    foreach (var each in made) Object.DestroyImmediate(each);
+                }
             }
         }
 
