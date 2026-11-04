@@ -431,6 +431,84 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Ability inspector wrote its Description, Activation Policy, Activate Immediately and Link Mode straight
+        /// into the asset, with no Undo, and drew Level Source from the link mode once.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_edit_in_the_Ability_inspector_undoes()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            ability.Definition.Name = "Fireball";
+            ability.Definition.Description = "Hurls fire.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(ability);
+                yield return Frames();
+
+                var description = root.Q<TextField>("Description");
+                Assert.IsNotNull(description, "the inspector shows Description");
+                Undo.IncrementCurrentGroup();
+                Commit(description, "Hurls ice.");
+                Assert.AreEqual("Hurls ice.", ability.Definition.Description, "Description is written");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Hurls fire.", ability.Definition.Description, "one Undo takes back Description");
+                yield return Frames();
+                Assert.AreEqual("Hurls fire.", description.value, "and its field shows it");
+
+                var policy = root.Q<EnumField>("ActivationPolicy");
+                var immediately = root.Q<Toggle>("ActivateImmediately");
+                Assert.IsNotNull(policy, "the inspector shows Activation Policy");
+                Assert.IsNotNull(immediately, "and Activate Immediately");
+                var edits = new (string label, System.Action edit, System.Func<object> stored, System.Func<object> shown)[]
+                {
+                    ("Activation Policy", () => policy.value =
+                            ability.Definition.ActivationPolicy == EAbilityActivationPolicyExtended.AlwaysActivate
+                                ? EAbilityActivationPolicyExtended.UseLocalPolicy
+                                : EAbilityActivationPolicyExtended.AlwaysActivate,
+                        () => ability.Definition.ActivationPolicy, () => policy.value),
+                    ("Activate Immediately", () => immediately.value = !ability.Definition.ActivateImmediately,
+                        () => ability.Definition.ActivateImmediately, () => immediately.value),
+                };
+                foreach (var (label, edit, stored, shown) in edits)
+                {
+                    var before = stored();
+                    Undo.IncrementCurrentGroup();
+                    edit();
+                    Assert.AreNotEqual(before, stored(), $"{label} is written");
+                    Undo.FlushUndoRecordObjects();
+                    Undo.PerformUndo();
+                    Assert.AreEqual(before, stored(), $"one Undo takes back {label}");
+                    yield return Frames();
+                    Assert.AreEqual(before, shown(), $"and {label}'s field shows it");
+                }
+
+                var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
+                Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
+                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone ability offers no provider");
+                Undo.IncrementCurrentGroup();
+                linkMode.value = EAbilityLinkMode.LinkedToProvider;
+                Assert.AreEqual(EAbilityLinkMode.LinkedToProvider, ability.LinkMode, "Link Mode is written");
+                yield return Frames();
+                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EAbilityLinkMode.Standalone, ability.LinkMode, "one Undo takes back Link Mode");
+                yield return Frames();
+                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
         /// </summary>
