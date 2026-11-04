@@ -1,0 +1,183 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using FarEmerald.PlayForge.Extended.Editor;
+using NUnit.Framework;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.TestTools;
+using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
+
+namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
+{
+    /// <summary>
+    /// Undo and multi-editing in the asset inspectors (ED-12). Each test builds an inspector as the Inspector builds it
+    /// and adds it whole to a runtime panel, since batch mode has no graphics device to give an editor window one, so
+    /// its bindings run there.
+    /// </summary>
+    public class InspectorUndoTests
+    {
+        // One of the Attribute inspector's text fields: its name in the inspector, and how to read it from the asset
+        public sealed class AttributeText
+        {
+            public string Field;
+            public System.Func<Attribute, string> Get;
+            public override string ToString() => Field;
+        }
+
+        private static IEnumerable<AttributeText> AttributeTexts()
+        {
+            yield return new AttributeText { Field = "Name", Get = a => a.Name };
+            yield return new AttributeText { Field = "Abbreviation", Get = a => a.Abbreviation };
+            yield return new AttributeText { Field = "Description", Get = a => a.Description };
+        }
+
+        // A runtime panel to build an inspector in, and the inspector itself
+        private sealed class Host
+        {
+            private readonly PanelSettings settings = ScriptableObject.CreateInstance<PanelSettings>();
+            private readonly GameObject owner = new GameObject("ED-12") { hideFlags = HideFlags.HideAndDontSave };
+            private UnityEditor.Editor editor;
+
+            public UIDocument Document { get; }
+
+            public Host()
+            {
+                Document = owner.AddComponent<UIDocument>();
+                Document.panelSettings = settings;
+            }
+
+            public VisualElement Inspect(params Object[] targets)
+            {
+                editor = UnityEditor.Editor.CreateEditor(targets);
+                var root = editor.CreateInspectorGUI();
+                Assert.IsNotNull(root, "the inspector builds");
+                Document.rootVisualElement.Add(root);
+                return root;
+            }
+
+            public void Destroy()
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(settings);
+            }
+        }
+
+        private static Attribute MakeAttribute(string name, string abbreviation, string description)
+        {
+            var attribute = ScriptableObject.CreateInstance<Attribute>();
+            attribute.Name = name;
+            attribute.Abbreviation = abbreviation;
+            attribute.Description = description;
+            return attribute;
+        }
+
+        // Types a value into a text field and moves the focus away, as a user commits an edit
+        private static void Commit(TextField field, string value)
+        {
+            field.value = value;
+            using var focusOut = FocusOutEvent.GetPooled(field, null, FocusChangeDirection.unspecified,
+                field.panel.focusController);
+            field.SendEvent(focusOut);
+        }
+
+        // Lets the panel run its bindings, which the editor's updates drive
+        private static IEnumerator Frames()
+        {
+            for (int i = 0; i < 4; i++) yield return null;
+        }
+
+        /// <summary>
+        /// The Attribute inspector wrote its Name, Abbreviation and Description straight into the asset when a field lost
+        /// focus, and recorded no Undo, so Undo took back none of them, and the header kept the edit.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_edit_in_the_Attribute_inspector_undoes()
+        {
+            var attribute = MakeAttribute("Health", "HP", "How much damage it can take.");
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(attribute);
+                yield return Frames();
+
+                foreach (var text in AttributeTexts())
+                {
+                    var field = root.Q<TextField>(text.Field);
+                    Assert.IsNotNull(field, $"the inspector shows {text}");
+                    var before = text.Get(attribute);
+
+                    Undo.IncrementCurrentGroup();
+                    Commit(field, before + " edited");
+                    Assert.AreEqual(before + " edited", text.Get(attribute), $"{text} is written");
+
+                    Undo.FlushUndoRecordObjects();
+                    Undo.PerformUndo();
+                    Assert.AreEqual(before, text.Get(attribute), $"one Undo takes back {text}");
+
+                    yield return Frames();
+                    Assert.AreEqual(before, field.value, $"and {text}'s field shows it");
+                }
+
+                Assert.AreEqual("Health (HP)", root.Q<Label>("HeaderName").text, "the header shows what Undo brought back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(attribute);
+            }
+        }
+
+        /// <summary>
+        /// No PlayForge inspector edited more than one asset: each refused a multiple selection. The Attribute inspector
+        /// takes one, shows a field the selection disagrees on as mixed, and writes an edit to every selected attribute.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Attribute_inspector_edits_every_selected_attribute()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(AttributeEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+
+            var health = MakeAttribute("Health", "HP", "");
+            var mana = MakeAttribute("Mana", "MP", "");
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(health, mana);
+                yield return Frames();
+
+                var nameField = root.Q<TextField>("Name");
+                Assert.IsNotNull(nameField, "the inspector edits a multiple selection");
+                Assert.IsTrue(nameField.showMixedValue, "names that differ show as mixed");
+                Assert.AreEqual("2 selected", root.Q<Label>("HeaderName").text, "the header counts the selection");
+                var oneAssetActions = root.Query<Button>().ToList()
+                    .Where(button => button.tooltip is "Set template asset" or "Visualize" or "Open in The Forge");
+                Assert.IsEmpty(oneAssetActions, "actions on one asset leave the header");
+
+                Undo.IncrementCurrentGroup();
+                Commit(nameField, "Stamina");
+                Assert.AreEqual("Stamina", health.Name, "the edit reaches the first attribute");
+                Assert.AreEqual("Stamina", mana.Name, "and the second");
+                Assert.AreEqual("HP", health.Abbreviation, "a field not edited keeps each one's value");
+                Assert.AreEqual("MP", mana.Abbreviation);
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Health", health.Name, "one Undo takes it back from both");
+                Assert.AreEqual("Mana", mana.Name);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(health);
+                Object.DestroyImmediate(mana);
+            }
+        }
+    }
+}
