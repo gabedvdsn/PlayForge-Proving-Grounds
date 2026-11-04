@@ -122,6 +122,9 @@ homing shot that lands its effects on whatever it's aimed at, for the disjoint t
 - **A multiple selection needs objects without DontSave flags.** A SerializedObject over several objects flagged
   `HideAndDontSave` writes only to the first of them, so a multi-editing test uses plain scene objects and destroys
   them itself.
+- **A list's elements may not draw there.** Inside the Attribute Set inspector, the elements' scaler drawers never ran
+  in the test panel, so `ScalerDrawerTests` draws one element's property with a `PropertyField` of its own, bound to
+  the asset's SerializedObject.
 - **A dialog would block** an interactive run, so code under test asks through a hook a test can answer, such as
   `ForgeAssetDeletion.Confirm`.
 - **A second play session** in one editor can be played from an EditMode `[UnityTest]`: turn domain reloading off in
