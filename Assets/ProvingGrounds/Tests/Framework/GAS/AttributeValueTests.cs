@@ -88,6 +88,59 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value.BaseValue, Is.EqualTo(80f), "and Base");
         });
 
+        /// <summary>
+        /// A set that included itself, directly or through another, sent every walk over its sub-sets round forever, so
+        /// building the entity's attributes overflowed the stack. A set reached twice now counts once.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_44_A_set_that_includes_itself_counts_once([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var mana = Make.Attribute("Mana");
+            var outer = Make.Set(Make.Element(health, 100f, 100f));
+            var inner = Make.Set(Make.Element(mana, 50f, 50f));
+            outer.SubSets.Add(inner);
+            inner.SubSets.Add(outer);
+            outer.SubSets.Add(outer);
+
+            var gas = World.Entity(hub, outer);
+            await Frames.Step();
+
+            gas.TryGetAttributeValue(health, out var h);
+            gas.TryGetAttributeValue(mana, out var m);
+            Assert.That(h.CurrentValue, Is.EqualTo(100f), "Health");
+            Assert.That(m.CurrentValue, Is.EqualTo(50f), "Mana");
+            Assert.That(gas.GetTagWeight(outer.AssetTag), Is.EqualTo(1), "the set's tag, once");
+            Assert.That(gas.GetTagWeight(inner.AssetTag), Is.EqualTo(1), "the inner set's, once");
+        });
+
+        /// <summary>
+        /// A set reached by two paths counted twice: its combined elements were added twice, and its tag weighed 2. A set
+        /// reached twice now counts once.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_44_A_set_reached_by_two_paths_counts_once([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var shared = Make.Element(health, 30f, 30f);
+            shared.CollisionPolicy = EAttributeElementCollisionPolicy.Combine;
+            var common = Make.Set(shared);
+            var left = Make.Set();
+            var right = Make.Set();
+            left.SubSets.Add(common);
+            right.SubSets.Add(common);
+            var top = Make.Set();
+            top.SubSets.Add(left);
+            top.SubSets.Add(right);
+
+            var gas = World.Entity(hub, top);
+            await Frames.Step();
+
+            gas.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(30f), "the shared set's Health, counted once");
+            Assert.That(gas.GetTagWeight(common.AssetTag), Is.EqualTo(1), "and its tag, once");
+        });
+
         /// <summary>A combined element scaled from another attribute follows it, as a lone one does.</summary>
         [UnityTest]
         public IEnumerator GAS_27_A_combined_part_follows_what_it_scales_from([Values] Hub hub) => Live(async () =>
