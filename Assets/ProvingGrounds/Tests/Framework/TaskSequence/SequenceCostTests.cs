@@ -27,6 +27,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 "bytes a frame less, at least a token source's worth");
         });
 
+        /// <summary>
+        /// A task asks whether its sequence is paused by looking its token up, and the dictionary's default comparer boxed
+        /// the token on every lookup under Unity's Mono: 24 bytes a frame for an ability waiting in a DelayTask or a
+        /// ChannelAbilityTask. A frame in which one waits now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_11_A_frame_in_which_an_ability_waits_in_a_delay_allocates_nothing([Values] Hub hub, [Values] bool channel) => Live(async () =>
+        {
+            AbstractAbilityTask task = channel
+                ? new ChannelAbilityTask { ChannelDuration = 600f }
+                : new DelayTask { DelayMilliseconds = 600000 };
+            var abilities = World.Entity(hub, name: "Waiting", observed: false).GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("Waiting", Make.Stage(task)), 1, out int index);
+            await Frames.Step();
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(30);
+
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 300);
+
+            Assert.That(abilities.IsExecuting, "it's still waiting");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
         // What a frame allocates for a sequence that runs one stage of one instant task under `policy`, once a frame
         private async UniTask<FrameAllocation> PerFrame(ISequenceStagePolicy policy)
         {
