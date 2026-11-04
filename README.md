@@ -54,7 +54,32 @@ python Tools/check-planted.py planted.xml
 | `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
 | `Tests/Framework` | Framework behaviour by area, with tests for a bug named after its tracker ID. Each red test has been shown to go green when its bug is fixed |
 | `Tests/Planted` | Tests that must fail, proving the harness's checks work |
-| `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change. `DomainReloadTests` plays two sessions with domain reloading off |
+| `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change. `DomainReloadTests` plays two sessions with domain reloading off. `EditorSmokeTests` is Phase 4's gate, below |
+
+## The editor smoke suite
+
+`EditorSmokeTests` is Phase 4's gate (the UI interview's Q36). It runs once in each editor theme, Dark and Light, and
+checks two things.
+
+- **Every inspector and window opens without an error.** Each inspector opens on a new asset of its type, on two of
+  them selected together, and on each of the 82 assets in the Demos sample's Data folders. The sample's `Samples~`
+  folder isn't imported, so the suite copies those assets into `Assets/PlayForge Smoke Demos` while it runs and
+  deletes the folder after. Each window opens the way the editor opens it: The Forge on each tab, the debuggers,
+  every import window and every dialog.
+- **Every edit in an inspector undoes.** The sweep changes each value an inspector shows, one at a time, as a user
+  would: a text, number, toggle, popup or enum field. Then one Undo must put the asset back exactly as it was, byte
+  for byte in its serialized form. It sweeps a new asset of each type, a MonoProcess, and the fullest Demo asset in
+  each Data folder.
+
+Before it checks an inspector, the suite opens every collapsed part, so it reaches what's inside: the inspector's
+sections, each drawer's collapsed parts and every foldout. It shows a section without clicking its header, since the
+click would save the section's state as yours. Two checks fail if a new inspector or window isn't in the suite, and
+three prove the suite itself works: an IMGUI window's `OnGUI` runs, every list draws a row for each element, and an
+edit that records no Undo is reported.
+
+**The theme** is switched through Unity's own setting, which saves it as your choice, machine-wide, in the
+`UserSkin` EditorPrefs key. Each fixture puts that key back as it found it, unset or not. If a run is killed in the
+Light fixture, your editor may open in the Light theme once; set it back under Preferences → General → Editor Theme.
 
 ## Writing a test
 
@@ -112,19 +137,22 @@ homing shot that lands its effects on whatever it's aimed at, for the disjoint t
   PlayForge's stepping and UniTask continuations are measured.
 - `MeasureFrames` retakes a measure that isn't clean, up to 3 times, because a rare burst of about 1 KB lands at
   random, even with nothing spawned. A real leak fails every attempt.
-- **No editor window can be drawn** under `-nographics`: opening one logs that no graphics device is available. A UI
-  Toolkit field sends its change and focus events only through a panel, so an editor test that needs them adds the
-  element to a `UIDocument`'s runtime panel, which works there (`TheForgeSettingsTests`, `AssetTagTests`). A button
-  answers a `NavigationSubmitEvent` sent to it. A test that only reads a window, such as its title, can open it and
-  set `LogAssert.ignoreFailingMessages` around the call (`MenuTests`).
+- **No editor window can be drawn** under `-nographics`: opening one logs that no graphics device is available. The
+  window still opens, in an editor panel, and its `CreateGUI` runs. Nothing repaints it, so an IMGUI window's
+  `OnGUI` never runs on its own; `EditorSmokeTests` hands its view a layout event instead. A UI Toolkit field sends
+  its change and focus events only through a panel, so an editor test that needs them adds the element to a
+  `UIDocument`'s runtime panel, which works there (`TheForgeSettingsTests`, `AssetTagTests`). A button answers a
+  `NavigationSubmitEvent` sent to it. A test that only reads a window, such as its title, can open it and set
+  `LogAssert.ignoreFailingMessages` around the call (`MenuTests`).
 - **Bindings run in that panel too.** Add the whole inspector root to it, as `InspectorUndoTests` does, and wait a few
-  frames for the bindings before reading a field or after an Undo.
+  frames for the bindings before reading a field or after an Undo. Put the root in a `ScrollView`, as the Inspector
+  does, when the test needs a list's elements: squeezed into the panel's 640 by 480, a list draws only some rows.
 - **A multiple selection needs objects without DontSave flags.** A SerializedObject over several objects flagged
   `HideAndDontSave` writes only to the first of them, so a multi-editing test uses plain scene objects and destroys
   them itself.
-- **A list's elements may not draw there.** Inside the Attribute Set inspector, the elements' scaler drawers never ran
-  in the test panel, so `ScalerDrawerTests` draws one element's property with a `PropertyField` of its own, bound to
-  the asset's SerializedObject.
+- **A list's elements may not draw there** without that `ScrollView`. Inside the Attribute Set inspector, the
+  elements' scaler drawers never ran in the test panel, so `ScalerDrawerTests` draws one element's property with a
+  `PropertyField` of its own, bound to the asset's SerializedObject.
 - **A dialog would block** an interactive run, so code under test asks through a hook a test can answer, such as
   `ForgeAssetDeletion.Confirm`.
 - **A second play session** in one editor can be played from an EditMode `[UnityTest]`: turn domain reloading off in

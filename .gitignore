@@ -77,3 +77,7 @@ crashlytics-build.properties
 # Test run output
 /results.xml
 /planted.xml
+
+# The editor smoke suite's copy of the Demos' data, which it deletes when it ends
+/[Aa]ssets/PlayForge Smoke Demos/
+/[Aa]ssets/PlayForge Smoke Demos.meta
