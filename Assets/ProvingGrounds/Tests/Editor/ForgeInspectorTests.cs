@@ -1,7 +1,9 @@
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -65,6 +67,50 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 Object.DestroyImmediate(host);
+            }
+        }
+
+        /// <summary>The Entity inspector's Allow Duplicate Equipped Items toggle opened showing Allow Duplicate Items' value.</summary>
+        [Test]
+        public void ED_29_Allow_Duplicate_Equipped_Items_shows_its_own_value()
+        {
+            var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+            entity.AllowDuplicateItems = true;
+            entity.AllowDuplicateEquippedItems = false;
+            var editor = UnityEditor.Editor.CreateEditor(entity);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assert.IsFalse(root.Q<Toggle>("AllowDuplicateEquippedItems").value);
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(entity);
+            }
+        }
+
+        /// <summary>
+        /// A Local Data row of type ScriptableObject edited the MonoBehaviour value, and one of type MonoBehaviour the
+        /// ScriptableObject value, so neither kept what was assigned to it.
+        /// </summary>
+        [TestCase(EDataWrapperType.ScriptableObject, typeof(ScriptableObject), "scriptableObjectValue")]
+        [TestCase(EDataWrapperType.MonoBehaviour, typeof(MonoBehaviour), "monoBehaviourValue")]
+        public void ED_30_A_Local_Data_object_row_edits_its_own_value(EDataWrapperType type, System.Type objectType, string value)
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                ability.LocalData.Add(new DataWrapper { Type = type });
+                var row = new SerializedObject(ability).FindProperty(nameof(Ability.LocalData)).GetArrayElementAtIndex(0);
+                var root = new DataWrapperDrawer().CreatePropertyGUI(row);
+
+                var field = root.Query<ObjectField>().ToList().Single(f => f.objectType == objectType);
+                Assert.That(field.bindingPath, Does.EndWith(value));
+            }
+            finally
+            {
+                Object.DestroyImmediate(ability);
             }
         }
     }
