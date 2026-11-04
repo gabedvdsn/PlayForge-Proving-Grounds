@@ -24,6 +24,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// Every asset inspector listened to the editor's update every frame of its life, to catch an object picker's
+        /// choice (ED-11). It listens only while a picker is open.
+        /// </summary>
+        [Test]
+        public void ED_11_An_idle_inspector_listens_to_no_update()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            var editor = UnityEditor.Editor.CreateEditor(effect);
+            try
+            {
+                Assume.That(editor.CreateInspectorGUI(), Is.Not.Null, "the inspector builds");
+                var listeners = EditorApplication.update?.GetInvocationList() ?? new System.Delegate[0];
+                Assert.IsEmpty(listeners.Where(listener => listener.Target is FarEmerald.PlayForge.Extended.Editor.BasePlayForgeEditor),
+                    "no inspector listens while no picker is open");
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
         /// The control for removing the Impact drawer's 250 ms timer: its Multiply Behaviour still shows for a Multiply
         /// impact alone, and follows a change to the operation, an Undo among them.
         /// </summary>
