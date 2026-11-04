@@ -1087,5 +1087,151 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(second);
             }
         }
+
+        // A property drawn as the Inspector draws it, in the host's panel
+        private static PropertyField Draw(Host host, Object target, string path)
+        {
+            var serialized = new SerializedObject(target);
+            var field = new PropertyField(serialized.FindProperty(path));
+            host.Document.rootVisualElement.Add(field);
+            field.Bind(serialized);
+            return field;
+        }
+
+        /// <summary>
+        /// An asset reference was a button that opened a dropdown list of its own, with hover colors and Clear and Open
+        /// icon buttons set in C# (ED-38). It is Unity's object field, with Open beside it once it names an asset and New
+        /// while it's empty, as Docs/EDITOR_STYLE.md asks, and it sets no look in code.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_38_An_asset_reference_is_Unity_s_object_field()
+        {
+            var stats = ScriptableObject.CreateInstance<AttributeSet>();
+            stats.Name = "Goblin Stats";
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.AttributeSet = stats;
+            var empty = ScriptableObject.CreateInstance<EntityIdentity>();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var set = Draw(host, goblin, nameof(EntityIdentity.AttributeSet));
+                var none = Draw(host, empty, nameof(EntityIdentity.AttributeSet));
+                yield return Frames();
+
+                var objectField = set.Q<ObjectField>();
+                Assert.IsNotNull(objectField, "the reference is Unity's object field");
+                Assert.AreEqual(typeof(AttributeSet), objectField.objectType, "of its type");
+                Assert.AreEqual(stats, objectField.value, "showing the set");
+                Assert.IsNull(set.Q<Button>("ValueButton"), "with no dropdown button");
+                Assert.That(set.Query<Button>().ToList().Select(button => button.text), Has.Member("Open"), "Open beside a set");
+                Assert.That(none.Query<Button>().ToList().Select(button => button.text), Has.Member("New"), "and New beside an empty field");
+
+                var look = new[] { set, none }.SelectMany(field => field.Query<VisualElement>().ToList())
+                    .SelectMany(element => ForgeInspectorTests.LookSetInCode(element).Select(style => $"{element.GetType().Name} \"{element.name}\" sets {style}"))
+                    .ToList();
+                Assert.That(look, Is.Empty, "no look set in code");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(goblin);
+                Object.DestroyImmediate(empty);
+                Object.DestroyImmediate(stats);
+            }
+        }
+
+        /// <summary>
+        /// New makes an asset of the reference's type where The Forge makes that type, named for the asset and the field,
+        /// with the tag its name gives, and the field takes it, as one Undo step (ED-38).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_38_New_makes_an_asset_and_uses_it()
+        {
+            const string folder = "Assets/ED-38 New";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-38 New");
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            AssetDatabase.CreateAsset(goblin, $"{folder}/Goblin.asset");
+            var host = new Host();
+            string made = null;
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, goblin, nameof(EntityIdentity.AttributeSet));
+                yield return Frames();
+
+                var create = field.Query<Button>().ToList().FirstOrDefault(button => button.text == "New");
+                Assert.IsNotNull(create, "an empty reference offers New");
+                Undo.IncrementCurrentGroup();
+                Press(create);
+                yield return Frames();
+
+                var set = goblin.AttributeSet;
+                Assert.IsNotNull(set, "New makes a set and uses it");
+                made = AssetDatabase.GetAssetPath(set);
+                Assert.IsNotEmpty(made, "as an asset");
+                Assert.AreEqual("Goblin Attribute Set", set.Name, "named for the entity and the field");
+                Assert.That(set.AssetTag.Name, Does.Contain("GoblinAttributeSet"), "with the tag its name gives");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsNull(goblin.AttributeSet, "one Undo takes the reference back");
+            }
+            finally
+            {
+                host.Destroy();
+                if (!string.IsNullOrEmpty(made)) AssetDatabase.DeleteAsset(made);
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        /// <summary>
+        /// Setting an effect field asked in a dialog whether to link the effect to the asset that holds it, and again when
+        /// it was linked elsewhere (ED-38). Setting it asks nothing: a line under the field says how the effect is linked
+        /// and offers Link, which links it as one Undo step.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_38_An_effect_reference_offers_its_link_in_place()
+        {
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            fireball.Definition.Name = "Fireball";
+            var cost = ScriptableObject.CreateInstance<GameplayEffect>();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, fireball, nameof(Ability.Cost));
+                yield return Frames();
+
+                Undo.IncrementCurrentGroup();
+                field.Q<ObjectField>().value = cost;
+                yield return Frames();
+                Assert.AreEqual(cost, fireball.Cost, "the cost is set");
+                Assert.IsFalse(cost.IsLinked, "and setting it asks nothing and links nothing");
+                var link = field.Query<Button>().ToList().FirstOrDefault(button => button.text == "Link");
+                Assert.IsNotNull(link, "the field offers Link in place");
+
+                Undo.IncrementCurrentGroup();
+                Press(link);
+                Assert.IsTrue(cost.IsLinkedTo(fireball), "Link links the cost to the ability");
+                yield return Frames();
+                Assert.That(field.Query<Label>().ToList().Select(label => label.text), Has.Some.StartsWith("Linked to Fireball"),
+                    "and the line says so");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsFalse(cost.IsLinked, "one Undo takes the link back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(fireball);
+                Object.DestroyImmediate(cost);
+            }
+        }
     }
 }

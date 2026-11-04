@@ -248,7 +248,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // The look a control may take only from the style sheet: its colors, borders and text
-        private static IEnumerable<string> LookSetInCode(VisualElement element)
+        internal static IEnumerable<string> LookSetInCode(VisualElement element)
         {
             var style = element.style;
             if (style.backgroundColor.keyword != StyleKeyword.Null) yield return "background-color";
