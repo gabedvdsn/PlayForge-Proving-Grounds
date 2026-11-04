@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using FarEmerald.PlayForge.Extended.Editor;
@@ -30,6 +32,49 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 Object.DestroyImmediate(editor);
+            }
+        }
+
+        private static string[] ToggleLabels(Object target)
+        {
+            var editor = UnityEditor.Editor.CreateEditor(target);
+            try
+            {
+                var root = editor.CreateInspectorGUI();
+                Assert.IsNotNull(root, "the inspector builds");
+                return root.Query<Toggle>().ToList().Select(toggle => toggle.label).ToArray();
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
+
+        /// <summary>
+        /// Two settings nothing read: an entity's Cap At Max, though its level always stops at Max Level, and an item's
+        /// Allow Duplicates, though the entity's Allow Duplicate Items decides. Both are gone, from the assets and from
+        /// the inspectors.
+        /// </summary>
+        [Test]
+        public void GAS_45_Settings_nothing_reads_are_gone()
+        {
+            const BindingFlags fields = BindingFlags.Public | BindingFlags.Instance;
+            var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+            var item = ScriptableObject.CreateInstance<Item>();
+            try
+            {
+                var left = new List<string>();
+                if (typeof(EntityIdentity).GetField("CapAtMaxLevel", fields) != null) left.Add("the entity's Cap At Max");
+                if (typeof(RuntimeEntityIdentity).GetField("CapAtMaxLevel", fields) != null) left.Add("the runtime identity's copy");
+                if (typeof(ItemDefinition).GetField("AllowDuplicates", fields) != null) left.Add("the item's Allow Duplicates");
+                if (ToggleLabels(entity).Contains("Cap At Max")) left.Add("the Entity inspector's toggle");
+                if (ToggleLabels(item).Contains("Allow Duplicates")) left.Add("the Item inspector's toggle");
+                Assert.That(left, Is.Empty, "settings nothing reads");
+            }
+            finally
+            {
+                Object.DestroyImmediate(entity);
+                Object.DestroyImmediate(item);
             }
         }
 
