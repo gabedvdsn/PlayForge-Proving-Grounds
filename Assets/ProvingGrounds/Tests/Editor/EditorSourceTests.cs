@@ -71,6 +71,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The editor has one style sheet, PlayForge.uss, which every PlayForge window and inspector reads (ED-20). It
+        /// had a style sheet nothing loaded and two UXML layouts nothing used.
+        /// </summary>
+        [Test]
+        public void ED_20_The_editor_has_one_style_sheet_and_no_unused_layouts()
+        {
+            var sheets = Directory.GetFiles(EditorFolder, "*.uss", SearchOption.AllDirectories).Select(Path.GetFileName);
+            Assert.That(sheets, Is.EquivalentTo(new[] { "PlayForge.uss" }), "style sheets");
+            Assert.That(Directory.GetFiles(EditorFolder, "*.uxml", SearchOption.AllDirectories), Is.Empty, "layouts");
+        }
+
+        /// <summary>
         /// Drawers kept whether a part is collapsed in static dictionaries keyed by property path alone, so it was shared
         /// by every asset and lost on a domain reload (ED-18). Each drawer keeps it per asset, for the editor session.
         /// </summary>

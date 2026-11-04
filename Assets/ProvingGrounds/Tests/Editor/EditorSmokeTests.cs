@@ -285,16 +285,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         // Opens every collapsed part, so the suite reaches what's inside: the inspector's sections, the drawers' collapsed
         // parts and every foldout. A drawer rebuilds as it opens, and may show more to open, so this goes on until
-        // nothing is left closed. A section is shown without its header's click, which would save its state as the
+        // nothing is left closed. A section is shown without its header's arrow, which would save its state as the
         // user's, machine-wide, where a collapsed section would otherwise hide its fields from the suite
         private static IEnumerator ExpandAll(VisualElement root)
         {
             for (int pass = 0; pass < 10; pass++)
             {
-                var sections = root.Query(className: "forge-section-content").ToList()
+                var sections = root.Query(className: "pf-section__content").ToList()
                     .Where(section => section.resolvedStyle.display == DisplayStyle.None).ToList();
                 var closed = root.Query<Button>().ToList()
-                    .Where(button => (button.tooltip == "Expand" || button.text == "▶") && button.enabledInHierarchy && Shown(button))
+                    .Where(button => (button.tooltip == "Expand" || button.text == "▶") && !button.ClassListContains("pf-section__arrow")
+                                     && button.enabledInHierarchy && Shown(button))
                     .ToList();
                 var foldouts = root.Query<Foldout>().ToList().Where(foldout => !foldout.value && Shown(foldout)).ToList();
                 if (sections.Count == 0 && closed.Count == 0 && foldouts.Count == 0) yield break;
@@ -370,6 +371,262 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 .Where(type => !opened.Any(type.IsAssignableFrom))
                 .Select(type => type.Name).Distinct().OrderBy(name => name).ToList();
             Assert.That(missing, Is.Empty, "inspectors the suite doesn't open");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // The look comes from the style sheet (ED-20)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Every color Docs/EDITOR_STYLE.md lists, by its variable in PlayForge's style sheet, in Dark and in Light
+        private static readonly (string Variable, string Dark, string Light)[] Tokens =
+        {
+            ("--pf-panel", "#383838", "#C8C8C8"),
+            ("--pf-tab-strip", "#282828", "#A5A5A5"),
+            ("--pf-toolbar", "#3C3C3C", "#CBCBCB"),
+            ("--pf-header", "#3E3E3E", "#D5D5D5"),
+            ("--pf-line", "#232323", "#999999"),
+            ("--pf-inner-line", "#2E2E2E", "#B5B5B5"),
+            ("--pf-field", "#2A2A2A", "#F0F0F0"),
+            ("--pf-field-border", "#212121", "#A5A5A5"),
+            ("--pf-button", "#585858", "#E4E4E4"),
+            ("--pf-button-border", "#303030", "#A0A0A0"),
+            ("--pf-list-header", "#353535", "#CDCDCD"),
+            ("--pf-list-body", "#414141", "#DEDEDE"),
+            ("--pf-alternate-row", "#3B3B3B", "#CDCDCD"),
+            ("--pf-help-box", "#414141", "#DCDCDC"),
+            ("--pf-help-box-border", "#2B2B2B", "#ABABAB"),
+            ("--pf-selection", "#2C5D87", "#3A72B0"),
+            ("--pf-toggle-on", "#46607C", "#9DB7D8"),
+            ("--pf-text", "#C4C4C4", "#1F1F1F"),
+            ("--pf-strong-text", "#D2D2D2", "#090909"),
+            ("--pf-secondary-text", "#B0B0B0", "#4A4A4A"),
+            ("--pf-button-text", "#EEEEEE", "#090909"),
+            ("--pf-link", "#81B4FF", "#0A4FA8"),
+            ("--pf-type-ability", "#80ADE1", "#1757A0"),
+            ("--pf-type-effect", "#A979E0", "#4F277E"),
+            ("--pf-type-entity", "#D26BAC", "#B61B7D"),
+            ("--pf-type-item", "#4AD077", "#1D6033"),
+            ("--pf-type-attribute", "#A8E8E6", "#1F5F5D"),
+            ("--pf-type-attribute-set", "#88C8D8", "#13687E"),
+            ("--pf-warning", "#DBB468", "#D9A21B"),
+            ("--pf-warning-text", "#DBB468", "#6B4C10"),
+            ("--pf-destructive", "#EA8A85", "#902E28"),
+        };
+
+        // Each asset type's icon color, by the variable that holds it
+        private static readonly Dictionary<Type, string> TypeColors = new()
+        {
+            [typeof(Ability)] = "--pf-type-ability",
+            [typeof(GameplayEffect)] = "--pf-type-effect",
+            [typeof(EntityIdentity)] = "--pf-type-entity",
+            [typeof(Item)] = "--pf-type-item",
+            [typeof(Attribute)] = "--pf-type-attribute",
+            [typeof(AttributeSet)] = "--pf-type-attribute-set",
+        };
+
+        private Color Expected(string variable)
+        {
+            var token = Tokens.First(each => each.Variable == variable);
+            ColorUtility.TryParseHtmlString(theme == EditorTheme.Dark ? token.Dark : token.Light, out var color);
+            return color;
+        }
+
+        private static bool Same(Color a, Color b) =>
+            Mathf.Abs(a.r - b.r) < 0.003f && Mathf.Abs(a.g - b.g) < 0.003f && Mathf.Abs(a.b - b.b) < 0.003f;
+
+        // The styles a control may only take from the style sheet: its colors, borders, text and box
+        private static IEnumerable<string> StylesSetInCode(VisualElement element)
+        {
+            var style = element.style;
+            if (style.backgroundColor.keyword != StyleKeyword.Null) yield return "background-color";
+            if (style.color.keyword != StyleKeyword.Null) yield return "color";
+            if (style.borderTopColor.keyword != StyleKeyword.Null || style.borderBottomColor.keyword != StyleKeyword.Null ||
+                style.borderLeftColor.keyword != StyleKeyword.Null || style.borderRightColor.keyword != StyleKeyword.Null)
+                yield return "border-color";
+            if (style.borderTopWidth.keyword != StyleKeyword.Null || style.borderBottomWidth.keyword != StyleKeyword.Null ||
+                style.borderLeftWidth.keyword != StyleKeyword.Null || style.borderRightWidth.keyword != StyleKeyword.Null)
+                yield return "border-width";
+            if (style.borderTopLeftRadius.keyword != StyleKeyword.Null || style.borderTopRightRadius.keyword != StyleKeyword.Null ||
+                style.borderBottomLeftRadius.keyword != StyleKeyword.Null || style.borderBottomRightRadius.keyword != StyleKeyword.Null)
+                yield return "border-radius";
+            if (style.fontSize.keyword != StyleKeyword.Null) yield return "font-size";
+            if (style.unityFontStyleAndWeight.keyword != StyleKeyword.Null) yield return "font-style";
+            if (style.width.keyword != StyleKeyword.Null || style.height.keyword != StyleKeyword.Null) yield return "size";
+            if (style.paddingTop.keyword != StyleKeyword.Null || style.paddingBottom.keyword != StyleKeyword.Null ||
+                style.paddingLeft.keyword != StyleKeyword.Null || style.paddingRight.keyword != StyleKeyword.Null)
+                yield return "padding";
+            if (style.marginTop.keyword != StyleKeyword.Null || style.marginBottom.keyword != StyleKeyword.Null ||
+                style.marginLeft.keyword != StyleKeyword.Null || style.marginRight.keyword != StyleKeyword.Null)
+                yield return "margin";
+            if (style.display.keyword != StyleKeyword.Null) yield return "display";
+        }
+
+        /// <summary>
+        /// An inspector carries PlayForge's one style sheet in the editor's theme, and each color
+        /// Docs/EDITOR_STYLE.md lists resolves to its value in that theme. The inspectors drew in hard-coded dark colors,
+        /// whatever the theme (ED-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_20_An_inspector_takes_each_color_from_the_style_sheet()
+        {
+            var attribute = ScriptableObject.CreateInstance<Attribute>();
+            var host = new Host(theme);
+            var wrong = new List<string>();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(attribute);
+                yield return Frames();
+                foreach (var (variable, _, _) in Tokens)
+                {
+                    if (!root.customStyle.TryGetValue(new CustomStyleProperty<Color>(variable), out var color)) wrong.Add($"{variable} is missing");
+                    else if (!Same(color, Expected(variable))) wrong.Add($"{variable} is #{ColorUtility.ToHtmlStringRGB(color)}");
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(attribute);
+            }
+            Assert.That(wrong, Is.Empty, $"colors in the {theme} theme");
+        }
+
+        /// <summary>
+        /// The asset header shows the asset's type icon, in its type's color and nowhere else (ED-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_20_The_header_shows_the_type_icon_in_its_color()
+        {
+            var made = new List<Object>();
+            var host = new Host(theme);
+            var wrong = new List<string>();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                foreach (var type in AssetTypes)
+                {
+                    var root = host.Inspect(NewAsset(made, type));
+                    yield return Frames();
+                    var icon = root.Q(className: "pf-asset-header")?.Q(className: "pf-type-icon");
+                    if (icon == null) wrong.Add($"{type.Name}: no type icon");
+                    else if (!Same(icon.resolvedStyle.color, Expected(TypeColors[type])))
+                        wrong.Add($"{type.Name}: #{ColorUtility.ToHtmlStringRGB(icon.resolvedStyle.color)}");
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                Destroy(made);
+            }
+            Assert.That(wrong, Is.Empty);
+        }
+
+        /// <summary>
+        /// The asset header and each section header take their look from the style sheet alone: no color, border, font
+        /// or box set in code (ED-20). Each set dozens of them, in colors that held in the Dark theme only.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_20_The_header_and_sections_take_their_look_from_the_style_sheet()
+        {
+            var made = new List<Object>();
+            var host = new Host(theme);
+            var wrong = new List<string>();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                foreach (var type in AssetTypes)
+                {
+                    var root = host.Inspect(NewAsset(made, type));
+                    yield return Frames();
+                    var parts = root.Query(className: "pf-asset-header").ToList()
+                        .Concat(root.Query(className: "pf-section__header").ToList()).ToList();
+                    if (parts.Count < 2) wrong.Add($"{type.Name}: {parts.Count} headers");
+                    foreach (var part in parts)
+                    foreach (var element in part.Query<VisualElement>().ToList())
+                    foreach (var style in StylesSetInCode(element))
+                        wrong.Add($"{type.Name}: {element.GetType().Name} \"{element.name}\" sets {style}");
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                Destroy(made);
+            }
+            Assert.That(wrong.Distinct(), Is.Empty);
+        }
+
+        /// <summary>
+        /// A section header shows Import, Clear and Help at all times. They appeared only while the pointer was over the
+        /// header (Q18, ED-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_20_A_section_shows_its_actions_at_all_times()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            var host = new Host(theme);
+            var hidden = new List<string>();
+            var actions = 0;
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(effect);
+                yield return Frames();
+                foreach (var action in root.Query(className: "pf-section__action").ToList())
+                {
+                    actions++;
+                    if (!Shown(action)) hidden.Add(action.tooltip);
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+            Assert.That(actions, Is.GreaterThan(0), "the sections have actions");
+            Assert.That(hidden, Is.Empty, "actions hidden until the pointer passes");
+        }
+
+        /// <summary>
+        /// The Forge and the GAS Debugger take the editor's theme and the style sheet. Each painted its window a
+        /// hard-coded dark gray, whatever the theme (ED-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_20_The_Forge_and_the_GAS_Debugger_take_the_theme()
+        {
+            var log = new WindowLog();
+            var wrong = new List<string>();
+            var themeClass = theme == EditorTheme.Dark ? "pf-theme-dark" : "pf-theme-light";
+            try
+            {
+                CloseWindows();
+                foreach (var open in new Func<EditorWindow>[]
+                         {
+                             () => { TheForge.ShowWindow(); return EditorWindow.GetWindow<TheForge>(); },
+                             () => { GASDebugger.ShowWindow(); return EditorWindow.GetWindow<GASDebugger>(); },
+                         })
+                {
+                    var window = open();
+                    yield return Frames();
+                    var root = window.rootVisualElement;
+                    var name = window.GetType().Name;
+                    if (!root.ClassListContains(themeClass)) wrong.Add($"{name} has no {themeClass}");
+                    if (root.style.backgroundColor.keyword != StyleKeyword.Null) wrong.Add($"{name} paints its background in code");
+                    if (!root.Children().Prepend(root).Any(each => each.styleSheets.count > 0 && Enumerable.Range(0, each.styleSheets.count)
+                            .Any(i => each.styleSheets[i].name == "PlayForge")))
+                        wrong.Add($"{name} lacks the style sheet");
+                }
+            }
+            finally
+            {
+                CloseWindows();
+                log.Dispose();
+            }
+            Assert.That(wrong, Is.Empty);
+            Assert.That(log.Errors, Is.Empty, "errors while the windows were open");
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
