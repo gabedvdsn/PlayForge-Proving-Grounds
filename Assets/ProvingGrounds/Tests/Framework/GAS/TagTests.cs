@@ -112,5 +112,96 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(tags.HasTag(asked, ETagMatchMode.SameRoot), "a tag under the same root");
             Assert.That(tags.HasTag(stranger, ETagMatchMode.SameRoot), Is.False, "and none under another");
         });
+
+        /// <summary>
+        /// A tag was hashed and compared by its name, a string, on every lookup, and a built-in tag's name is 64
+        /// characters, so a lookup cost as much as the name was long. Each tag now has an ID, given as it's made or
+        /// loaded, so a lookup costs the same however long the name, for a tag loaded with an asset as for one made in
+        /// code.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P7_A_tag_lookup_costs_the_same_however_long_its_name([Values] bool loaded) => Live(async () =>
+        {
+            var tags = World.Entity(Hub.Runtime, observed: false).GetTagCache();
+            var brief = Make.NewTag("B");
+            var lengthy = Make.NewTag(new string('L', 2048));
+            tags.AddTag(brief);
+            tags.AddTag(lengthy);
+            await Frames.Step();
+
+            var briefAsked = loaded ? Loaded(brief) : brief;
+            var lengthyAsked = loaded ? Loaded(lengthy) : lengthy;
+            Assert.That(tags.GetWeight(briefAsked), Is.EqualTo(1), "found");
+            Assert.That(tags.GetWeight(lengthyAsked), Is.EqualTo(1), "found");
+
+            double briefMs = FastestLookups(tags, briefAsked), lengthyMs = FastestLookups(tags, lengthyAsked);
+            TestContext.WriteLine($"ms per 10,000 lookups, a name of {brief.Name.Length} → {lengthy.Name.Length} " +
+                                  $"characters: {briefMs:F4} → {lengthyMs:F4}");
+
+            Assert.That(lengthyMs, Is.LessThan(3 * briefMs), "in milliseconds per 10,000 lookups");
+        });
+
+        /// <summary>
+        /// The control for the IDs: a tag equals another of the same name whatever string holds it, follows its name when
+        /// the name is changed in place, and a tag with no name at all still differs from one named with an empty string.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator A_tag_equals_another_of_its_name() => Live(async () =>
+        {
+            await Frames.Step();
+            var burning = Make.NewTag("Test.Status.Burning");
+            var wet = Make.NewTag("Test.Status.Wet");
+
+            var copy = burning;
+            copy.Name = new string(burning.Name.ToCharArray());
+            Assert.That(copy, Is.EqualTo(burning), "the same name in a string of its own");
+            Assert.That(copy.GetHashCode(), Is.EqualTo(burning.GetHashCode()));
+            Assert.That(Loaded(burning), Is.EqualTo(burning), "and loaded with an asset");
+
+            var renamed = burning;
+            renamed.Name = wet.Name;
+            Assert.That(renamed, Is.EqualTo(wet), "renamed in place, it's the tag of its new name");
+            Assert.That(renamed, Is.Not.EqualTo(burning));
+            Assert.That(renamed.GetHashCode(), Is.EqualTo(wet.GetHashCode()));
+
+            Assert.That(default(Tag), Is.Not.EqualTo(Tag.Generate("")), "no name at all isn't the empty name");
+            Assert.That(default(Tag), Is.EqualTo(new Tag()));
+        });
+
+        // The tag as an asset holding it loads: the asset made again from its serialized form, with a string of its own
+        private Tag Loaded(Tag tag)
+        {
+            var holder = Make.Effect("Holder", new EffectConfig { Target = null });
+            var held = holder.Tags;
+            held.AssetTag = tag;
+            holder.Tags = held;
+
+            var loaded = UnityEngine.Object.Instantiate(holder);
+            var copy = loaded.Tags.AssetTag;
+            UnityEngine.Object.Destroy(loaded);
+
+            Assert.That(copy.Name, Is.EqualTo(tag.Name), "the same name");
+            Assert.That(ReferenceEquals(copy.Name, tag.Name), Is.False, "in a string of its own");
+            return copy;
+        }
+
+        // Milliseconds for 10,000 lookups of one tag, the fastest of several rounds
+        private static double FastestLookups(TagCache tags, Tag asked)
+        {
+            const int rounds = 7, lookups = 10_000;
+            double fastest = double.MaxValue;
+            int found = 0;
+            var watch = new System.Diagnostics.Stopwatch();
+            for (int round = 0; round < rounds; round++)
+            {
+                watch.Restart();
+                for (int i = 0; i < lookups; i++) found += tags.GetWeight(asked);
+                watch.Stop();
+                fastest = System.Math.Min(fastest, watch.Elapsed.TotalMilliseconds);
+            }
+
+            Assert.That(found, Is.EqualTo(rounds * lookups), "every lookup found it");
+            return fastest;
+        }
     }
 }
