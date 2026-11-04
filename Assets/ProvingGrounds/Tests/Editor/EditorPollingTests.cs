@@ -143,8 +143,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 impact.Bind(serialized);
                 for (int i = 0; i < 4; i++) yield return null;
 
-                VisualElement Multiply() => impact.Query<PropertyField>().ToList()
-                    .FirstOrDefault(field => field.bindingPath.EndsWith(nameof(GameplayEffectImpact.MultiplyBehaviour)));
+                // An enum field bound to it, since the drawer follows the style sheet (ED-2)
+                VisualElement Multiply() => impact.Q<EnumField>("MultiplyBehaviour");
                 Assume.That(Multiply(), Is.Not.Null, "the drawer has Multiply Behaviour");
                 Assert.AreEqual(DisplayStyle.None, Multiply().resolvedStyle.display, "an Add impact hides it");
 

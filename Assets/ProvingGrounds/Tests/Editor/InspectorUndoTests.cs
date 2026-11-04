@@ -1347,5 +1347,167 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(cost);
             }
         }
+
+        // An effect as a test gives it: a magnitude of -8, a duration of 6 s, and the ticks it names
+        private static GameplayEffect MakeEffect(EEffectDurationPolicy policy, bool periodic = false, int ticks = 0,
+            bool tickOnApplication = false)
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.Definition.Name = "Burning";
+            effect.ImpactSpecification = new GameplayEffectImpact
+            {
+                MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            };
+            effect.DurationSpecification = new GameplayEffectDuration
+            {
+                DurationPolicy = policy,
+                DurationOperation = new ScalerMagnitudeOperation { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                EnablePeriodicTicks = periodic,
+                TickOnApplication = tickOnApplication,
+                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = ticks },
+                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            };
+            return effect;
+        }
+
+        // The value a read-only row shows
+        private static string Shown(VisualElement root, string name) => root.Q<TextField>(name)?.value;
+
+        // The looks a drawer sets in code, outside the drawers nested in it
+        private static List<string> OwnLook(PropertyField field) => field.Query<VisualElement>().ToList()
+            .Where(element => element.GetFirstAncestorOfType<PropertyField>() == field)
+            .SelectMany(element => ForgeInspectorTests.LookSetInCode(element).Select(style => $"{element.GetType().Name} \"{element.name}\" sets {style}"))
+            .ToList();
+
+        /// <summary>
+        /// The impact didn't say how it is delivered, and still drew Reverse On Removal, which the impact model removed
+        /// (ED-2). It says its delivery, which the duration gives it, and what a periodic impact commits, and it follows
+        /// the duration as it changes. It sets no look in code: it drew tinted boxes with colored headings.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_2_The_impact_says_how_it_is_delivered()
+        {
+            var health = MakeAttribute("Health", "HP", "");
+            var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 6, tickOnApplication: true);
+            burning.ImpactSpecification.AttributeTarget = health;
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, burning, nameof(GameplayEffect.ImpactSpecification));
+                yield return Frames();
+
+                Assert.AreEqual("Each tick, and on applying", Shown(field, "Delivery"), "a periodic impact that also ticks on applying");
+                Assert.AreEqual("7 over 6 s, level 1", Shown(field, "Commits"), "six ticks and one on applying, over 6 s");
+                Assert.That(field.Query<PropertyField>().ToList()
+                        .Where(nested => nested.bindingPath.EndsWith(nameof(GameplayEffectImpact.ReverseImpactOnRemoval))), Is.Empty,
+                    "Reverse On Removal is gone");
+                Assert.That(OwnLook(field), Is.Empty, "the drawer sets no look in code");
+
+                var serialized = new SerializedObject(burning);
+                serialized.FindProperty($"{nameof(GameplayEffect.DurationSpecification)}.{nameof(GameplayEffectDuration.DurationPolicy)}")
+                    .enumValueIndex = (int)EEffectDurationPolicy.Instant;
+                serialized.ApplyModifiedProperties();
+                yield return Frames();
+                Assert.AreEqual("On applying", Shown(field, "Delivery"), "an Instant effect's impact lands as it's applied");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+                Object.DestroyImmediate(health);
+            }
+        }
+
+        /// <summary>
+        /// An impact entry had no drawer, so an effect couldn't be given a second impact (ED-3). An additional impact draws
+        /// as a row with its attribute and, while folded, one line such as "Mana −10 · Continuous". Its Delivery offers
+        /// what the effect's duration can make, and a help box says when the one it names can't happen.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_3_An_additional_impact_draws_as_an_entry()
+        {
+            var mana = MakeAttribute("Mana", "MP", "");
+            var drain = MakeEffect(EEffectDurationPolicy.Instant);
+            drain.ImpactSpecification.AdditionalImpacts.Add(new AttributeImpactEntry
+            {
+                AttributeTarget = mana,
+                Delivery = EImpactDelivery.Continuous,
+                Magnitude = new ScalerMagnitudeOperation { Magnitude = -10f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            });
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, drain, nameof(GameplayEffect.ImpactSpecification));
+                yield return Frames();
+
+                var entry = field.Q(name: "ImpactEntry");
+                Assert.IsNotNull(entry, "the additional impact draws as an entry");
+                Assert.AreEqual("Mana −10 · Continuous", entry.Q<Label>("Summary")?.text, "its line says what it does");
+                var delivery = entry.Q<PopupField<EImpactDelivery>>("Delivery");
+                Assert.IsNotNull(delivery, "it offers a Delivery");
+                Assert.That(delivery.choices, Is.EqualTo(new[] { EImpactDelivery.OnApply, EImpactDelivery.Continuous }),
+                    "an Instant effect makes On Apply impacts, and the Continuous it names stays shown");
+                Assert.That(entry.Query<HelpBox>().ToList().Select(box => box.text), Has.Some.Contains("never applies"),
+                    "and a help box says it can't happen");
+                Assert.That(OwnLook(entry.GetFirstAncestorOfType<PropertyField>()), Is.Empty, "the entry sets no look in code");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(drain);
+                Object.DestroyImmediate(mana);
+            }
+        }
+
+        /// <summary>
+        /// Add Impact adds an impact the effect's duration can make, and an entry's Remove takes it away; one Undo takes
+        /// back each (ED-3).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_3_An_impact_is_added_and_removed_in_place()
+        {
+            var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 2);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, burning, nameof(GameplayEffect.ImpactSpecification));
+                yield return Frames();
+
+                var add = field.Q<Button>("AddImpact");
+                Assert.IsNotNull(add, "the impact offers Add Impact");
+                Undo.IncrementCurrentGroup();
+                Press(add);
+                yield return Frames();
+                var impacts = burning.ImpactSpecification.AdditionalImpacts;
+                Assert.AreEqual(1, impacts.Count, "Add Impact adds one");
+                Assert.AreEqual(EImpactDelivery.Continuous, impacts[0].Delivery, "which lasts while the effect does, as a durational effect's can");
+                Assert.AreEqual(EMagnitudeOperation.UseMagnitude, impacts[0].Magnitude.RealMagnitude, "and uses its own magnitude");
+                var entry = field.Q(name: "ImpactEntry");
+                Assert.IsNotNull(entry, "and draws it");
+
+                Undo.IncrementCurrentGroup();
+                Press(entry.Q<Button>("RemoveImpact"));
+                yield return Frames();
+                Assert.AreEqual(0, burning.ImpactSpecification.AdditionalImpacts.Count, "Remove takes it away");
+                Assert.IsNull(field.Q(name: "ImpactEntry"), "and its entry");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(1, burning.ImpactSpecification.AdditionalImpacts.Count, "one Undo brings it back");
+                Undo.PerformUndo();
+                Assert.AreEqual(0, burning.ImpactSpecification.AdditionalImpacts.Count, "and another takes back the add");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+            }
+        }
     }
 }
