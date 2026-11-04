@@ -12,6 +12,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private const int TaskFrames = 10;
 
         /// <summary>
+        /// A GAS gave its Starting Abilities, and tried the ones set to Activate Immediately, before it built its
+        /// attributes. So the default Cost rule, finding no attribute to pay from, refused any such ability with a cost.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_49_An_opening_ability_with_a_cost_activates([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            var set = Make.Set(Make.Element(mana, 50f, 50f));
+            var opener = Make.Ability("Opening Move", Make.Stage(new ProbeAbilityTask(World, "Opening Move")));
+            opener.Definition.ActivateImmediately = true;
+            opener.Cost = Make.Effect("Cost", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = mana, Op = ECalculationOperation.Add, Magnitude = -10f,
+            });
+
+            if (hub == Hub.Mono)
+            {
+                var gas = World.NewMonoEntity(set, "Opener");
+                gas.EntityData.StartingAbilities.Add(opener);
+                World.Register(gas);
+            }
+            else
+            {
+                var identity = Make.Identity("Opener", set);
+                identity.StartingAbilities.Add(opener);
+                World.Register(new RuntimeGameplayAbilitySystem(new RuntimeEntityIdentity(identity)));
+            }
+
+            await Frames.Until(() => Ledger.Cleans("Opening Move") == 1, 10, "the opening move runs");
+        });
+
+        /// <summary>
         /// OnAbilityEnd fired when the claim was released, which for an ability with no critical stage is as it
         /// starts. Nothing reported the real end.
         /// </summary>
