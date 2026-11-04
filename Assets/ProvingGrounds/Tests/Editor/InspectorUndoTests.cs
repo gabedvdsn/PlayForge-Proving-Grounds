@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
 using UnityEditor;
@@ -42,6 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             private UnityEditor.Editor editor;
 
             public UIDocument Document { get; }
+            public UnityEditor.Editor Editor => editor;
 
             public Host()
             {
@@ -90,6 +92,108 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private static IEnumerator Frames()
         {
             for (int i = 0; i < 4; i++) yield return null;
+        }
+
+        // Presses a button, as a user does
+        private static void Press(Button button)
+        {
+            using var submit = NavigationSubmitEvent.GetPooled();
+            submit.target = button;
+            button.SendEvent(submit);
+        }
+
+        // The inspectors' link questions, answered yes while a test runs, since a dialog would block it
+        private sealed class AnswerLinksYes : System.IDisposable
+        {
+            private static readonly FieldInfo Hook =
+                typeof(BasePlayForgeEditor).GetField("ConfirmLinkChange", BindingFlags.Static | BindingFlags.NonPublic);
+            private readonly object original;
+
+            public AnswerLinksYes()
+            {
+                Assert.IsNotNull(Hook, "the inspectors ask through a hook a test can answer");
+                original = Hook.GetValue(null);
+                Hook.SetValue(null, (System.Func<string, string, string, bool>)((_, _, _) => true));
+            }
+
+            public void Dispose() => Hook.SetValue(null, original);
+        }
+
+        // Calls one of the base inspector's internal steps, as the provider and template pickers do
+        private static void Call(UnityEditor.Editor editor, string step, params object[] arguments)
+        {
+            var method = typeof(BasePlayForgeEditor).GetMethod(step, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"the pickers go through {step}");
+            method.Invoke(editor, arguments);
+        }
+
+        /// <summary>
+        /// Linking wrote into the assets with no Undo: the provider picker's link, the Effect inspector's Link Contained
+        /// Effects and Unlink buttons, and the template picker's Assign.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_Linking_in_the_Effect_inspector_undoes()
+        {
+            var provider = ScriptableObject.CreateInstance<Ability>();
+            provider.Definition.Name = "Provider";
+            var contained = ScriptableObject.CreateInstance<GameplayEffect>();
+            var template = ScriptableObject.CreateInstance<GameplayEffect>();
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.ImpactSpecification ??= new GameplayEffectImpact();
+            effect.ImpactSpecification.Packets = new[] { new ContainedEffectPacket { ContainedEffect = contained } };
+            var host = new Host();
+            var answers = new AnswerLinksYes();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(effect);
+                yield return Frames();
+
+                Undo.IncrementCurrentGroup();
+                Call(host.Editor, "LinkTo", effect, provider);
+                Assert.AreSame(provider, effect.LinkedProvider, "the picker links the effect");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EEffectLinkMode.Standalone, effect.LinkMode, "one Undo takes back the link");
+
+                effect.LinkToProvider(provider);
+                yield return Frames();
+                var linkContained = root.Query<Button>().ToList().FirstOrDefault(button => button.text == "Link Contained Effects");
+                Assert.IsNotNull(linkContained, "Level Source offers Link Contained Effects");
+                Undo.IncrementCurrentGroup();
+                Press(linkContained);
+                Assert.AreSame(provider, contained.LinkedProvider, "the contained effect is linked");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EEffectLinkMode.Standalone, contained.LinkMode, "one Undo takes back the contained effect's link");
+
+                yield return Frames();
+                var unlink = root.Query<Button>().ToList().FirstOrDefault(button => button.text == "Unlink");
+                Assert.IsNotNull(unlink, "a linked effect offers Unlink");
+                Undo.IncrementCurrentGroup();
+                Press(unlink);
+                Assert.AreEqual(EEffectLinkMode.Standalone, effect.LinkMode, "Unlink unlinks the effect");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreSame(provider, effect.LinkedProvider, "one Undo links it again");
+
+                Undo.IncrementCurrentGroup();
+                Call(host.Editor, "AssignTemplate", template);
+                Assert.AreSame(template, effect.Template, "the template picker assigns the template");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsNull(effect.Template, "one Undo takes it back");
+            }
+            finally
+            {
+                answers.Dispose();
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(template);
+                Object.DestroyImmediate(contained);
+                Object.DestroyImmediate(provider);
+            }
         }
 
         /// <summary>
