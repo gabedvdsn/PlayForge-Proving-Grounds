@@ -39,6 +39,33 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A Durational effect with Tick On Application and no periodic ticks derives OnApply for Add: one commit, made as
+        /// it's applied. Only the Instant path committed OnApply, so the change never landed. The Audit flags the shape,
+        /// but it has to work all the same.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_50_Tick_On_Application_alone_lands_its_change([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
+            var strike = Make.Effect("Strike", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 1f, TickOnApplication = true,
+                Target = health, Op = ECalculationOperation.Add, Magnitude = -30f,
+            });
+
+            World.Apply(gas, gas, strike);
+            await Frames.Step(2);
+
+            gas.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(70f), "the strike landed as it was applied");
+
+            await Frames.Seconds(1.5f);
+            gas.TryGetAttributeValue(health, out value);
+            Assert.That(value.CurrentValue, Is.EqualTo(70f), "and a commit stays after the effect ends");
+        });
+
+        /// <summary>
         /// A timer's rounding grows with its size, and with every frame it's stepped, so over minutes the
         /// duration drifts away from the ticks by far more than it does over seconds. The last tick has to
         /// land on a long effect as well.
