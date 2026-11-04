@@ -119,6 +119,9 @@ homing shot that lands its effects on whatever it's aimed at, for the disjoint t
   set `LogAssert.ignoreFailingMessages` around the call (`MenuTests`).
 - **Bindings run in that panel too.** Add the whole inspector root to it, as `InspectorUndoTests` does, and wait a few
   frames for the bindings before reading a field or after an Undo.
+- **A multiple selection needs objects without DontSave flags.** A SerializedObject over several objects flagged
+  `HideAndDontSave` writes only to the first of them, so a multi-editing test uses plain scene objects and destroys
+  them itself.
 - **A dialog would block** an interactive run, so code under test asks through a hook a test can answer, such as
   `ForgeAssetDeletion.Confirm`.
 - **A second play session** in one editor can be played from an EditMode `[UnityTest]`: turn domain reloading off in

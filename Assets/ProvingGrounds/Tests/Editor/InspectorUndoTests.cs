@@ -4,6 +4,7 @@ using System.Linq;
 using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
@@ -54,6 +55,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var root = editor.CreateInspectorGUI();
                 Assert.IsNotNull(root, "the inspector builds");
                 Document.rootVisualElement.Add(root);
+                // The Inspector binds what an editor builds to its SerializedObject
+                root.Bind(editor.serializedObject);
                 return root;
             }
 
@@ -177,6 +180,60 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 host.Destroy();
                 Object.DestroyImmediate(health);
                 Object.DestroyImmediate(mana);
+            }
+        }
+
+        /// <summary>
+        /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
+        /// a multiple selection: it showed "Multi-object editing not supported" instead.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_MonoProcess_inspector_edits_every_selected_process()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(AbstractMonoProcessEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+
+            // Plain scene objects: a SerializedObject over several objects flagged DontSave writes only to the first of
+            // them, so HideAndDontSave would hide what the inspector does
+            var first = new GameObject("ED-12 first");
+            var second = new GameObject("ED-12 second");
+            var host = new Host();
+            try
+            {
+                // A process class with a script asset of its own, so PropertyField finds its fields' types
+                var a = first.AddComponent<LazyMonoProcess>();
+                var b = second.AddComponent<LazyMonoProcess>();
+                a.ProcessLifecycle = EProcessLifecycle.SelfTerminating;
+                b.ProcessLifecycle = EProcessLifecycle.RunThenWait;
+
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(a, b);
+                yield return Frames();
+
+                var lifecycle = root.Query<PropertyField>().ToList()
+                    .FirstOrDefault(field => field.bindingPath == nameof(AbstractMonoProcess.ProcessLifecycle));
+                Assert.IsNotNull(lifecycle, "the inspector shows Lifecycle");
+                // PropertyField draws an enum as a popup of the enum's names
+                var choice = lifecycle.Q<PopupField<string>>();
+                Assert.IsNotNull(choice, "as a choice");
+                Assert.IsTrue(choice.showMixedValue, "lifecycles that differ show as mixed");
+
+                Undo.IncrementCurrentGroup();
+                choice.index = (int)EProcessLifecycle.Synchronous;
+                Assert.AreEqual(EProcessLifecycle.Synchronous, a.ProcessLifecycle, "the edit reaches the first process");
+                Assert.AreEqual(EProcessLifecycle.Synchronous, b.ProcessLifecycle, "and the second");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EProcessLifecycle.SelfTerminating, a.ProcessLifecycle, "one Undo takes it back from both");
+                Assert.AreEqual(EProcessLifecycle.RunThenWait, b.ProcessLifecycle);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
             }
         }
     }
