@@ -10,6 +10,67 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class EffectCostTests : ProvingGroundsTest
     {
         /// <summary>
+        /// A commit allocated: a change object, a list of frozen impacters with an impacter for each, and a node kept on its
+        /// carrier for every impact the carrier ever made. So a damage-over-time effect allocated on every tick, and kept
+        /// what it allocated for as long as it lasted. A frame in which an effect ticks and commits now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P6_A_frame_in_which_an_effect_commits_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 1e6f, 1e6f)), name: "Burning", observed: false);
+            World.Apply(gas, gas, Make.Effect("Burn", new EffectConfig { Target = health, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f }));
+            await Frames.Step(20);
+
+            gas.TryGetAttributeValue(health, out var before);
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 600);
+            gas.TryGetAttributeValue(health, out var after);
+
+            Assert.That(before.CurrentValue - after.CurrentValue, Is.GreaterThanOrEqualTo(600f), "it committed every frame");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        /// <summary>
+        /// A commit a worker adjusted, as armor adjusts incoming damage, made a carrier to wrap the adjusted delta in, and
+        /// the worker's sign check built an array and summed it through LINQ. A frame in which armor adjusts an effect's
+        /// commit now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P6_A_frame_in_which_armor_adjusts_a_commit_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var armor = Make.Attribute("Armor");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 1e6f, 1e6f), Make.Element(armor, 0.5f, 0.5f)),
+                name: "Armored", observed: false);
+            gas.GetAttributeSystem().ProvideWorker(new MathAttributeWorker
+            {
+                TimingConfig = AbstractAttributeWorker.EChangeEventTiming.PreChange,
+                TargetAttribute = health,
+                AllowSelfModification = true,
+                TargetModification = EAttributeTargetExpanded.Current,
+                SignPolicy = ESignPolicyExtended.Negative,
+                From = EFromSelfSource.FromSelf,
+                RelativeTo = armor,
+                Operation = ECalculationOperation.Multiply,
+                OperationTarget = EAttributeTarget.Current,
+                OperationPolicy = EMathApplicationPolicy.OneMinus,
+            });
+            World.Apply(gas, gas, Make.Effect("Burn", new EffectConfig { Target = health, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f }));
+            await Frames.Step(20);
+
+            gas.TryGetAttributeValue(health, out var before);
+            await Frames.Step();
+            gas.TryGetAttributeValue(health, out var after);
+            Assert.That(before.CurrentValue - after.CurrentValue, Is.EqualTo(0.5f).Within(0.001f), "armor halved the tick");
+
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 600);
+
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        /// <summary>
         /// A tick looked up its effect's impacted attributes and their impacters, each lookup building a new list or set,
         /// and walked its contained effects through LINQ: about 530 bytes a tick before anything committed. A tick now
         /// allocates nothing up to its commit. Here the commit finds no such attribute on the entity and returns, which
