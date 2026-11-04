@@ -148,7 +148,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Undo.PerformUndo();
 
                 Assert.AreEqual("Fire Ball", ability.Definition.Name, "one Undo takes back the name");
-                Assert.AreEqual(original.Name, ability.Tags.AssetTag.Name, "and the tag");
+                // Undo restores the serialized tag, and a null string serializes as an empty one
+                Assert.AreEqual(original.Name ?? "", ability.Tags.AssetTag.Name ?? "", "and the tag");
             }
             finally
             {
