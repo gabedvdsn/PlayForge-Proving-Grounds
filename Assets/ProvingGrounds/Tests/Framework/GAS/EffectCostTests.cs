@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -67,6 +68,70 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             using var probe = new AllocationProbe();
             var frames = await probe.MeasureFrames(Frames, 600);
 
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        /// <summary>
+        /// Each rescale that keeps Current in proportion to Base made a new carrier, with its impact-type list, and a new
+        /// action to queue it in, which the queue then allocated taking off. A frame in which Base falls and Current
+        /// rescales with it now allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P9_A_frame_in_which_an_attribute_rescales_with_its_Base_allocates_nothing([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var element = Make.Element(health, 1e6f, 1e6f);
+            element.Constraints.AutoScaleWithBase = true;
+            var gas = World.Entity(hub, Make.Set(element), name: "Withering", observed: false);
+            World.Apply(gas, gas, Make.Effect("Wither", new EffectConfig
+            {
+                Target = health, Slot = EAttributeTarget.Base, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f,
+            }));
+            await Frames.Step(20);
+
+            gas.TryGetAttributeValue(health, out var before);
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 600);
+            gas.TryGetAttributeValue(health, out var after);
+
+            float baseFell = before.BaseValue - after.BaseValue;
+            Assert.That(baseFell, Is.GreaterThanOrEqualTo(600f), "Base fell every frame");
+            Assert.That(before.CurrentValue - after.CurrentValue, Is.EqualTo(baseFell).Within(1f), "and Current with it");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        /// <summary>
+        /// Lifesteal, a relative-operation worker on the one dealing damage, made a new carrier for every heal, and its
+        /// deferred half an iterator and an action as well. A frame in which a hit heals its source now allocates
+        /// nothing, inline or deferred.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P9_A_frame_in_which_lifesteal_heals_allocates_nothing(
+            [Values] Hub hub, [Values(EWorkerExecution.Inline, EWorkerExecution.Deferred)] EWorkerExecution execution) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var mana = Make.Attribute("Mana");
+            var set = Make.Set(Make.Element(health, 1f, 1f), Make.Element(mana, 0f, 0f));
+            set.WorkerGroup.ImpactWorkers.Add(new RelativeOperationContextImpactWorker
+            {
+                ImpactedAttribute = health, AnyImpactType = true, ImpactType = new List<Tag>(),
+                ImpactTarget = EAttributeTargetExpanded.CurrentOrBase, ImpactSign = ESignPolicy.Negative,
+                AnyContextTag = true, ImpactAbilityContextTags = new List<Tag>(),
+                WorkAttribute = mana, WorkImpactType = new List<Tag>(), WorkSignPolicy = ESignPolicy.Positive,
+                Operation = ECalculationOperation.Override, WithRespectTo = ESourceTarget.Source,
+                ExecutionMode = execution,
+            });
+            var leech = World.Entity(hub, set, name: "Leech", observed: false);
+            var bled = World.Entity(hub, Make.Set(Make.Element(health, 1e6f, 1e6f)), name: "Bled", observed: false);
+            World.Apply(leech, bled, Make.Effect("Bleed", new EffectConfig { Target = health, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f }));
+            await Frames.Step(20);
+
+            leech.TryGetAttributeValue(mana, out var before);
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 600);
+            leech.TryGetAttributeValue(mana, out var after);
+
+            Assert.That(after.CurrentValue - before.CurrentValue, Is.GreaterThanOrEqualTo(600f), "it healed every frame");
             Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
         });
 
