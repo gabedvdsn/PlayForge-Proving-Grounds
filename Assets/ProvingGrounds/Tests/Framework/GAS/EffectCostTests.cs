@@ -136,6 +136,35 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A frame summary's listener got a new snapshot each frame, which copied the frame's ten lists, so an entity whose
+        /// summary anyone listened to allocated every frame: 504 bytes idle, 824 with an effect ticking. The snapshot is now
+        /// the entity's own, refilled each frame, and a frame whose summary has a listener allocates nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P10_A_frame_whose_summary_has_a_listener_allocates_nothing([Values] Hub hub, [Values] bool ticking) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 1e6f, 1e6f)), name: "Watched", observed: false);
+            if (ticking) World.Apply(gas, gas, Make.Effect("Burn", new EffectConfig { Target = health, Magnitude = -1f, PeriodicTicks = true, FixedDeltaTime = 1f }));
+
+            int summaries = 0, received = 0;
+            gas.GetCallbacks().OnFrameComplete += summary =>
+            {
+                summaries++;
+                received += summary.ImpactsReceived.Count;
+            };
+            await Frames.Step(20);
+
+            int summariesBefore = summaries, receivedBefore = received;
+            using var probe = new AllocationProbe();
+            var frames = await probe.MeasureFrames(Frames, 300);
+
+            Assert.That(summaries - summariesBefore, Is.GreaterThanOrEqualTo(300), "the listener heard every frame");
+            if (ticking) Assert.That(received - receivedBefore, Is.GreaterThanOrEqualTo(300), "and read each frame's impact");
+            Assert.That(frames.Total, Is.EqualTo(0), frames.ToString());
+        });
+
+        /// <summary>
         /// A tick looked up its effect's impacted attributes and their impacters, each lookup building a new list or set,
         /// and walked its contained effects through LINQ: about 530 bytes a tick before anything committed. A tick now
         /// allocates nothing up to its commit. Here the commit finds no such attribute on the entity and returns, which
