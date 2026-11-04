@@ -702,17 +702,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "Asset Browser", Type = typeof(AssetBrowserWindow),
                 Open = _ => AssetBrowserWindow.Show(AssetBrowserConfig.Create("Smoke").ForTypes(typeof(Ability))),
             };
+            // The one Import window serves sections, whole assets, worker groups and requirement groups (ED-32)
             yield return new Window
             {
-                Name = "Section Import", Type = typeof(SectionImportWindow),
-                Open = made => SectionImportWindow.Show(new SerializedObject(New<GameplayEffect>(made)), "Duration",
+                Name = "Import", Type = typeof(ForgeImportWindow),
+                Open = made => ForgeImportWindow.ShowFor(new SerializedObject(New<GameplayEffect>(made)), "Duration",
                     new[] { nameof(GameplayEffect.DurationSpecification) }),
-            };
-            yield return new Window
-            {
-                Name = "Worker Group Import", Type = typeof(WorkerGroupImportWindow),
-                Open = made => WorkerGroupImportWindow.Show(Property(New<Ability>(made), nameof(Ability.WorkerGroup)),
-                    new VisualElement(), _ => { }),
             };
             yield return new Window
             {
@@ -728,24 +723,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 Name = "Quick Fill Wizard", Type = typeof(QuickFillWizard),
                 Open = made => QuickFillWizard.Show(Property(EffectWithScaler(made), ScalerPath), () => { }),
-            };
-            yield return new Window
-            {
-                Name = "Effect Requirements Import", Type = typeof(EffectTagRequirementsImportWindow),
-                Open = made => EffectTagRequirementsImportWindow.Show(
-                    Property(New<GameplayEffect>(made), nameof(GameplayEffect.SourceRequirements)), new VisualElement(), _ => { }),
-            };
-            yield return new Window
-            {
-                Name = "Ability Requirements Import", Type = typeof(AbilityTagRequirementsImportWindow),
-                Open = made => AbilityTagRequirementsImportWindow.Show(Property(New<Ability>(made), "Tags.TagRequirements"),
-                    new VisualElement(), _ => { }),
-            };
-            yield return new Window
-            {
-                Name = "Requirement Group Import", Type = typeof(AvoidRequireTagGroupImportWindow),
-                Open = made => AvoidRequireTagGroupImportWindow.Show(
-                    Property(New<GameplayEffect>(made), "SourceRequirements.ApplicationRequirements"), new VisualElement(), _ => { }),
             };
             yield return new Window
             {
