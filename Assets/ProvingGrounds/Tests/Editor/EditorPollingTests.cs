@@ -47,13 +47,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// The asset header stayed put while the content scrolled under it. The inspector hid the Inspector's own scroll
-        /// view and gave its content one of its own, sized by measuring the window on loops that rescheduled themselves
-        /// every 200 and 300 ms for as long as it stayed open (ED-11). The header scrolls with the content now (Q17), so
-        /// the inspector keeps no scroll view of its own and measures nothing.
+        /// To keep its header in place, the inspector hid the Inspector's own scroll view and gave its content one of its
+        /// own, sized by measuring the window on loops that rescheduled themselves every 200 and 300 ms for as long as it
+        /// stayed open (ED-11). It keeps no scroll view of its own now and measures nothing; the header follows the
+        /// Inspector's scroll view instead (ED-36).
         /// </summary>
         [Test]
-        public void ED_11_The_asset_header_scrolls_with_the_content()
+        public void ED_11_The_inspector_keeps_no_scroll_view_of_its_own()
         {
             var attribute = ScriptableObject.CreateInstance<Attribute>();
             var editor = UnityEditor.Editor.CreateEditor(attribute);
@@ -67,6 +67,54 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 Object.DestroyImmediate(editor);
                 Object.DestroyImmediate(attribute);
+            }
+        }
+
+        /// <summary>
+        /// The asset header scrolled away with the content. It stays at the top of the inspector while the content
+        /// scrolls under it (ED-36, Decision 29), following the scroll view's events, so nothing polls (ED-11).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_36_The_asset_header_stays_at_the_top_as_the_content_scrolls()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            var editor = UnityEditor.Editor.CreateEditor(ability);
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            var owner = new GameObject("ED-36") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var document = owner.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+
+                // The Inspector holds an inspector in a scroll view; this one is shorter than the inspector
+                var scroll = new ScrollView();
+                scroll.style.height = 120;
+                var root = editor.CreateInspectorGUI();
+                scroll.Add(root);
+                document.rootVisualElement.Add(scroll);
+                root.Bind(editor.serializedObject);
+                yield return Until(() => root.layout.height > 200f);
+                Assume.That(root.layout.height, Is.GreaterThan(200f), "the inspector is taller than the view");
+                var header = root.Q(className: "pf-asset-header");
+                Assume.That(header, Is.Not.Null, "the inspector has its header");
+
+                var top = scroll.contentViewport.worldBound.yMin;
+                scroll.scrollOffset = new Vector2(0f, 80f);
+                yield return Until(() => Mathf.Abs(header.worldBound.yMin - top) < 1f);
+                Assert.That(header.worldBound.yMin, Is.EqualTo(top).Within(1f), "the header stays at the top of the view");
+
+                scroll.scrollOffset = Vector2.zero;
+                yield return Until(() => Mathf.Abs(header.worldBound.yMin - top) < 1f);
+                Assert.That(header.worldBound.yMin, Is.EqualTo(top).Within(1f), "and goes back with the content");
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(settings);
+                Object.DestroyImmediate(ability);
             }
         }
 
