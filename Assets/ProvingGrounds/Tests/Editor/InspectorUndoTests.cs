@@ -788,6 +788,56 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Item inspector refused a multiple selection. It takes one now: a field the items disagree on shows as
+        /// mixed and an edit reaches both, while what acts on one item steps aside. Name stays read-only, since each
+        /// item's tag comes from its own name, the asset tag row hides, and Level Source offers no link buttons.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Item_inspector_edits_every_selected_item()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(ItemEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+            var torch = ScriptableObject.CreateInstance<Item>();
+            torch.Definition.Name = "Torch";
+            torch.Definition.Description = "Lights the way.";
+            var lamp = ScriptableObject.CreateInstance<Item>();
+            lamp.Definition.Name = "Lamp";
+            lamp.Definition.Description = "Burns oil.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(torch, lamp);
+                yield return Frames();
+
+                var description = root.Q<TextField>("Description");
+                Assert.IsNotNull(description, "the inspector edits a multiple selection");
+                Assert.IsTrue(description.showMixedValue, "descriptions that differ show as mixed");
+                Assert.IsFalse(root.Q<TextField>("Name").enabledSelf, "a multiple selection can't rename");
+                var linking = root.Query<Button>().ToList()
+                    .Where(button => button.text.StartsWith("Link ") || button.text.StartsWith("Unlink")).ToList();
+                Assert.IsEmpty(linking, "and linking waits for one item");
+                Assert.IsNull(root.Q<Button>("AssetTagUpdate"), "nor does an asset tag offer Update");
+
+                Undo.IncrementCurrentGroup();
+                Commit(description, "Shines.");
+                Assert.AreEqual("Shines.", torch.Definition.Description, "the edit reaches the first item");
+                Assert.AreEqual("Shines.", lamp.Definition.Description, "and the second");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Lights the way.", torch.Definition.Description, "one Undo takes it back from both");
+                Assert.AreEqual("Burns oil.", lamp.Definition.Description);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(torch);
+                Object.DestroyImmediate(lamp);
+            }
+        }
+
+        /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
         /// </summary>
