@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
@@ -35,6 +36,60 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 if (original != null) Assert.That(field.GetValue(copy), Is.EqualTo(original.GetValue(identity)), field.Name);
             }
         }
+
+        /// <summary>
+        /// A GAS registered with an affiliation wrote it onto its identity, which every entity of that kind shares: the
+        /// Mono GAS onto its Entity asset, a runtime GAS onto a shared runtime identity. One entity sent to the other side
+        /// moved them all, and in the editor it changed the asset itself.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_47_A_registered_affiliation_stays_with_its_entity([Values] Hub hub) => Live(async () =>
+        {
+            var red = Make.NewTag("Test.Team.Red");
+            var blue = Make.NewTag("Test.Team.Blue");
+            var turncoatData = ProcessDataPacket.Default();
+            turncoatData.SetPrimary(Tags.AFFILIATION, new List<Tag> { blue });
+            GameObject host = null;
+            try
+            {
+                IGameplayAbilitySystem turncoat, loyal;
+                System.Func<List<Tag>> shared;
+                if (hub == Hub.Mono)
+                {
+                    var mono = World.NewMonoEntity(name: "Turncoat");
+                    var identity = mono.EntityData;
+                    identity.Affiliation = new List<Tag> { red };
+                    World.Register(mono, turncoatData);
+
+                    // A second entity of the same kind, with no affiliation of its own
+                    host = new GameObject("Loyal");
+                    var second = GameplayAbilitySystem.AddToGameObject(host, identity);
+                    second.ProcessLifecycle = EProcessLifecycle.Synchronous;
+                    second.ProcessTiming = EProcessStepTiming.UpdateAndLate;
+                    World.Register(second);
+                    (turncoat, loyal, shared) = (mono, second, () => identity.Affiliation);
+                }
+                else
+                {
+                    var identity = new RuntimeEntityIdentity(Make.Identity("Kind", Make.UnusedSet())) { Affiliation = new List<Tag> { red } };
+                    var first = new RuntimeGameplayAbilitySystem(identity);
+                    World.Register(first, turncoatData);
+                    var second = new RuntimeGameplayAbilitySystem(identity);
+                    World.Register(second);
+                    (turncoat, loyal, shared) = (first, second, () => identity.Affiliation);
+                }
+                await Frames.Step();
+
+                Assert.That(turncoat.GetAffiliation(), Is.EqualTo(new[] { blue }), "the turncoat changed sides");
+                Assert.That(loyal.GetAffiliation(), Is.EqualTo(new[] { red }), "the loyal one didn't");
+                Assert.That(shared(), Is.EqualTo(new[] { red }), "and the identity still says Red");
+            }
+            finally
+            {
+                if (host != null) Object.Destroy(host);
+                await Frames.Step();
+            }
+        });
 
         private EntityIdentity Filled(out Item sword)
         {
