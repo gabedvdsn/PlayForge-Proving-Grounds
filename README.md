@@ -54,7 +54,7 @@ python Tools/check-planted.py planted.xml
 | `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
 | `Tests/Framework` | Framework behaviour by area, with tests for a bug named after its tracker ID. Each red test has been shown to go green when its bug is fixed |
 | `Tests/Planted` | Tests that must fail, proving the harness's checks work |
-| `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change |
+| `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change. `DomainReloadTests` plays two sessions with domain reloading off |
 
 ## Writing a test
 
@@ -112,3 +112,12 @@ homing shot that lands its effects on whatever it's aimed at, for the disjoint t
   PlayForge's stepping and UniTask continuations are measured.
 - `MeasureFrames` retakes a measure that isn't clean, up to 3 times, because a rare burst of about 1 KB lands at
   random, even with nothing spawned. A real leak fails every attempt.
+- **No editor window can be drawn** under `-nographics`: opening one logs that no graphics device is available. A UI
+  Toolkit field sends its change and focus events only through a panel, so an editor test that needs them adds the
+  element to a `UIDocument`'s runtime panel, which works there (`TheForgeSettingsTests`, `AssetTagTests`). A button
+  answers a `NavigationSubmitEvent` sent to it. A test that only reads a window, such as its title, can open it and
+  set `LogAssert.ignoreFailingMessages` around the call (`MenuTests`).
+- **A dialog would block** an interactive run, so code under test asks through a hook a test can answer, such as
+  `ForgeAssetDeletion.Confirm`.
+- **A second play session** in one editor can be played from an EditMode `[UnityTest]`: turn domain reloading off in
+  `EditorSettings`, then yield `new EnterPlayMode(false)` and `new ExitPlayMode()` twice (`DomainReloadTests`).
