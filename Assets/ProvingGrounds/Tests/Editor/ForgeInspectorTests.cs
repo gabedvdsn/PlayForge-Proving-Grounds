@@ -165,7 +165,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
                     Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
                     Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved item");
-                    AssertEachSectionImportsAndClears(sections);
+                    AssertEachSectionImportsAndClears(sections, "UsedBy");
                 });
                 Inspect(lamp, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
                     "a linked item's range is its provider's"));
@@ -235,10 +235,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        // Every section but Used By imports and clears: their buttons only logged a warning (ED-37)
-        private static void AssertEachSectionImportsAndClears(List<VisualElement> sections)
+        // Every section but the read-only ones imports and clears: their buttons only logged a warning (ED-37)
+        private static void AssertEachSectionImportsAndClears(List<VisualElement> sections, params string[] readOnly)
         {
-            foreach (var section in sections.Where(section => section.name != "UsedBy_CONTAINER"))
+            foreach (var section in sections.Where(section => !readOnly.Contains(section.name.Replace("_CONTAINER", ""))))
             {
                 var actions = section.Query<Button>(className: "pf-section__action").ToList().Select(button => button.tooltip).ToList();
                 Assert.That(actions, Has.Some.StartsWith("Import "), $"{section.name} has Import");
@@ -348,7 +348,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
                     Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
                     Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved entity");
-                    AssertEachSectionImportsAndClears(sections);
+                    AssertEachSectionImportsAndClears(sections, "UsedBy");
 
                     Assert.IsNotNull(root.Q(name: "Attributes_CONTAINER").Q<PropertyField>("AttributeSet"),
                         "the Attribute Set sits in Attributes");
@@ -423,6 +423,200 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 Assert.That(UsedBy(goblin), Is.EqualTo(new[] { "Cleave", "Cleaver" }), "the ability and the item linked to the goblin");
                 Assert.That(UsedBy(hero), Is.Empty, "nothing uses the hero");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        // An attribute set element: its attribute, the Current and Base it starts at, and its range
+        private static AttributeSetElement Element(Attribute attribute, float value, EAttributeOverflowPolicy range,
+            float floor = 0, float ceil = 0) => new()
+        {
+            Attribute = attribute,
+            Current = new AttributeMagnitudeSpec { Magnitude = value },
+            Base = new AttributeMagnitudeSpec { Magnitude = value },
+            Overflow = new AttributeOverflowData { Policy = range, Floor = new AttributeValue(floor, floor), Ceil = new AttributeValue(ceil, ceil) },
+        };
+
+        private static Attribute NamedAttribute(string name)
+        {
+            var attribute = ScriptableObject.CreateInstance<Attribute>();
+            attribute.Name = name;
+            return attribute;
+        }
+
+        /// <summary>
+        /// The Attribute Set inspector strayed from Docs/EDITOR_STYLE.md as the Item and Entity inspectors did (ED-37):
+        /// Level Source sat apart from Leveling, a collapsed section showed a count or nothing, the Summary section's
+        /// button listed the attributes in a dialog, and Import copied the name. Its sections keep the style doc's order
+        /// now, each collapsed section shows one line, and every section but the two that only show imports and clears.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Attribute_Set_inspector_keeps_the_style_docs_sections()
+        {
+            var health = NamedAttribute("Health");
+            var armor = NamedAttribute("Armor");
+            var speed = NamedAttribute("Move Speed");
+            var speedy = ScriptableObject.CreateInstance<AttributeSet>();
+            speedy.Name = "Speedy";
+            speedy.Attributes.Add(Element(speed, 5.5f, EAttributeOverflowPolicy.FloorToCeil, 1, 12));
+            var stats = ScriptableObject.CreateInstance<AttributeSet>();
+            stats.Name = "Goblin Stats";
+            stats.Attributes.Add(Element(health, 120, EAttributeOverflowPolicy.ZeroToBase));
+            stats.Attributes.Add(Element(armor, 4, EAttributeOverflowPolicy.Unlimited));
+            stats.SubSets = new List<AttributeSet> { speedy };
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.MaxLevel = 20;
+            var linked = ScriptableObject.CreateInstance<AttributeSet>();
+            linked.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<AttributeSet>();
+            stray.LinkMode = EAttributeSetLinkMode.LinkedToProvider;
+            try
+            {
+                Inspect(stats, root =>
+                {
+                    var sections = root.Query(className: "pf-section").ToList();
+                    Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
+                    {
+                        "Identity", "Leveling", "Attributes", "Subsets", "Settings", "AllAttributes", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order: Identity, Leveling, the set's own, Workers, Local Data");
+
+                    Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4"), "Leveling's range");
+                    Assert.That(Summary(root, "Attributes"), Is.EqualTo("2 attributes"), "its own attributes");
+                    Assert.That(Summary(root, "Subsets"), Is.EqualTo("1 sub-set"), "its sub-sets");
+                    Assert.That(Summary(root, "Settings"), Is.EqualTo("Use Maximum"), "how collisions settle");
+                    Assert.That(Summary(root, "AllAttributes"), Is.EqualTo("3 attributes"), "every attribute it gives");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
+                    Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
+                    Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved set");
+                    AssertEachSectionImportsAndClears(sections, "AllAttributes", "UsedBy");
+
+                    Assert.IsNotNull(root.Q(name: "Identity_CONTAINER").Q<TextField>("AssetTag"), "the asset tag sits in Identity");
+                    Assert.That(root.Query<Button>().ToList().Select(button => button.text), Has.None.EqualTo("List All Unique Attributes"),
+                        "no button opens a dialog of the attributes");
+                });
+                Inspect(linked, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–20 · from Hero"),
+                    "a linked set's range is its provider's"));
+                Inspect(stray, root => Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4 · no provider"),
+                    "a set linked to nothing keeps its own range"));
+            }
+            finally
+            {
+                foreach (var each in new Object[] { health, armor, speed, speedy, stats, hero, linked, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// An entity's attributes showed only as its Attribute Set's name, and the set's own inspector listed them in a
+        /// dialog (ED-37). Both show a table now, as the Entity mockup draws it: each attribute the set gives, its sub-sets'
+        /// with them, the value it starts at, and its range. Where sets overlap, the value is the one the runtime settles
+        /// on: here the sub-set's higher Health, under the set's Use Maximum.
+        /// </summary>
+        [Test]
+        public void ED_37_The_attribute_table_shows_what_an_entity_starts_with()
+        {
+            var health = NamedAttribute("Health");
+            var armor = NamedAttribute("Armor");
+            var speed = NamedAttribute("Move Speed");
+            var speedy = ScriptableObject.CreateInstance<AttributeSet>();
+            speedy.Name = "Speedy";
+            speedy.Attributes.Add(Element(speed, 5.5f, EAttributeOverflowPolicy.FloorToCeil, 1, 12));
+            speedy.Attributes.Add(Element(health, 150, EAttributeOverflowPolicy.ZeroToBase));
+            var stats = ScriptableObject.CreateInstance<AttributeSet>();
+            stats.Name = "Goblin Stats";
+            stats.Attributes.Add(Element(health, 120, EAttributeOverflowPolicy.ZeroToBase));
+            stats.Attributes.Add(Element(armor, 4, EAttributeOverflowPolicy.Unlimited));
+            stats.SubSets = new List<AttributeSet> { speedy };
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            goblin.AttributeSet = stats;
+            var expected = new[] { "Health | 150 | 0–max", "Armor | 4 | —", "Move Speed | 5.5 | 1–12" };
+            try
+            {
+                Inspect(stats, root => Assert.That(TableRows(root.Q(name: "AllAttributes_CONTAINER")), Is.EqualTo(expected),
+                    "the set's inspector shows every attribute it gives"));
+                Inspect(goblin, root => Assert.That(TableRows(root.Q(name: "Attributes_CONTAINER")), Is.EqualTo(expected),
+                    "and the entity's, the attributes its set gives it"));
+            }
+            finally
+            {
+                foreach (var each in new Object[] { health, armor, speed, speedy, stats, goblin }) Object.DestroyImmediate(each);
+            }
+        }
+
+        // An attribute table's rows, each as "name | starts at | range"
+        private static string[] TableRows(VisualElement container)
+        {
+            Assert.IsNotNull(container, "the section is there");
+            return container.Query(className: "pf-table__row").ToList().Select(row => string.Join(" | ",
+                row.Q<Label>(className: "pf-table__name")?.text, row.Q<Label>(className: "pf-table__start")?.text,
+                row.Q<Label>(className: "pf-table__range")?.text)).ToArray();
+        }
+
+        /// <summary>
+        /// The Attribute Set inspector drew its link state in tinted boxes with colored borders, its hints in small
+        /// colored text, and its Summary in small colored text, from styles set in C# (ED-37). Outside the drawers it
+        /// hosts, it takes its look from the style sheet.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Attribute_Set_inspector_sets_no_look_in_code()
+        {
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            var health = NamedAttribute("Health");
+            var stats = ScriptableObject.CreateInstance<AttributeSet>();
+            stats.Name = "Goblin Stats";
+            stats.Attributes.Add(Element(health, 120, EAttributeOverflowPolicy.ZeroToBase));
+            var linked = ScriptableObject.CreateInstance<AttributeSet>();
+            linked.Name = "Linked";
+            linked.LinkToProvider(hero);
+            var stray = ScriptableObject.CreateInstance<AttributeSet>();
+            stray.Name = "Stray";
+            stray.LinkMode = EAttributeSetLinkMode.LinkedToProvider;
+            try
+            {
+                var wrong = new List<string>();
+                foreach (var set in new[] { stats, linked, stray }) wrong.AddRange(LookSetInCode(set.Name, set));
+                Assert.That(wrong, Is.Empty, "styles the style sheet gives");
+            }
+            finally
+            {
+                foreach (var each in new Object[] { hero, health, stats, linked, stray }) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Attribute Set inspector lists the assets that use the set, as the Item and Entity inspectors do (ED-37):
+        /// here an entity built from it and a set that holds it as a sub-set.
+        /// </summary>
+        [Test]
+        public void ED_37_The_Attribute_Set_inspector_lists_what_uses_it()
+        {
+            const string folder = "Assets/ED-37 Set Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-37 Set Used By");
+            try
+            {
+                var stats = ScriptableObject.CreateInstance<AttributeSet>();
+                stats.Name = "Goblin Stats";
+                AssetDatabase.CreateAsset(stats, $"{folder}/Goblin Stats.asset");
+                var spare = ScriptableObject.CreateInstance<AttributeSet>();
+                spare.Name = "Spare";
+                AssetDatabase.CreateAsset(spare, $"{folder}/Spare.asset");
+                var chief = ScriptableObject.CreateInstance<AttributeSet>();
+                chief.Name = "Chief Stats";
+                chief.SubSets = new List<AttributeSet> { stats };
+                AssetDatabase.CreateAsset(chief, $"{folder}/Chief Stats.asset");
+                var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+                goblin.Name = "Goblin";
+                goblin.AttributeSet = stats;
+                AssetDatabase.CreateAsset(goblin, $"{folder}/Goblin.asset");
+                AssetDatabase.SaveAssets();
+
+                Assert.That(UsedBy(stats), Is.EqualTo(new[] { "Chief Stats", "Goblin" }), "the set that holds it and the entity built from it");
+                Assert.That(UsedBy(spare), Is.Empty, "nothing uses the spare set");
             }
             finally
             {
