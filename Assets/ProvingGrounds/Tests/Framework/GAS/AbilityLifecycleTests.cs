@@ -353,6 +353,54 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>How a test interrupts every running ability.</summary>
+        public enum Interruption
+        {
+            /// <summary><see cref="AbilitySystemComponent.InjectAll"/>.</summary>
+            All,
+            /// <summary><c>Inject</c> with the policy they run under.</summary>
+            ByPolicy,
+            /// <summary>Turning <see cref="AbilitySystemComponent.Enabled"/> off.</summary>
+            Disabling
+        }
+
+        /// <summary>
+        /// Interrupting every running ability under a policy walked the live set of them, and since TS-Z an interrupted
+        /// ability ends inside the interrupt, taking itself off that set. So the walk threw once the first had ended,
+        /// and the rest ran on. Each now ends.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_53_Interrupting_every_running_ability_ends_each([Values] Hub hub, [Values] Interruption interruption) => Live(async () =>
+        {
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            abilities.GiveAbility(Make.Ability("First", Make.Stage(new ProbeAbilityTask(World, "First Work", frames: 1000))), 1, out int first);
+            abilities.GiveAbility(Make.Ability("Second", Make.Stage(new ProbeAbilityTask(World, "Second Work", frames: 1000))), 1, out int second);
+            await Frames.Step();
+
+            int ended = 0;
+            abilities.Callbacks.OnAbilityEnd += _ => ended++;
+            var request = abilities.CreateActivationRequest(first);
+            abilities.TryActivateAbility(request);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(second));
+            await Frames.Step(2);
+            Assert.That(ended, Is.EqualTo(0), "both are running");
+
+            Assert.DoesNotThrow(() =>
+            {
+                switch (interruption)
+                {
+                    case Interruption.All: abilities.InjectAll(InterruptSequenceInjection.Instance); break;
+                    case Interruption.ByPolicy: abilities.Inject(request.Policy, InterruptSequenceInjection.Instance); break;
+                    case Interruption.Disabling: abilities.Enabled = false; break;
+                }
+            }, "the interrupt goes through");
+            await Frames.Step(3);
+
+            Assert.That(ended, Is.EqualTo(2), "and both end");
+            Assert.That(abilities.IsExecuting, Is.False, "and nothing runs");
+            abilities.Enabled = true;
+        });
+
         private AbilitySystemComponent Grant(Hub hub, Ability ability, out int index)
         {
             var abilities = World.Entity(hub).GetAbilitySystem();
