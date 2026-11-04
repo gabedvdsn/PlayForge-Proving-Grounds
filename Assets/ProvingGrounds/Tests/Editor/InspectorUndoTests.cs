@@ -726,15 +726,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        // Clears a drawer type's static collapse and rebuild state, which is keyed by property path and outlives a test
+        // Clears a drawer type's static rebuild state, which is keyed by property path and outlives a test. Its collapse
+        // state is kept per asset (ED-18), so a new asset starts as the drawer's default
         private static void ClearDrawerState(System.Type drawer)
         {
-            foreach (var name in new[] { "CollapsedStates", "RebuildingProperties" })
-            {
-                var field = drawer.GetField(name, BindingFlags.Static | BindingFlags.NonPublic);
-                Assert.IsNotNull(field, $"{drawer.Name} keeps {name}");
-                field.GetValue(null).GetType().GetMethod("Clear").Invoke(field.GetValue(null), null);
-            }
+            var field = drawer.GetField("RebuildingProperties", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{drawer.Name} keeps RebuildingProperties");
+            field.GetValue(null).GetType().GetMethod("Clear").Invoke(field.GetValue(null), null);
         }
 
         /// <summary>

@@ -69,5 +69,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 .ToList();
             Assert.That(offenders, Is.Empty);
         }
+
+        /// <summary>
+        /// Drawers kept whether a part is collapsed in static dictionaries keyed by property path alone, so it was shared
+        /// by every asset and lost on a domain reload (ED-18). Each drawer keeps it per asset, for the editor session.
+        /// </summary>
+        [Test]
+        public void ED_18_No_drawer_keeps_collapse_state_in_a_static_dictionary()
+        {
+            var staticState = new Regex(@"\bstatic\s+(readonly\s+)?Dictionary<string,\s*bool>");
+            var offenders = Directory.GetFiles(EditorFolder, "*.cs", SearchOption.AllDirectories)
+                .SelectMany(file => File.ReadLines(file).Select((line, i) => (file, line, number: i + 1)))
+                .Where(x => staticState.IsMatch(x.line) && !x.line.TrimStart().StartsWith("//"))
+                .Select(x => $"{Path.GetFileName(x.file)}:{x.number}: {x.line.Trim()}")
+                .ToList();
+            Assert.That(offenders, Is.Empty);
+        }
     }
 }
