@@ -726,6 +726,67 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // Clears a drawer type's static collapse and rebuild state, which is keyed by property path and outlives a test
+        private static void ClearDrawerState(System.Type drawer)
+        {
+            foreach (var name in new[] { "CollapsedStates", "RebuildingProperties" })
+            {
+                var field = drawer.GetField(name, BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.IsNotNull(field, $"{drawer.Name} keeps {name}");
+                field.GetValue(null).GetType().GetMethod("Clear").Invoke(field.GetValue(null), null);
+            }
+        }
+
+        /// <summary>
+        /// A drawer that rebuilds itself made a SerializedObject of its own over the first selected asset, so after the
+        /// rebuild an edit reached only that asset. The tag requirements drawer rebuilds when it opens; its group's Name
+        /// then wrote to the first effect alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_A_rebuilt_drawer_edits_every_selected_asset()
+        {
+            ClearDrawerState(typeof(AbstractTagRequirementsDrawer<EffectTagRequirements>));
+            var first = ScriptableObject.CreateInstance<GameplayEffect>();
+            var second = ScriptableObject.CreateInstance<GameplayEffect>();
+            first.SourceRequirements = new EffectTagRequirements { Name = "A" };
+            second.SourceRequirements = new EffectTagRequirements { Name = "B" };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(new Object[] { first, second });
+                var field = new PropertyField(serialized.FindProperty(nameof(GameplayEffect.SourceRequirements)));
+                host.Document.rootVisualElement.Add(field);
+                field.Bind(serialized);
+                yield return Frames();
+
+                var expand = field.Query<Button>().ToList().FirstOrDefault(button => button.tooltip == "Expand");
+                Assert.IsNotNull(expand, "the requirements start closed");
+                Press(expand);
+                yield return Frames();
+                var groupName = field.Query<TextField>().ToList().FirstOrDefault(text =>
+                    text.tooltip == "Optional name for this requirement group (helps identify when importing)");
+                Assert.IsNotNull(groupName, "opening them shows the group's Name");
+
+                Undo.IncrementCurrentGroup();
+                Commit(groupName, "Shared");
+                Assert.AreEqual("Shared", first.SourceRequirements.Name, "the edit reaches the first effect");
+                Assert.AreEqual("Shared", second.SourceRequirements.Name, "and the second");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("A", first.SourceRequirements.Name, "one Undo takes it back from both");
+                Assert.AreEqual("B", second.SourceRequirements.Name);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
+            }
+        }
+
         /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
