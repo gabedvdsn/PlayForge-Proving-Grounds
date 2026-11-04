@@ -184,6 +184,57 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Effect inspector wrote its Description and Link Mode straight into the asset, with no Undo, and drew its
+        /// Level Source section from the link mode once, so the section kept showing a mode an Undo had taken away.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_An_edit_in_the_Effect_inspector_undoes()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.Definition.Name = "Burning";
+            effect.Definition.Description = "Fire damage over time.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(effect);
+                yield return Frames();
+
+                var description = root.Q<TextField>("Description");
+                Assert.IsNotNull(description, "the inspector shows Description");
+                Undo.IncrementCurrentGroup();
+                Commit(description, "Burns.");
+                Assert.AreEqual("Burns.", effect.Definition.Description, "Description is written");
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("Fire damage over time.", effect.Definition.Description, "one Undo takes back Description");
+                yield return Frames();
+                Assert.AreEqual("Fire damage over time.", description.value, "and its field shows it");
+
+                var linkMode = root.Query<EnumField>().ToList().FirstOrDefault(field => field.label == "Link Mode");
+                Assert.IsNotNull(linkMode, "the inspector shows Link Mode");
+                Assume.That(root.Q("linking-buttons"), Is.Null, "a standalone effect offers no provider");
+                Undo.IncrementCurrentGroup();
+                linkMode.value = EEffectLinkMode.LinkedToProvider;
+                Assert.AreEqual(EEffectLinkMode.LinkedToProvider, effect.LinkMode, "Link Mode is written");
+                yield return Frames();
+                Assert.IsNotNull(root.Q("linking-buttons"), "Level Source offers a provider");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(EEffectLinkMode.Standalone, effect.LinkMode, "one Undo takes back Link Mode");
+                yield return Frames();
+                Assert.IsNull(root.Q("linking-buttons"), "and Level Source shows the mode Undo brought back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.
         /// </summary>
