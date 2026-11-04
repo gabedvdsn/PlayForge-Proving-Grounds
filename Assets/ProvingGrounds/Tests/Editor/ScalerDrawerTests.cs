@@ -162,5 +162,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(set);
             }
         }
+
+        /// <summary>
+        /// Every scaler spread its values over a level range (Decision 28). A scaler the drawer makes maps levels exactly,
+        /// and its Stretch Over Levels shows it, which a scaler saved before the option keeps on (ED-33).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_33_A_new_scaler_maps_levels_exactly()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.DurationSpecification = new GameplayEffectDuration { DurationOperation = new ScalerMagnitudeOperation() };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(effect);
+                var field = new PropertyField(serialized.FindProperty("DurationSpecification.DurationOperation.Scaler"));
+                host.Document.rootVisualElement.Add(field);
+                field.Bind(serialized);
+                yield return Frames();
+
+                var kind = field.Query<PopupField<string>>().ToList().FirstOrDefault();
+                Assert.IsNotNull(kind, "the drawer offers a kind");
+                kind.value = kind.choices.First(choice => choice.Trim() == "Simple");
+                yield return Frames();
+                var made = effect.DurationSpecification.DurationOperation.Scaler as SimpleScaler;
+                Assert.IsNotNull(made, "choosing Simple makes a simple scaler");
+                Assert.IsFalse(made.StretchOverLevels, "which maps levels exactly");
+
+                ExpandScalers(field);
+                yield return Frames();
+                Assert.IsNotNull(field.Query<Toggle>().ToList().FirstOrDefault(toggle => toggle.label == "Stretch Over Levels"),
+                    "and its Stretch Over Levels says so");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
     }
 }

@@ -43,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void ED_10_Warnings_past_ten_are_counted()
         {
             var forge = ScriptableObject.CreateInstance<TheForge>();
-            var assets = new List<ScalerPipeline>();
+            var assets = new List<ScalerAsset>();
             try
             {
                 var analysisType = typeof(TheForge).GetNestedType("PowerAnalysis", BindingFlags.NonPublic);
@@ -51,7 +51,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var analyses = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(analysisType));
                 for (int i = 0; i < 12; i++)
                 {
-                    var asset = ScriptableObject.CreateInstance<ScalerPipeline>();
+                    var asset = ScriptableObject.CreateInstance<ScalerAsset>();
                     asset.name = "ED-10 " + i;
                     assets.Add(asset);
 
