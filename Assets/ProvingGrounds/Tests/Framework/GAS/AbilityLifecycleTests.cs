@@ -294,6 +294,65 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>How a test ends an entity, through its relay.</summary>
+        public enum Ending
+        {
+            /// <summary>Queued, and cascading to its children.</summary>
+            Terminate,
+            /// <summary>At once, and cascading to its children.</summary>
+            TerminateImmediate,
+            /// <summary>At once, without cascading.</summary>
+            WithoutCascade
+        }
+
+        /// <summary>Where an activation is when its entity ends.</summary>
+        public enum Phase
+        {
+            Targeting,
+            Stage,
+            CriticalStage
+        }
+
+        /// <summary>
+        /// A runtime entity's abilities ran on after it ended. A Mono process ends the processes it handles as it ends,
+        /// and a runtime process didn't, so an ability waiting in a long stage outlived a runtime entity, whichever way it
+        /// ended. Either kind of entity also took activations after it ended. Ending an entity now ends its abilities,
+        /// critical or not, and it starts none after.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_52_Ending_an_entity_ends_its_abilities([Values] Hub hub, [Values] Ending ending, [Values] Phase phase) => Live(async () =>
+        {
+            var ability = Make.Ability("Outlived", Make.Stage(new ProbeAbilityTask(World, "Long Work", frames: 100000, critical: phase == Phase.CriticalStage)));
+            if (phase == Phase.Targeting) ability.Behaviour.Targeting = new ProbeTargetingTask(World, "Long Targeting", frames: 100000);
+
+            var gas = World.Entity(hub, name: "Ending");
+            var abilities = gas.GetAbilitySystem();
+            abilities.GiveAbility(ability, 1, out int index);
+            await Frames.Step();
+
+            int ended = 0;
+            abilities.Callbacks.OnAbilityEnd += _ => ended++;
+            var before = new HashSet<int>(World.Control.FetchActiveProcesses().Keys);
+            abilities.TryActivateAbility(abilities.CreateActivationRequest(index));
+            await Frames.Step(2);
+            Assert.That(ended, Is.EqualTo(0), "it's running");
+
+            var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).Relay;
+            switch (ending)
+            {
+                case Ending.Terminate: relay.Terminate(); break;
+                case Ending.TerminateImmediate: relay.TerminateImmediate(); break;
+                case Ending.WithoutCascade: relay.TerminateImmediate(cascade: false); break;
+            }
+            await Frames.Step(3);
+
+            Assert.That(ended, Is.EqualTo(1), "its ability ended with it");
+            var left = World.Control.FetchActiveProcesses().Where(p => !before.Contains(p.Key)).Select(p => p.Value.Wrapper.ProcessName).ToList();
+            Assert.That(left, Is.Empty, "and nothing it started still runs");
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), Is.False, "and it starts none after");
+            await Frames.Step();
+        });
+
         private AbilitySystemComponent Grant(Hub hub, Ability ability, out int index)
         {
             var abilities = World.Entity(hub).GetAbilitySystem();
