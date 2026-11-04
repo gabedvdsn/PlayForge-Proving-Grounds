@@ -1,0 +1,77 @@
+using System.Collections;
+using System.Linq;
+using NUnit.Framework;
+using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.TestTools;
+using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
+
+namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
+{
+    /// <summary>
+    /// The editor's views follow what they show instead of polling (ED-11). A view is built in a runtime panel, since
+    /// batch mode has no graphics device to give an editor window one, so its bindings run there.
+    /// </summary>
+    public class EditorPollingTests
+    {
+        // Lets the panel run its bindings until the condition holds, or a second passes
+        private static IEnumerator Until(System.Func<bool> condition)
+        {
+            var giveUp = EditorApplication.timeSinceStartup + 1.0;
+            while (!condition() && EditorApplication.timeSinceStartup < giveUp) yield return null;
+        }
+
+        /// <summary>
+        /// The control for removing the Impact drawer's 250 ms timer: its Multiply Behaviour still shows for a Multiply
+        /// impact alone, and follows a change to the operation, an Undo among them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator The_impact_drawer_follows_its_operation()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.ImpactSpecification ??= new GameplayEffectImpact();
+            effect.ImpactSpecification.ImpactOperation = ECalculationOperation.Add;
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            var owner = new GameObject("ED-11") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var document = owner.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+
+                var serialized = new SerializedObject(effect);
+                var impact = new PropertyField(serialized.FindProperty(nameof(GameplayEffect.ImpactSpecification)));
+                document.rootVisualElement.Add(impact);
+                impact.Bind(serialized);
+                for (int i = 0; i < 4; i++) yield return null;
+
+                VisualElement Multiply() => impact.Query<PropertyField>().ToList()
+                    .FirstOrDefault(field => field.bindingPath.EndsWith(nameof(GameplayEffectImpact.MultiplyBehaviour)));
+                Assume.That(Multiply(), Is.Not.Null, "the drawer has Multiply Behaviour");
+                Assert.AreEqual(DisplayStyle.None, Multiply().resolvedStyle.display, "an Add impact hides it");
+
+                Undo.IncrementCurrentGroup();
+                var operation = serialized.FindProperty(
+                    $"{nameof(GameplayEffect.ImpactSpecification)}.{nameof(GameplayEffectImpact.ImpactOperation)}");
+                operation.enumValueIndex = (int)ECalculationOperation.Multiply;
+                serialized.ApplyModifiedProperties();
+                yield return Until(() => Multiply().resolvedStyle.display == DisplayStyle.Flex);
+                Assert.AreEqual(DisplayStyle.Flex, Multiply().resolvedStyle.display, "a Multiply impact shows it");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                yield return Until(() => Multiply().resolvedStyle.display == DisplayStyle.None);
+                Assert.AreEqual(DisplayStyle.None, Multiply().resolvedStyle.display, "and an Undo hides it again");
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(settings);
+                Object.DestroyImmediate(effect);
+            }
+        }
+    }
+}

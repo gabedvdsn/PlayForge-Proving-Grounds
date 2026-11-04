@@ -52,5 +52,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 .ToList();
             Assert.That(dangling, Is.Empty);
         }
+
+        /// <summary>
+        /// Drawers polled on a timer: the Impact drawer re-checked its operation and its effect's duration every 250 ms,
+        /// and the Effect drawer rebuilt its link info every 500 ms, for as long as an inspector stayed open (ED-11).
+        /// A view now follows the properties it shows, so no editor code repeats a timer.
+        /// </summary>
+        [Test]
+        public void ED_11_No_editor_code_repeats_a_timer()
+        {
+            var repeating = new Regex(@"\.Every\(");
+            var offenders = Directory.GetFiles(EditorFolder, "*.cs", SearchOption.AllDirectories)
+                .SelectMany(file => File.ReadLines(file).Select((line, i) => (file, line, number: i + 1)))
+                .Where(x => repeating.IsMatch(x.line) && !x.line.TrimStart().StartsWith("//"))
+                .Select(x => $"{Path.GetFileName(x.file)}:{x.number}: {x.line.Trim()}")
+                .ToList();
+            Assert.That(offenders, Is.Empty);
+        }
     }
 }
