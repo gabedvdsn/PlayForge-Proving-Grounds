@@ -34,6 +34,48 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(heavyStack, Is.LessThan(3 * lightStack), "a re-application, in milliseconds each");
         });
 
+        /// <summary>
+        /// Ending effects searched the list of finished ones as each was marked, searched it again for every container as
+        /// the shelf ticked, and took each off the shelf and out of the index with a linear remove, so a cleanse or a mass
+        /// expiry of n effects cost n². Ending one now costs the same however many end with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_P5_Ending_an_effect_costs_the_same_however_many_end_with_it([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub, name: "Cleansed", observed: false);
+            await Frames.Step();
+
+            double few = PerEnded(gas, 50), many = PerEnded(gas, 3000);
+            TestContext.WriteLine($"ms per ended effect, 50 → 3000 at once: {few:F4} → {many:F4}");
+
+            Assert.That(many, Is.LessThan(3 * few), "in milliseconds each");
+        });
+
+        // Milliseconds per container, for `count` of one effect ended at once: marked by one removal, then taken off at the
+        // next tick. The fastest of several rounds
+        private double PerEnded(IGameplayAbilitySystem gas, int count)
+        {
+            const int rounds = 5;
+            var carried = Make.Effect($"Carried {count}", new EffectConfig { Target = null });
+            var effects = gas.GetEffectSystem();
+            double fastest = double.MaxValue;
+            var watch = new Stopwatch();
+            for (int round = 0; round < rounds; round++)
+            {
+                for (int i = 0; i < count; i++) World.Apply(gas, gas, carried);
+
+                // The requirement pass the applications left, outside the timing
+                effects.Tick();
+
+                watch.Restart();
+                gas.RemoveGameplayEffect(carried);
+                effects.Tick();
+                watch.Stop();
+                fastest = Math.Min(fastest, watch.Elapsed.TotalMilliseconds / count);
+            }
+            return fastest;
+        }
+
         // An entity carrying `count` effects, and one more it stacks
         private IGameplayAbilitySystem Carrying(Hub hub, string name, int count, GameplayEffect stacking)
         {
