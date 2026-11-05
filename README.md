@@ -64,8 +64,8 @@ checks two things.
 - **Every inspector and window opens without an error.** Each inspector opens on a new asset of its type, on two of
   them selected together, and on each of the 82 assets in the Demos sample's Data folders. The sample's `Samples~`
   folder isn't imported, so the suite copies those assets into `Assets/PlayForge Smoke Demos` while it runs and
-  deletes the folder after. Each window opens the way the editor opens it: The Forge on each tab, the debuggers,
-  every import window and every dialog.
+  deletes the folder after. Each window opens the way the editor opens it: The Forge, the Runtime Debugger, every
+  import window and every dialog.
 - **Every edit in an inspector undoes.** The sweep changes each value an inspector shows, one at a time, as a user
   would: a text, number, toggle, popup or enum field. Then one Undo must put the asset back exactly as it was, byte
   for byte in its serialized form. It sweeps a new asset of each type, a MonoProcess, and the fullest Demo asset in

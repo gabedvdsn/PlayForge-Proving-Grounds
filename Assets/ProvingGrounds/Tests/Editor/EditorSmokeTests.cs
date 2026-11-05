@@ -594,11 +594,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// The Forge and the GAS Debugger take the editor's theme and the style sheet. Each painted its window a
-        /// hard-coded dark gray, whatever the theme (ED-20).
+        /// The Forge and the Runtime Debugger take the editor's theme and the style sheet. The Forge and the GAS Debugger
+        /// painted their windows a hard-coded dark gray, whatever the theme (ED-20).
         /// </summary>
         [UnityTest]
-        public IEnumerator ED_20_The_Forge_and_the_GAS_Debugger_take_the_theme()
+        public IEnumerator ED_20_The_Forge_and_the_Runtime_Debugger_take_the_theme()
         {
             var log = new WindowLog();
             var wrong = new List<string>();
@@ -609,7 +609,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 foreach (var open in new Func<EditorWindow>[]
                          {
                              () => { TheForge.ShowWindow(); return EditorWindow.GetWindow<TheForge>(); },
-                             () => { GASDebugger.ShowWindow(); return EditorWindow.GetWindow<GASDebugger>(); },
+                             () => { RuntimeDebugger.ShowWindow(); return EditorWindow.GetWindow<RuntimeDebugger>(); },
                          })
                 {
                     var window = open();
@@ -675,12 +675,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "The Forge, on an asset", Type = typeof(TheForge), Open = made => TheForge.OpenToAsset(New<Ability>(made)),
             };
             yield return new Window { Name = "Problems", Type = typeof(ForgeProblemsWindow), Open = _ => ForgeProblemsWindow.ShowWindow() };
-            yield return new Window { Name = "GAS Debugger", Type = typeof(GASDebugger), Open = _ => GASDebugger.ShowWindow() };
-            yield return new Window
-            {
-                Name = "Process Control", Type = typeof(ProcessControlDebugger), Open = _ => ProcessControlDebugger.ShowWindow(),
-            };
-            yield return new Window { Name = "Tag Debugger", Type = typeof(RuntimeTagViewer), Open = _ => RuntimeTagViewer.ShowWindow() };
+            // One Runtime Debugger has the GAS, Process and Tag views (Q4)
+            yield return new Window { Name = "Runtime Debugger", Type = typeof(RuntimeDebugger), Open = _ => RuntimeDebugger.ShowWindow() };
             yield return new Window
             {
                 Name = "Asset Browser", Type = typeof(AssetBrowserWindow),
