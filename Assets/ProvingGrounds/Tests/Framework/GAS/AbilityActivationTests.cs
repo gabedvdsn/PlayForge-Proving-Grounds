@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using ForgeAttribute = FarEmerald.PlayForge.Attribute;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
@@ -386,6 +388,102 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             gas.TryGetAttributeValue(health, out var value);
             Assert.That(value.CurrentValue, Is.EqualTo(70f), "the effect landed on the target");
         });
+
+        /// <summary>
+        /// A targeting task filed each target it selected by setting the primary, so each one replaced the last: an Auto
+        /// Target of every match in range kept only the farthest. And Target Real and Apply Effects took only the first
+        /// target. So an area ability, every match and then Apply Effects, struck one entity.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_62_An_auto_target_of_every_match_strikes_each([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var targets = TargetsAt(health, 2f, 3f, 4f);
+            var abilities = GrantAreaHurt(hub, health, AutoTarget(maxTargets: 0), out int index);
+
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "activated");
+            await Frames.Step(5);
+
+            foreach (var target in targets) Assert.That(HealthOf(target, health), Is.EqualTo(70f), $"{target.name} was struck");
+        });
+
+        /// <summary>The same with a count: of three, the two nearest, where the second nearest alone was struck.</summary>
+        [UnityTest]
+        public IEnumerator GAS_62_Auto_targeting_two_strikes_the_two_nearest([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var targets = TargetsAt(health, 2f, 3f, 4f);
+            var abilities = GrantAreaHurt(hub, health, AutoTarget(maxTargets: 2), out int index);
+
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "activated");
+            await Frames.Step(5);
+
+            Assert.That(HealthOf(targets[0], health), Is.EqualTo(70f), "the nearest was struck");
+            Assert.That(HealthOf(targets[1], health), Is.EqualTo(70f), "and the next nearest");
+            Assert.That(HealthOf(targets[2], health), Is.EqualTo(100f), "and not the third");
+        });
+
+        /// <summary>Apply/Remove Effects puts its effects on each target as its stage starts, and takes them off each as it ends.</summary>
+        [UnityTest]
+        public IEnumerator GAS_62_Apply_and_remove_reaches_every_target([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var targets = TargetsAt(health, 2f, 3f, 4f);
+            var ward = Make.Effect("Ward", new EffectConfig { Target = null });
+            var ability = Make.Ability("Ward Them", Make.Stage(
+                new ApplyRemoveEffectsAbilityTask { Effects = new List<GameplayEffect> { ward } },
+                new ProbeAbilityTask(World, "Ward Held", frames: 10)));
+            ability.Behaviour.Targeting = AutoTarget(maxTargets: 0);
+            var abilities = World.Entity(hub, name: "Caster").GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "granted");
+
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "activated");
+            await Frames.Step(4);
+            foreach (var target in targets) Assert.That(Carries(target, ward), $"{target.name} is warded while the stage runs");
+
+            await Frames.Until(() => Ledger.Cleans("Ward Held") == 1, 20, "the stage ends");
+            await Frames.Step(3);
+            foreach (var target in targets) Assert.That(Carries(target, ward), Is.False, $"and {target.name} isn't once it has ended");
+        });
+
+        // Mono entities at these distances along x, each with a collider and 100 health
+        private List<GameplayAbilitySystem> TargetsAt(ForgeAttribute health, params float[] distances)
+        {
+            var targets = new List<GameplayAbilitySystem>();
+            foreach (float x in distances)
+            {
+                var target = World.MonoEntity(Make.Set(Make.Element(health, 100f, 100f)), $"Target at {x}");
+                target.transform.position = new Vector3(x, 0f, 0f);
+                target.gameObject.AddComponent<SphereCollider>();
+                targets.Add(target);
+            }
+            Physics.SyncTransforms();
+            return targets;
+        }
+
+        // A caster at the origin whose ability targets as given and then takes 30 health from each target
+        private AbilitySystemComponent GrantAreaHurt(Hub hub, ForgeAttribute health, AbstractTargetingAbilityTask targeting, out int index)
+        {
+            var hurt = Make.Effect("Hurt", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Op = ECalculationOperation.Add, Magnitude = -30f,
+            });
+            var ability = Make.Ability("Area Hurt", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { hurt } }));
+            ability.Behaviour.Targeting = targeting;
+
+            var abilities = World.Entity(hub, name: "Caster").GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out index), "granted");
+            return abilities;
+        }
+
+        private static float HealthOf(IGameplayAbilitySystem gas, ForgeAttribute health)
+        {
+            gas.TryGetAttributeValue(health, out var value);
+            return value.CurrentValue;
+        }
+
+        private static bool Carries(IGameplayAbilitySystem gas, GameplayEffect effect) =>
+            gas.GetEffectSystem().Shelf.Any(container => container.Spec.Base == effect);
 
         private static AutoTargetTask AutoTarget(int maxTargets) => new AutoTargetTask
         {

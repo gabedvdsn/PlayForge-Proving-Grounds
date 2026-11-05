@@ -54,6 +54,9 @@ python Tools/check-planted.py planted.xml
 | `Tests/Golden` | The 25 golden scenarios, ported from PlayForge's custom runner. Each runs on both GAS hubs where it applies |
 | `Tests/Framework` | Framework behaviour by area, with tests for a bug named after its tracker ID. Each red test has been shown to go green when its bug is fixed |
 | `Tests/Planted` | Tests that must fail, proving the harness's checks work |
+| `Tests/Labs` | The gameplay labs, category Lab: small games built in code, each played by a bot. Each has a scene in `Scenes/Labs` that plays its rounds slowly enough to watch |
+| `Tests/Stretch` | The review's stretch scenarios, category Stretch, which push past ordinary use: rollback, possession, a headless simulation and more |
+| `Tests/Stress` | The stress suite, category Stress: PlayForge at a busy game's scale, such as 500 entities with 20 effects each and an area ability over 200 targets. A cost is compared per entity with the same run at a tenth of the size, so the machine's speed doesn't decide it |
 | `Tests/Editor` | EditMode tests: PlayForge's editor code, and the framework driven outside play mode, as editor tools drive it. Some of them change EditorPrefs, which every project on the machine shares, and put back what they change. `DomainReloadTests` plays two sessions with domain reloading off. `EditorSmokeTests` is Phase 4's gate, below |
 
 ## The editor smoke suite

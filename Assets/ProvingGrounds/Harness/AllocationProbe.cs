@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using Unity.Profiling;
@@ -49,10 +51,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds
     /// The cost is that anything allocated in a coroutine goes unmeasured with the test runner's.
     /// PlayForge's stepping runs in Update and its async work in UniTask continuations, which are measured.
     ///
-    /// Now and then a burst of a kilobyte or so still lands on a few frames at random, whatever is running.
-    /// Its source isn't known: it isn't finalizers, as a collection before measuring doesn't stop it. It
-    /// doesn't repeat, where real allocation does, so a measure that isn't clean is taken again and the
-    /// cleanest stands. A leak fails every attempt.
+    /// Now and then a burst of a kilobyte or so landed on a few frames at random, whatever was running. It
+    /// was the editor's Build Report REST service, which listens on a port of its own: where another editor
+    /// holds that port, as the user's does beside a batch run, it tries again about once a second on a thread
+    /// of its own, and each try allocates about 4 KB, which the counter takes as the frame's. Most frames are
+    /// short, so a try rarely landed in one, but among 500 entities, whose frames fill most of a second,
+    /// nearly every measure took one. A probe ends those tries (<see cref="EndRestServiceRetries"/>). Other
+    /// noise may still land, and it doesn't repeat, where real allocation does, so a measure that isn't clean
+    /// is taken again and the cleanest stands. A leak fails every attempt.
     /// </summary>
     public sealed class AllocationProbe : IDisposable
     {
@@ -93,6 +99,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
 
         public AllocationProbe()
         {
+            EndRestServiceRetries();
             _bytes = ProfilerRecorder.StartNew(ProfilerCategory.Memory, Counter);
             if (!_bytes.Valid) throw new AssertionException($"The profiler counter \"{Counter}\" is not available");
 
@@ -110,6 +117,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             _disposed = true;
             _bytes.Dispose();
             Object.Destroy(_markerHost);
+        }
+
+        private static bool s_restServiceChecked;
+
+        /// <summary>
+        /// Cancels the editor's Build Report REST service's tries to listen, once a domain, where it isn't listening:
+        /// another editor holds its port, and each try allocates on the counter. A service that is listening, as in the
+        /// editor that holds the port, is left alone, and so is one laid out otherwise in another Unity.
+        /// </summary>
+        private static void EndRestServiceRetries()
+        {
+#if UNITY_EDITOR
+            if (s_restServiceChecked) return;
+            s_restServiceChecked = true;
+            try
+            {
+                var type = typeof(UnityEditor.EditorApplication).Assembly.GetType("UnityEditor.BuildReportRestService");
+                if (type == null) return;
+
+                const BindingFlags member = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                var service = typeof(UnityEditor.ScriptableSingleton<>).MakeGenericType(type)
+                    .GetProperty("instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+                var listener = type.GetField("m_listener", member)?.GetValue(service) as System.Net.HttpListener;
+                var tries = type.GetField("m_cts", member)?.GetValue(service) as CancellationTokenSource;
+                if (listener is { IsListening: true } || tries == null) return;
+
+                tries.Cancel();
+            }
+            catch (Exception)
+            {
+                // Laid out otherwise: its tries go on, and a measure taken again outlasts them
+            }
+#endif
         }
 
         private bool BeginFrame()
