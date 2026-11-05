@@ -24,11 +24,82 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private readonly List<string> made = new();
 
+        private const string ChainFolder = "Assets/ED-44";
+
         [TearDown]
         public void Clean()
         {
             foreach (var path in made) AssetDatabase.DeleteAsset(path);
             made.Clear();
+            if (AssetDatabase.IsValidFolder(ChainFolder)) AssetDatabase.DeleteAsset(ChainFolder);
+        }
+
+        /// <summary>
+        /// A push found each child's own children by searching every asset of its type in the project and loading each one,
+        /// so a push down a family searched the project once for every member of it: down a chain of 20, among 1,000 other
+        /// abilities, it took about twice as long as among 100, and a push to 2,000 children loaded 2,000 assets 2,000
+        /// times. It searches the project once.
+        /// </summary>
+        [Test]
+        public void ED_44_A_push_searches_the_project_once_however_big_the_family()
+        {
+            double few = PushDownAChain(100), many = PushDownAChain(1000);
+
+            TestContext.WriteLine($"ms to push down a chain of 20, among 100 → 1,000 other abilities: {few:F1} → {many:F1}");
+            Assert.That(many, Is.LessThan(1.5 * few), "the push takes about as long however many other abilities there are");
+        }
+
+        // Milliseconds to push the head of a chain of 20 abilities, each the template of the next, among `others`
+        // abilities: the fastest of three pushes
+        private double PushDownAChain(int others)
+        {
+            if (AssetDatabase.IsValidFolder(ChainFolder)) AssetDatabase.DeleteAsset(ChainFolder);
+            AssetDatabase.CreateFolder("Assets", "ED-44");
+            var chain = new List<Ability>();
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                for (int i = 0; i < others; i++) Chained($"Other {i}");
+                for (int i = 0; i < 20; i++)
+                {
+                    var link = Chained($"Link {i}");
+                    if (i > 0)
+                    {
+                        link.SetTemplate(chain[i - 1]);
+                        EditorUtility.SetDirty(link);
+                    }
+                    chain.Add(link);
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+            }
+            AssetDatabase.SaveAssets();
+
+            double fastest = double.MaxValue;
+            for (int round = 0; round < 3; round++)
+            {
+                Edit(chain[0], nameof(Ability.MaxLevel), 9 + round);
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                var pushed = Push(chain[0]);
+                watch.Stop();
+                fastest = System.Math.Min(fastest, watch.Elapsed.TotalMilliseconds);
+                Assert.AreEqual(19, pushed.Count, "the push reaches each link down the chain");
+                Assert.That(chain.All(link => link.MaxLevel == 9 + round), "and each takes the head's value");
+            }
+            Undo.ClearAll();
+            AssetDatabase.DeleteAsset(ChainFolder);
+            return fastest;
+        }
+
+        private static Ability Chained(string name)
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            ability.Definition.Name = name;
+            ability.MaxLevel = 4;
+            AssetDatabase.CreateAsset(ability, $"{ChainFolder}/{name}.asset");
+            return ability;
         }
 
         private Ability Save(string name, int maxLevel)
