@@ -115,6 +115,40 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// An ability's cost and cooldown apply only from a stage set to Apply Usage Effects, and nothing said so when no
+        /// stage was: the Tactics lab's Slash had a cooldown that never applied (ED-41). A cost or a cooldown that no stage
+        /// applies is a problem, which names what goes unapplied, until a stage applies them.
+        /// </summary>
+        [Test]
+        public void ED_41_A_cost_or_cooldown_no_stage_applies_is_a_problem()
+        {
+            var slash = ScriptableObject.CreateInstance<Ability>();
+            slash.Definition.Name = "Slash";
+            var tags = slash.Tags;
+            tags.AssetTag = TagOf("Ability.Slash");
+            slash.Tags = tags;
+            slash.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
+            var cooldown = Effect("Cooldown");
+            var cost = Effect("Cost");
+            try
+            {
+                Assert.That(Messages(slash), Has.None.Contains("usage effects"), "with neither, there's nothing to apply");
+
+                slash.Cooldown = cooldown;
+                Assert.That(Messages(slash), Has.Some.Contains("No stage applies usage effects, so the cooldown"), "a cooldown no stage applies");
+                slash.Cost = cost;
+                Assert.That(Messages(slash), Has.Some.Contains("the cost and the cooldown"), "and a cost with it");
+
+                slash.Behaviour.Stages[0].ApplyUsageEffects = true;
+                Assert.That(Messages(slash), Has.None.Contains("usage effects"), "and none once a stage applies them");
+            }
+            finally
+            {
+                foreach (var each in new Object[] { slash, cooldown, cost }) Object.DestroyImmediate(each);
+            }
+        }
+
         /// <summary>An edit checks its asset again, with no refresh: fixing the problem takes it off the list.</summary>
         [UnityTest]
         public IEnumerator ED_15_An_edit_checks_its_asset_again()
