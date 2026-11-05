@@ -1,8 +1,12 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using Unity.Profiling;
+using UnityEngine.Profiling;
 using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
@@ -100,6 +104,57 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 foreach (var recorder in recorders.Values) recorder.Dispose();
             }
+        });
+
+        // A process whose step takes about two milliseconds
+        private sealed class Busy : AbstractRuntimeProcess
+        {
+            public Busy() : base("FEAT-18 Busy", EProcessStepPriorityMethod.Manual, 0, EProcessStepTiming.Update, EProcessLifecycle.SelfTerminating) { }
+
+            public override void WhenUpdate()
+            {
+                long until = Stopwatch.GetTimestamp() + Stopwatch.Frequency / 500;
+                while (Stopwatch.GetTimestamp() < until) { }
+            }
+
+            public override UniTask RunProcess(CancellationToken token)
+            {
+                processActive = true;
+                return UniTask.WaitUntilCanceled(token);
+            }
+        }
+
+        /// <summary>
+        /// While the Profiler records, each frame's costliest processes go into its capture, the costliest first, for the
+        /// PlayForge Processes module to list (FEAT-18, Decision 32): a process whose step takes two milliseconds comes
+        /// first, with its time. Off the Profiler, nothing is timed for it. Nothing kept a frame's costs, so the Profiler
+        /// showed each step under its marker but couldn't say which processes cost the frame the most.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_18_A_frames_costliest_processes_go_into_the_Profilers_capture() => Live(async () =>
+        {
+            World.Probe("FEAT-18 Light");
+            var busy = World.Register(new Busy());
+            bool was = Profiler.enabled;
+            try
+            {
+                Profiler.enabled = true;
+                await Frames.Step(3);
+                Assert.IsTrue(ForgeFrameCosts.Recording, "PlayForge sees the Profiler record");
+                var costs = ForgeFrameCosts.LastFrame;
+                Assert.That(costs.Count, Is.InRange(2, ForgeFrameCosts.Most), "the frame's costliest processes went into the capture");
+                Assert.AreEqual(busy.CacheIndex, costs[0].Process, "the busy one first");
+                Assert.That(costs[0].Nanoseconds, Is.GreaterThan(1_500_000L), "with the two milliseconds its step took");
+                for (int i = 1; i < costs.Count; i++)
+                    Assert.That(costs[i].Nanoseconds, Is.LessThanOrEqualTo(costs[i - 1].Nanoseconds), "the costliest first");
+            }
+            finally
+            {
+                Profiler.enabled = was;
+            }
+
+            await Frames.Step(2);
+            Assert.IsFalse(ForgeFrameCosts.Recording, "and off the Profiler, nothing is timed for it");
         });
     }
 }
