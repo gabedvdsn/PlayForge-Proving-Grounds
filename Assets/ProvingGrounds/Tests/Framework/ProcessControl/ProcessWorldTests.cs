@@ -189,6 +189,85 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// Worlds side by side keep their own processes and time (FEAT-10, step 6): each world's sequence waits on its own
+        /// steps, so stepping one leaves the other's where it was, its clock with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_Worlds_side_by_side_keep_their_own_time() => Live(async () =>
+        {
+            var first = new ProcessWorld();
+            var second = new ProcessWorld();
+            bool firstDone = false, secondDone = false;
+            TaskSequence Wait(string name, System.Action done) => TaskSequenceBuilder.Create(name)
+                .Stage(stage => stage.Delay(1f))
+                .Stage(stage => stage.Task(_ => done()))
+                .BuildSequence();
+            var a = ProcessControl.Register(Wait("FEAT-10 First", () => firstDone = true)).In(first).Run().Relay;
+            var b = ProcessControl.Register(Wait("FEAT-10 Second", () => secondDone = true)).In(second).Run().Relay;
+            Assert.AreSame(first, a.World, "each sequence is in its own world");
+            Assert.AreSame(second, b.World, "each sequence is in its own world");
+
+            for (int i = 0; i < 90; i++) first.Step(1f / 60f);
+            Assert.IsTrue(firstDone, "the first world's second went by");
+            Assert.IsFalse(secondDone, "and the second world's didn't");
+            Assert.AreEqual(0f, second.Elapsed, "nor did its clock");
+
+            for (int i = 0; i < 90; i++) second.Step(1f / 60f);
+            Assert.IsTrue(secondDone, "until it's stepped");
+            a.TerminateImmediate();
+            b.TerminateImmediate();
+            await Frames.Step();
+        });
+
+        /// <summary>
+        /// A world of its own reaches for nothing of the scene's (FEAT-10, step 6). A process registered there without a
+        /// handler has none, where the scene's GameRoot took it and kept it for as long as the scene lasted, its world gone
+        /// or not; and a sequence registered there without a packet takes one parented nowhere, where the scene root's
+        /// needed a GameRoot.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_A_world_of_its_own_reaches_for_nothing_of_the_scenes() => Live(async () =>
+        {
+            var world = new ProcessWorld();
+            var probe = ProcessControl.Register(World.NewProbe("FEAT-10 Unhandled")).In(world).Run().Relay;
+            Assert.IsNotNull(probe, "a world of its own takes a process with no handler given");
+            Assert.IsNull(probe.Handler, "which has none");
+            Assert.IsFalse(GameRoot.Instance.HandlerProcessIsSubscribed(probe), "and the scene's GameRoot doesn't keep it");
+
+            var sequence = TaskSequenceBuilder.Create("FEAT-10 Unparented").Stage(stage => stage.Delay(1f)).BuildSequence();
+            var relay = ProcessControl.Register(sequence).In(world).Run().Relay;
+            Assert.IsNotNull(relay, "it takes a sequence with no packet given");
+            Assert.IsNull(relay.Wrapper.Data.GetPrimary<UnityEngine.Transform>(Tags.PARENT_TRANSFORM), "whose packet is parented nowhere");
+
+            probe.TerminateImmediate();
+            relay.TerminateImmediate();
+            await Frames.Step();
+        });
+
+        /// <summary>
+        /// What a MonoBehaviour process handles ends with it in its own world (FEAT-10, step 6), and nothing else does. It
+        /// ended each through the scene's ProcessControl by its cache index, so one in a world of its own ran on, and the
+        /// scene's process under that index ended in its place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_What_a_Mono_process_handles_ends_with_it_in_its_own_world() => Live(async () =>
+        {
+            var world = new ProcessWorld();
+            var handler = World.MonoProbe("FEAT-10 Handler");
+            await Frames.Step();
+            var relay = ProcessControl.Register(World.NewProbe("FEAT-10 Handled")).HandledBy(handler).In(world).Run().Relay;
+            Assert.IsNotNull(relay, "a world of its own takes a process the Mono probe handles");
+            world.Step();
+
+            int sceneProcesses = World.Control.FetchActiveProcesses().Count;
+            Assert.IsTrue(handler.ProcessRelay.TerminateImmediate(), "the handler ends");
+            world.Step();
+            Assert.IsFalse(relay.ProcessActive, "and what it handled ends in its world");
+            Assert.AreEqual(sceneProcesses - 1, World.Control.FetchActiveProcesses().Count, "and nothing else ends in the scene");
+            await Frames.Step();
+        });
+
+        /// <summary>
         /// A sequence paused in a world of its own holds, and goes on as it's unpaused, by the world's steps within one frame
         /// (FEAT-10, step 5).
         /// </summary>

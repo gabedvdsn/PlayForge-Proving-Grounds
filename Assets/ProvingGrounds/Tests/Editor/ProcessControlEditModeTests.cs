@@ -32,6 +32,35 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A world of its own runs a sequence outside play mode, with no scene at all (FEAT-10, step 6): no ProcessControl,
+        /// no GameRoot and no frames, only its owner's steps. A sequence registered without a packet took the scene root's,
+        /// which needed a GameRoot, so with none the registration threw.
+        /// </summary>
+        [Test]
+        public void FEAT_10_A_world_of_its_own_runs_a_sequence_with_no_scene_at_all()
+        {
+            var world = new ProcessWorld();
+            bool done = false;
+            var sequence = TaskSequenceBuilder.Create("FEAT-10 No Scene")
+                .Stage(stage => stage.Delay(1f))
+                .Stage(stage => stage.Task(_ => done = true))
+                .BuildSequence();
+            var result = ProcessControl.Register(sequence).In(world).Run();
+            Assert.IsTrue(result, "a world of its own takes a sequence with no scene");
+
+            int steps = 0;
+            while (!done && steps < 90)
+            {
+                world.Step(1f / 60f);
+                steps++;
+            }
+
+            Assert.IsTrue(done, "and its owner's steps run it through its delay");
+            Assert.That(steps, Is.InRange(58, 75), "after the steps its second needs");
+            result.Relay.TerminateImmediate();
+        }
+
+        /// <summary>
         /// Terminating a Mono process destroyed its object with Object.Destroy, which Unity refuses outside play mode:
         /// it logged an error, and the object stayed.
         /// </summary>
