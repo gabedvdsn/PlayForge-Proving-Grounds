@@ -115,5 +115,77 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(World.Apply(gas, gas, fire), "and an immunity refuses one by a tag it grants");
             Assert.IsFalse(On(gas, fire), "which isn't on the entity");
         });
+
+        // A bleed that stacks to three, sharing one duration, whose bound overflows as set
+        private (GameplayEffect Bleed, StackBoundsConfig Bound) Bleed(float seconds)
+        {
+            var bleed = Make.Effect("Bleed", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = seconds, FixedDeltaTime = 1f, Target = null,
+                Reapply = EEffectReApplicationPolicy.StackExistingContainers,
+                StackPolicy = EEffectStackPolicy.StacksShareOneDuration,
+                Interaction = EEffectInteractionPolicy.RefreshContainerDuration,
+                StackAmount = 1,
+            });
+            var bound = new StackBoundsConfig { Min = 0, Max = 3 };
+            bleed.DurationSpecification.StackingConfigs.Add(bound);
+            return (bleed, bound);
+        }
+
+        private static void Overflow(StackBoundsConfig bound, string field, object value)
+        {
+            var member = typeof(StackBoundsConfig).GetField(field);
+            Assert.IsNotNull(member, $"a stack bound has {field}");
+            member.SetValue(bound, value);
+        }
+
+        /// <summary>
+        /// A stack bound held an effect at its max and nothing more happened, so a bleed couldn't hemorrhage at its fourth
+        /// stack (FEAT-8, Decision 30). As a stack would take an effect past its bound's max, the bound's overflow effects land
+        /// from the same origin, and the effect's stacks clear when the bound says so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_8_An_effect_at_its_max_stacks_overflows([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
+            var hemorrhage = Make.Effect("Hemorrhage", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -15f });
+            var (bleed, bound) = Bleed(10f);
+            Overflow(bound, "OverflowEffects", new List<GameplayEffect> { hemorrhage });
+            Overflow(bound, "ClearStacksOnOverflow", true);
+
+            for (int i = 0; i < 3; i++) Assert.IsTrue(World.Apply(gas, gas, bleed), "the bleed lands");
+            Assert.IsTrue(gas.TryGetEffectContainer(bleed, out var container) && ((AbstractStackingEffectContainer)container).Stacks == 3,
+                "in three stacks, its max");
+            Assert.IsTrue(gas.TryGetAttributeValue(health, out var value) && value.CurrentValue == 100f, "and nothing has overflowed");
+
+            World.Apply(gas, gas, bleed);
+            await Frames.Step(2);
+            gas.TryGetAttributeValue(health, out value);
+            Assert.AreEqual(85f, value.CurrentValue, "a fourth overflows, and the hemorrhage lands");
+            Assert.IsFalse(gas.TryGetEffectContainer(bleed, out _), "and the bleed's stacks clear");
+        });
+
+        /// <summary>
+        /// An application that overflows refreshed the effect's duration all the same (FEAT-8). With Deny Refresh, it leaves
+        /// the duration as it was, and the stacks stay at the max.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_8_Deny_Refresh_keeps_an_overflowing_application_from_refreshing([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var (bleed, bound) = Bleed(10f);
+            Overflow(bound, "DenyRefreshOnOverflow", true);
+
+            for (int i = 0; i < 3; i++) Assert.IsTrue(World.Apply(gas, gas, bleed), "the bleed lands");
+            await Frames.Step(3);
+            Assert.IsTrue(gas.TryGetEffectContainer(bleed, out var container), "and lasts");
+            float before = container.DurationRemaining;
+            Assert.That(before, Is.LessThan(10f), "and has run a while");
+
+            World.Apply(gas, gas, bleed);
+            Assert.AreEqual(before, container.DurationRemaining, "an application past the max doesn't refresh it");
+            Assert.AreEqual(3, ((AbstractStackingEffectContainer)container).Stacks, "and the stacks stay at the max");
+        });
     }
 }
