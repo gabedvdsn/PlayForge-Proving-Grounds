@@ -1556,9 +1556,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// An effect had no chance to apply and lent no abilities (FEAT-8). The Impact section edits its Chance to Apply,
-        /// after who it affects, and the Tags section its Granted Abilities, after its Granted Tags; each section's summary
-        /// says so.
+        /// An effect had no chance to apply and lent no abilities (FEAT-8). The Requirements section edits its Chance to
+        /// Apply, above the requirements, as it gates the whole application, and the Tags section its Granted Abilities,
+        /// after its Granted Tags. Requirements' summary says a chance short of 1, and Tags' counts the abilities, as in
+        /// "Grants Status.Burning, 1 ability".
         /// </summary>
         [UnityTest]
         public IEnumerator FEAT_8_The_Effect_inspector_edits_the_chance_to_apply_and_granted_abilities()
@@ -1581,20 +1582,71 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var root = host.Inspect(strike);
                 yield return Frames();
 
-                Assert.IsNotNull(root.Q<PropertyField>("ChanceToApply"), "the Impact section edits the chance to apply");
-                Assert.IsNotNull(root.Q<PropertyField>("GrantedAbilities"), "and the Tags section the abilities it grants");
+                var requirements = root.Q("Requirements_CONTAINER");
+                Assert.IsNotNull(requirements?.Q<PropertyField>("ChanceToApply"), "the Requirements section edits the chance to apply");
+                Assert.IsNull(root.Q("Impact_CONTAINER")?.Q<PropertyField>("ChanceToApply"), "and the Impact section no longer does");
+                Assert.IsNotNull(root.Q("Tags_CONTAINER")?.Q<PropertyField>("GrantedAbilities"), "the Tags section edits the abilities it grants");
+                var gates = requirements.Q<Label>(className: "pf-section__summary");
+                Assert.IsNotNull(gates, "the Requirements section has a summary");
+                StringAssert.Contains("30% chance", gates.text, "which says the chance");
                 var impact = root.Q("Impact_CONTAINER")?.Q<Label>(className: "pf-section__summary");
                 Assert.IsNotNull(impact, "the Impact section has a summary");
-                StringAssert.Contains("30% chance", impact.text, "which says the chance");
+                StringAssert.DoesNotContain("chance", impact.text, "and Impact's no longer does");
                 var tags = root.Q("Tags_CONTAINER")?.Q<Label>(className: "pf-section__summary");
                 Assert.IsNotNull(tags, "the Tags section has a summary");
-                StringAssert.Contains("Grants Smite", tags.text, "which says what the effect grants");
+                Assert.AreEqual("Grants 1 ability", tags.text, "which counts the abilities the effect grants");
             }
             finally
             {
                 host.Destroy();
                 Object.DestroyImmediate(strike);
                 Object.DestroyImmediate(smite);
+            }
+        }
+
+        /// <summary>
+        /// A section's Clear gave each field its type's default, not its own: clearing an effect's Impact set its affiliation
+        /// to Use Affiliation List with none listed and its chance to apply to 0, so the effect never landed (ED-42). A
+        /// cleared field takes a new asset's value, and a cleared list still empties. Impact's Clear leaves the chance to
+        /// apply, which the Requirements section shows, and Requirements' Clear sets it back to 1.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_42_Clearing_a_section_gives_its_fields_a_new_assets_values()
+        {
+            var strike = MakeEffect(EEffectDurationPolicy.Instant);
+            var impact = strike.ImpactSpecification;
+            impact.AffiliationPolicy = EAffiliationPolicy.Affiliated;
+            impact.AffiliationComparison = EAnyAllPolicy.All;
+            impact.ImpactOperation = ECalculationOperation.Multiply;
+            impact.Affiliations = new List<Tag> { Tag.Generate("ED42.Team") };
+            impact.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(strike);
+                yield return Frames();
+
+                Press(root.Q<Button>("ImpactClear"));
+                yield return Frames();
+                impact = strike.ImpactSpecification;
+                Assert.AreEqual(EAffiliationPolicy.AlwaysAllow, impact.AffiliationPolicy, "a cleared affiliation allows any target, as a new effect's does");
+                Assert.AreEqual(EAnyAllPolicy.Any, impact.AffiliationComparison, "and compares as a new effect's does");
+                Assert.AreEqual(ECalculationOperation.Add, impact.ImpactOperation, "a cleared operation adds, as a new effect's does");
+                Assert.That(impact.Affiliations, Is.Empty, "a cleared list empties");
+                Assert.AreEqual(0.3f, impact.ChanceToApply.Magnitude, 1e-6f, "Impact's Clear leaves the chance to apply, which Requirements shows");
+
+                Press(root.Q<Button>("RequirementsClear"));
+                yield return Frames();
+                impact = strike.ImpactSpecification;
+                Assert.AreEqual(1f, impact.ChanceToApply.Magnitude, 1e-6f, "Requirements' Clear sets the chance back to 1, as a new effect's is");
+                Assert.AreEqual(EMagnitudeOperation.UseMagnitude, impact.ChanceToApply.RealMagnitude, "read as its magnitude");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(strike);
             }
         }
 
