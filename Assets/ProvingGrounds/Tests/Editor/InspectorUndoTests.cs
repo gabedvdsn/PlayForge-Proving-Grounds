@@ -1521,6 +1521,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             .ToList();
 
         /// <summary>
+        /// An effect couldn't name others to take off or refuse (FEAT-8). The Effect inspector's Tags section edits the
+        /// effects it removes, a cleanse, and the effects it blocks, an immunity, and its summary says which.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_8_The_Effect_inspector_edits_what_an_effect_removes_and_blocks()
+        {
+            var cleanse = ScriptableObject.CreateInstance<GameplayEffect>();
+            cleanse.Definition.Name = "Cleanse";
+            var removes = typeof(GameplayEffectTags).GetField("RemovesEffectsTagged");
+            Assert.IsNotNull(removes, "an effect names the effects it removes");
+            object tags = cleanse.Tags;
+            removes.SetValue(tags, new List<Tag> { Tag.Generate("Status.Debuff") });
+            cleanse.Tags = (GameplayEffectTags)tags;
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(cleanse);
+                yield return Frames();
+
+                Assert.IsNotNull(root.Q<PropertyField>("RemovesEffectsTagged"), "the Tags section edits the effects it removes");
+                Assert.IsNotNull(root.Q<PropertyField>("BlocksEffectsTagged"), "and the effects it blocks");
+                var summary = root.Q("Tags_CONTAINER")?.Q<Label>(className: "pf-section__summary");
+                Assert.IsNotNull(summary, "the Tags section has a summary");
+                StringAssert.Contains("Removes Status.Debuff", summary.text, "which says what the effect removes");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(cleanse);
+            }
+        }
+
+        /// <summary>
         /// The impact didn't say how it is delivered, and still drew Reverse On Removal, which the impact model removed
         /// (ED-2). It says its delivery, which the duration gives it, and what a periodic impact commits, and it follows
         /// the duration as it changes. It sets no look in code: it drew tinted boxes with colored headings.
