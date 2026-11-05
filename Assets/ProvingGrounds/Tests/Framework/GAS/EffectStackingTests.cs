@@ -240,6 +240,44 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             });
         }
 
+        /// <summary>
+        /// Nothing built in read an effect's stack count, so a change by the stack took a scaler written for it, as this
+        /// file's own below (FEAT-19). The Effect Stacks scaler reads it: a sunder of -5 armor a stack takes 15 at three
+        /// stacks and 20 at four, and an effect that doesn't stack reads 1.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_19_The_Effect_Stacks_scaler_reads_the_effects_stack_count([Values] Hub hub) => Live(async () =>
+        {
+            var type = typeof(GameplayEffect).Assembly.GetType("FarEmerald.PlayForge.EffectStacksScaler");
+            Assert.IsNotNull(type, "an Effect Stacks scaler reads an effect's stack count");
+            AbstractScaler Scaler() => (AbstractScaler)System.Activator.CreateInstance(type);
+
+            var armor = Make.Attribute("Armor");
+            var gas = World.Entity(hub, Make.Set(Make.Element(armor, 50f, 50f)));
+            var sunder = Make.Effect("Sunder", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 4f, Target = armor, Magnitude = -5f,
+                MagnitudeScaler = Scaler(), MagnitudeOp = EMagnitudeOperation.MultiplyWithScaler,
+                Reapply = EEffectReApplicationPolicy.StackExistingContainers, StackPolicy = EEffectStackPolicy.StacksHaveIndependentDurations,
+            });
+            var ward = Make.Effect("Ward", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Infinite, Target = armor, Magnitude = 7f,
+                MagnitudeScaler = Scaler(), MagnitudeOp = EMagnitudeOperation.MultiplyWithScaler,
+            });
+            float Armor() => gas.TryGetAttributeValue(armor, out var value) ? value.CurrentValue : float.NaN;
+
+            for (int i = 0; i < 3; i++) Assert.IsTrue(World.Apply(gas, gas, sunder), "a sunder lands");
+            await Frames.Step();
+            Assert.AreEqual(35f, Armor(), "three stacks take 15");
+            Assert.IsTrue(World.Apply(gas, gas, sunder), "a fourth lands");
+            await Frames.Step();
+            Assert.AreEqual(30f, Armor(), "and takes 5 more");
+            Assert.IsTrue(World.Apply(gas, gas, ward), "a ward, which doesn't stack, lands");
+            await Frames.Step();
+            Assert.AreEqual(37f, Armor(), "and reads 1");
+        });
+
         /// <summary>Golden S7's scaler: the magnitude follows the container's stack count.</summary>
         private sealed class StackCountScaler : AbstractScaler
         {
