@@ -1666,6 +1666,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>An item's Max Stack Size wasn't drawn, as nothing read it (FEAT-14, GAS-51). The Identity section edits it.</summary>
+        [UnityTest]
+        public IEnumerator FEAT_14_The_Item_inspector_edits_its_stack_size()
+        {
+            var coin = ScriptableObject.CreateInstance<Item>();
+            coin.Definition.Name = "Coin";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(coin);
+                yield return Frames();
+                var identity = root.Q("Identity_CONTAINER");
+                Assert.IsNotNull(identity, "the inspector has an Identity section");
+                Assert.IsNotNull(identity.Q<PropertyField>("MaxStackSize"), "which edits how many one slot holds");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(coin);
+            }
+        }
+
         /// <summary>A stage couldn't say when it runs (TS-7). A stage's drawer edits its condition: a tag, where it's looked for, and whether it must be there.</summary>
         [UnityTest]
         public IEnumerator TS_7_A_stage_edits_its_condition()
