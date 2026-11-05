@@ -2000,5 +2000,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(cooldown);
             }
         }
+        /// <summary>An ability activated only when asked for (FEAT-4). The Activation section edits its triggers.</summary>
+        [UnityTest]
+        public IEnumerator FEAT_4_The_Ability_inspector_edits_its_triggers()
+        {
+            var parry = ScriptableObject.CreateInstance<Ability>();
+            parry.Definition = new AbilityDefinition { Name = "Parry", Textures = new List<TextureItem>() };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(parry);
+                yield return Frames();
+                Assert.IsNotNull(root.Q<PropertyField>("Triggers"), "the inspector edits what sets the ability off on its own");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(parry);
+            }
+        }
     }
 }
