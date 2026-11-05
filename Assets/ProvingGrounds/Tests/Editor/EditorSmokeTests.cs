@@ -665,26 +665,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             return effect;
         }
 
-        private static void OpenForge(int tab)
-        {
-            TheForge.ShowWindow();
-            typeof(TheForge).GetMethod("ShowTab", Private).Invoke(EditorWindow.GetWindow<TheForge>(), new object[] { tab });
-        }
-
         public static IEnumerable<Window> Windows()
         {
-            // The Settings tab's settings are on Project Settings → PlayForge and Preferences → PlayForge, which
-            // Every_settings_page_builds opens (ED-21)
-            string[] tabs = { "Create", "View", "Analysis" };
-            for (int i = 0; i < tabs.Length; i++)
+            // The Forge is one list and detail; its tabs and the Visualizer went with its redesign (ED-27, ED-9), and the
+            // Settings tab's settings are on the two settings pages, which Every_settings_page_builds opens (ED-21)
+            yield return new Window { Name = "The Forge", Type = typeof(TheForge), Open = _ => TheForge.ShowWindow() };
+            yield return new Window
             {
-                var tab = i;
-                yield return new Window { Name = $"The Forge, {tabs[tab]}", Type = typeof(TheForge), Open = _ => OpenForge(tab) };
-            }
-yield return new Window
-            {
-                Name = "Visualizer", Type = typeof(PlayForgeVisualizer),
-                Open = made => TheForge.OpenVisualizer(New<Ability>(made)),
+                Name = "The Forge, on an asset", Type = typeof(TheForge), Open = made => TheForge.OpenToAsset(New<Ability>(made)),
             };
             yield return new Window { Name = "Problems", Type = typeof(ForgeProblemsWindow), Open = _ => ForgeProblemsWindow.ShowWindow() };
             yield return new Window { Name = "GAS Debugger", Type = typeof(GASDebugger), Open = _ => GASDebugger.ShowWindow() };
@@ -743,20 +731,15 @@ yield return new Window
                     picker.ShowUtility();
                 },
             };
-            foreach (var info in TheForge.AssetTypes.Where(info => info.CanCreate))
+            foreach (var type in (Type[])typeof(TheForge).GetField("Types", AnyStatic).GetValue(null))
             {
                 yield return new Window
                 {
-                    Name = $"Create {info.DisplayName}", Type = typeof(CreateAssetDialog),
-                    Open = _ =>
-                    {
-                        var dialog = ScriptableObject.CreateInstance<CreateAssetDialog>();
-                        dialog.Initialize(info, "Assets", () => { });
-                        dialog.ShowUtility();
-                    },
+                    Name = $"New {type.Name}", Type = typeof(ForgeNewAssetWindow),
+                    Open = _ => ForgeNewAssetWindow.Show(type, _ => { }),
                 };
             }
-var typePicker = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.TypePickerWindow");
+            var typePicker = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.TypePickerWindow");
             yield return new Window
             {
                 Name = "Type Picker", Type = typePicker,

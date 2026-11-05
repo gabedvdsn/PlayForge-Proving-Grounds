@@ -268,6 +268,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// "Display full tag path" changed nothing: the tag field's text returned the full path before the code that read
+        /// the setting (ED-25).
+        /// </summary>
+        [Test]
+        public void ED_25_Show_Full_Tag_Paths_changes_the_tag_field()
+        {
+            var tag = Tag.Generate("Status.Debuff.Burn");
+            var drawer = new TagDrawer();
+            var text = typeof(TagDrawer).GetMethod("GetDisplayText", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            EditorPrefs.SetBool(Prefix + "ShowFullTagPath", true);
+            Assert.AreEqual("Status.Debuff.Burn", text.Invoke(drawer, new object[] { tag }), "the full path");
+
+            EditorPrefs.SetBool(Prefix + "ShowFullTagPath", false);
+            Assert.AreEqual("…Burn", text.Invoke(drawer, new object[] { tag }), "the leaf");
+        }
+
+        /// <summary>
         /// Use Default Folders and Names puts every type's folder and file names back, and keeps the defaults and the Cost
         /// and Cooldown effects, which are content you chose (ED-6).
         /// </summary>
