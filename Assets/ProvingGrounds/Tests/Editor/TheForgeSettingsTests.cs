@@ -14,8 +14,9 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// The Forge's Settings tab and the settings it writes. Settings live in EditorPrefs, which every project on the
-    /// machine shares, so each test puts back every setting it can touch.
+    /// The Forge's view preferences, which live in EditorPrefs, as each user's own: every project on the machine shares
+    /// them, so each test puts back every one it can touch. Their page, and the project's settings, are
+    /// PlayForgeSettingsTests' (ED-21).
     /// </summary>
     public class TheForgeSettingsTests
     {
@@ -78,63 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private static void Invoke(TheForge forge, string method, params object[] args) =>
             typeof(TheForge).GetMethod(method, Private).Invoke(forge, args);
 
-        private static VisualElement RowOf(VisualElement root, string label) =>
-            root.Query<Label>().Where(l => l.text == label).First().parent;
-
-        /// <summary>Reset All cleared 7 of The Forge's settings and its paths and names, and left the rest.</summary>
-        [Test]
-        public void ED_6_Reset_All_resets_every_setting()
-        {
-            foreach (var key in BoolSettings) EditorPrefs.SetBool(Prefix + key, true);
-            foreach (var key in IntSettings) EditorPrefs.SetInt(Prefix + key, 3);
-            foreach (var key in FloatSettings) EditorPrefs.SetFloat(Prefix + key, 3f);
-            foreach (var key in StringSettings.Concat(Templates)) EditorPrefs.SetString(Prefix + key, "ED-6");
-
-            var forge = ScriptableObject.CreateInstance<TheForge>();
-            try
-            {
-                Invoke(forge, "ResetAllSettings");
-            }
-            finally
-            {
-                Object.DestroyImmediate(forge);
-            }
-
-            var left = BoolSettings.Concat(IntSettings).Concat(FloatSettings).Concat(StringSettings)
-                .Where(key => EditorPrefs.HasKey(Prefix + key));
-            Assert.That(left, Is.Empty, "settings Reset All left as they were");
-            Assert.That(Templates.Where(key => !EditorPrefs.HasKey(Prefix + key)), Is.Empty, "templates Reset All removed");
-        }
-
-        /// <summary>
-        /// Reset All went to the Analysis tab, a copy of the Analysis tab's own refresh, so the Settings tab never showed
-        /// the defaults it had just restored.
-        /// </summary>
-        [Test]
-        public void ED_6_Reset_All_shows_the_defaults_on_the_Settings_tab()
-        {
-            EditorPrefs.SetBool(Prefix + "ShowFileNames", false);
-            var forge = ScriptableObject.CreateInstance<TheForge>();
-            try
-            {
-                Invoke(forge, "CreateGUI");
-                Invoke(forge, "ShowTab", 3);
-                Assert.IsFalse(RowOf(forge.rootVisualElement, "Show file names in grouped view").Q<Toggle>().value,
-                    "the tab shows the setting");
-
-                Invoke(forge, "ResetAllSettings");
-
-                Assert.AreEqual(3, typeof(TheForge).GetField("currentTab", Private).GetValue(forge), "still on Settings");
-                Assert.IsTrue(RowOf(forge.rootVisualElement, "Show file names in grouped view").Q<Toggle>().value,
-                    "the tab shows the default");
-            }
-            finally
-            {
-                Object.DestroyImmediate(forge);
-            }
-        }
-
-        /// <summary>"Auto-refresh on window focus" was saved but never read, so the window never refreshed on focus.</summary>
+/// <summary>"Auto-refresh on window focus" was saved but never read, so the window never refreshed on focus.</summary>
         [UnityTest]
         public IEnumerator ED_6_Focus_picks_up_an_asset_made_elsewhere()
         {
@@ -179,29 +124,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("…Burn", text.Invoke(drawer, new object[] { tag }), "leaf only");
         }
 
-        /// <summary>"Group tags by root" showed off in Settings, but the tag field treats an unset value as on.</summary>
-        [Test]
-        public void ED_25_Group_tags_by_root_shows_the_default_the_tag_field_uses()
-        {
-            EditorPrefs.DeleteKey(Prefix + "GroupTagsByRoot");
-            var forge = ScriptableObject.CreateInstance<TheForge>();
-            try
-            {
-                var settings = new VisualElement();
-                typeof(TheForge).GetField("settingsContentContainer", Private).SetValue(forge, settings);
-                Invoke(forge, "BuildGeneralSettingsTab");
-
-                var shown = RowOf(settings, "Group tags by root").Q<Toggle>().value;
-                var used = (bool)typeof(TagDrawer).GetMethod("GroupByRoot", Private).Invoke(new TagDrawer(), null);
-                Assert.AreEqual(used, shown);
-            }
-            finally
-            {
-                Object.DestroyImmediate(forge);
-            }
-        }
-
-        /// <summary>The View tab's tag list kept display switches of its own and read neither setting.</summary>
+/// <summary>The View tab's tag list kept display switches of its own and read neither setting.</summary>
         [Test]
         public void ED_25_The_View_tab_follows_the_tag_settings()
         {

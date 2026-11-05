@@ -673,23 +673,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         public static IEnumerable<Window> Windows()
         {
-            string[] tabs = { "Create", "View", "Analysis", "Settings" };
+            // The Settings tab's settings are on Project Settings → PlayForge and Preferences → PlayForge, which
+            // Every_settings_page_builds opens (ED-21)
+            string[] tabs = { "Create", "View", "Analysis" };
             for (int i = 0; i < tabs.Length; i++)
             {
                 var tab = i;
                 yield return new Window { Name = $"The Forge, {tabs[tab]}", Type = typeof(TheForge), Open = _ => OpenForge(tab) };
             }
-            yield return new Window
-            {
-                Name = "The Forge, Settings, Assets", Type = typeof(TheForge),
-                Open = _ =>
-                {
-                    OpenForge(3);
-                    typeof(TheForge).GetMethod("ShowSettingsSubTab", Private)
-                        .Invoke(EditorWindow.GetWindow<TheForge>(), new object[] { 1 });
-                },
-            };
-            yield return new Window
+yield return new Window
             {
                 Name = "Visualizer", Type = typeof(PlayForgeVisualizer),
                 Open = made => TheForge.OpenVisualizer(New<Ability>(made)),
@@ -763,17 +755,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     },
                 };
             }
-            yield return new Window
-            {
-                Name = "Template Tag", Type = typeof(EditTemplateTagDialog),
-                Open = _ =>
-                {
-                    var dialog = ScriptableObject.CreateInstance<EditTemplateTagDialog>();
-                    dialog.Initialize(new TemplateTag("Smoke", Color.gray), () => { });
-                    dialog.ShowUtility();
-                },
-            };
-            var typePicker = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.TypePickerWindow");
+var typePicker = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.TypePickerWindow");
             yield return new Window
             {
                 Name = "Type Picker", Type = typePicker,
@@ -883,6 +865,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 log.Dispose();
             }
             Assert.That(log.Errors, Is.Empty);
+        }
+
+        /// <summary>
+        /// Project Settings → PlayForge and Preferences → PlayForge, which hold what The Forge's Settings tab did, build
+        /// in the theme without an error (ED-21).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Every_settings_page_builds([Values("BuildProjectPage", "BuildPreferencesPage")] string page)
+        {
+            var log = new WindowLog();
+            var host = new Host(theme);
+            try
+            {
+                yield return null;
+                var pages = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+                var root = new VisualElement();
+                host.Document.rootVisualElement.Add(root);
+                pages.GetMethod(page, AnyStatic).Invoke(null, new object[] { root });
+                yield return Frames();
+                Assert.IsNotNull(root.Q(className: "pf-settings"), "the page builds");
+                Assert.IsTrue(root.ClassListContains("pf-root"), "in PlayForge's style sheet");
+            }
+            finally
+            {
+                host.Destroy();
+                log.Dispose();
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while the page was open");
         }
 
         /// <summary>Each window PlayForge has is one the suite opens, so a new window is opened too.</summary>
