@@ -46,5 +46,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.AreEqual(1, probe.Recorder[ProbeHook.Terminate], "and it ends");
         });
+
+        /// <summary>
+        /// A world of its own keeps its own time (FEAT-10, step 3): its owner steps it by a time it gives, and a sequence's
+        /// delay in it runs out by those steps, within one frame. Its waits were Unity's next frame, so a world stepped in a
+        /// loop got nowhere until frames passed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_A_world_of_its_own_keeps_its_own_time() => Live(async () =>
+        {
+            var world = new ProcessWorld();
+            bool done = false;
+            var sequence = TaskSequenceBuilder.Create("FEAT-10 Delay")
+                .Stage(stage => stage.Delay(1f))
+                .Stage(stage => stage.Task(_ => done = true))
+                .BuildSequence();
+            var result = ProcessControl.Register(sequence).In(world).Run();
+            Assert.IsTrue(result, "the world takes a sequence");
+
+            int frame = UnityEngine.Time.frameCount;
+            int steps = 0;
+            while (!done && steps < 200)
+            {
+                world.Step(1f / 60f);
+                steps++;
+            }
+
+            Assert.AreEqual(frame, UnityEngine.Time.frameCount, "all within one frame");
+            Assert.IsTrue(done, "its delay runs out by the world's own steps");
+            Assert.That(steps, Is.InRange(58, 75), "after the steps its second needs");
+            Assert.AreEqual(steps / 60f, world.Elapsed, 1e-3f, "which its clock counts");
+            result.Relay.TerminateImmediate();
+            await Frames.Step();
+        });
     }
 }
