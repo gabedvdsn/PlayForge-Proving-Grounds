@@ -43,10 +43,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// No window's title matched its menu item: The Forge opened "PlayForge Manager", the GAS Debugger "GAS Debug",
-        /// Process Control "Process Debugger", and the Tag Debugger "Runtime Tags". The three debuggers are one now (Q4).
+        /// Process Control "Process Debugger", and the Tag Debugger "Runtime Tags". The three debuggers are one now (Q4),
+        /// the Debugger, as the design canvas's boards title it.
         /// </summary>
         [TestCase("Window/PlayForge/The Forge", nameof(TheForge))]
-        [TestCase("Window/PlayForge/Runtime Debugger", "RuntimeDebugger")]
+        [TestCase("Window/PlayForge/Debugger", "RuntimeDebugger")]
         public void ED_19_Each_window_is_titled_as_its_menu_item(string path, string window)
         {
             var type = typeof(TheForge).Assembly.GetTypes().Single(t => t.Name == window);

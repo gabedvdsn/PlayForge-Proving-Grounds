@@ -675,8 +675,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "The Forge, on an asset", Type = typeof(TheForge), Open = made => TheForge.OpenToAsset(New<Ability>(made)),
             };
             yield return new Window { Name = "Problems", Type = typeof(ForgeProblemsWindow), Open = _ => ForgeProblemsWindow.ShowWindow() };
-            // One Runtime Debugger has the GAS, Process and Tag views (Q4)
-            yield return new Window { Name = "Runtime Debugger", Type = typeof(RuntimeDebugger), Open = _ => RuntimeDebugger.ShowWindow() };
+            // One Debugger has the GAS, Process and Tag views (Q4)
+            yield return new Window { Name = "Debugger", Type = typeof(RuntimeDebugger), Open = _ => RuntimeDebugger.ShowWindow() };
             yield return new Window
             {
                 Name = "Asset Browser", Type = typeof(AssetBrowserWindow),

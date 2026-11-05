@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using FarEmerald.PlayForge.Extended.Editor;
@@ -17,10 +18,10 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// The Runtime Debugger, one window for the GAS, Process and Tag views (Q4). It lists both kinds of hub from
-    /// ProcessControl's registry (Q28) and follows their values in place while the game plays; in edit mode it offers
-    /// Play Mode. These tests run it in edit mode over a ProcessControl bootstrapped there, as the golden scenarios run,
-    /// and tell it the game is live.
+    /// The Debugger, one window for the GAS, Process and Tag views (Q4), drawn as the design canvas's boards have it
+    /// (version 21). It lists both kinds of hub from ProcessControl's registry (Q28) and follows their values in place while
+    /// the game plays; outside Play mode it offers Play Mode. These tests run it in edit mode over a ProcessControl
+    /// bootstrapped there, as the golden scenarios run, and tell it the game is live.
     /// </summary>
     public class RuntimeDebuggerTests
     {
@@ -32,6 +33,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private GameObject host;
         private ProcessControl control;
         private object liveBefore;
+        private Object[] selectionBefore;
         private readonly List<Object> made = new();
 
         [SetUp]
@@ -47,6 +49,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ProcessControl.Instance = null;
             control.Bootstrap();
             liveBefore = Debugger?.GetField("Live", AnyStatic)?.GetValue(null);
+            selectionBefore = Selection.objects;
         }
 
         [TearDown]
@@ -57,6 +60,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 foreach (var window in Resources.FindObjectsOfTypeAll(Debugger).Cast<EditorWindow>().ToList()) window.Close();
                 if (liveBefore != null) Debugger.GetField("Live", AnyStatic).SetValue(null, liveBefore);
             }
+            Selection.objects = selectionBefore;
             control.TerminateAllImmediately();
             Object.DestroyImmediate(host);
             ProcessControl.Instance = previous;
@@ -207,17 +211,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             RemovalRequirements = new AvoidRequireTagGroup(),
         };
 
-        // An effect that lasts, and changes nothing
-        private GameplayEffect Lasting(string name, float seconds)
+        // An effect that lasts, changes nothing, and grants the tags given
+        private GameplayEffect Lasting(string name, float seconds, params Tag[] grants)
         {
             var effect = Own(ScriptableObject.CreateInstance<GameplayEffect>());
             effect.name = name;
             effect.Definition = new GameplayEffectDefinition { Name = name, Textures = new List<TextureItem>() };
             effect.Tags = new GameplayEffectTags
             {
-                AssetTag = Tag.Generate($"Test.Debugger.{name}"),
+                AssetTag = Tag.Generate($"Test.Debugger.{name.Replace(" ", "")}"),
                 ContextTags = new List<Tag>(),
-                GrantedTags = new List<Tag>(),
+                GrantedTags = grants.ToList(),
             };
             effect.Workers = new List<AbstractEffectWorker>();
             effect.SourceRequirements = NoRequirements();
@@ -275,7 +279,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static EditorWindow Open(bool live = true)
         {
-            Assert.IsNotNull(Debugger, "one Runtime Debugger merges the GAS, Process and Tag views (Q4)");
+            Assert.IsNotNull(Debugger, "one Debugger merges the GAS, Process and Tag views (Q4)");
             Debugger.GetField("Live", AnyStatic).SetValue(null, (Func<bool>)(() => live));
             return (EditorWindow)Debugger.GetMethod("Open", AnyStatic).Invoke(null, null);
         }
@@ -305,8 +309,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             button.SendEvent(click);
         }
 
+        // A mouse press on a row or a cell: one click selects a row, and two set a value in place
+        private static void Press(VisualElement element, int clicks = 1)
+        {
+            Assert.IsNotNull(element, "the element is there");
+            using var down = MouseDownEvent.GetPooled(Vector2.zero, 0, clicks, Vector2.zero, EventModifiers.None);
+            down.target = element;
+            element.SendEvent(down);
+        }
+
+        private static IEnumerator ShowView(EditorWindow window, string toggleName)
+        {
+            var toggle = window.rootVisualElement.Q<ToolbarToggle>(toggleName);
+            Assert.IsNotNull(toggle, $"the toolbar has {toggleName}");
+            toggle.value = true;
+            yield return Frames();
+            Sample(window);
+        }
+
+        // A fact's value in a detail, as "Lifecycle" beside "SelfTerminating"
+        private static Label Fact(VisualElement detail, string name) => detail?.Q(name)?.Q<Label>("Value");
+
         // ═══════════════════════════════════════════════════════════════════════════
-        // ED-4: the GAS view
+        // ED-4: the Entities view
         // ═══════════════════════════════════════════════════════════════════════════
 
         /// <summary>
@@ -325,9 +350,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Frames();
             Sample(window);
 
-            Assert.IsNotNull(EntityList(window), "the debugger lists the entities");
-            Assert.That(Listed(EntityList(window)), Has.Member(runtime), "a runtime hub, which the scan never found");
-            Assert.That(Listed(EntityList(window)), Has.Member(mono), "and a MonoBehaviour hub");
+            var list = EntityList(window);
+            Assert.IsNotNull(list, "the debugger lists the entities");
+            Assert.That(list.columns.Select(column => column.title), Is.EqualTo(new[] { "Name", "Hub", "Lvl", "Effects" }),
+                "by name, hub, level and effects, as the board has them");
+            Assert.That(Listed(list), Has.Member(runtime), "a runtime hub, which the scan never found");
+            Assert.That(Listed(list), Has.Member(mono), "and a MonoBehaviour hub");
 
             control.TerminateImmediate(relay.CacheIndex);
             Sample(window);
@@ -337,7 +365,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// The GAS Debugger cleared its details and built them again every 0.25 s, so a field was replaced while it was
-        /// typed in (ED-4). A sample changes the values the detail shows, in place.
+        /// typed in (ED-4). A sample changes the values the detail shows, in place, under a header that says what the
+        /// entity is.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_4_A_sample_changes_the_detail_in_place() => Guarded(ChangesInPlace());
@@ -351,21 +380,27 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Sample(window);
             yield return Select(window, foe);
 
-            var row = Detail(window)?.Q("Attribute Health");
+            var header = Detail(window)?.Q("EntityHeader");
+            Assert.IsNotNull(header, "the detail has a header");
+            Assert.AreEqual("Runtime Foe", header.Q<Label>("HeaderName").text, "with the entity's name");
+            Assert.AreEqual("Entity · Runtime Foe · Runtime hub · Level 1", header.Q<Label>("HeaderDetail").text, "and what it is");
+            Assert.IsFalse(header.Q<Button>("SelectInScene").enabledSelf, "a runtime hub has nothing in the scene to select");
+
+            var row = Detail(window).Q("Attribute Health");
             Assert.IsNotNull(row, "the detail lists the entity's attributes");
-            Assert.AreEqual(100f, row.Q<FloatField>("Current").value, "with its current value");
-            Assert.AreEqual(100f, row.Q<FloatField>("Base").value, "and its base");
+            Assert.AreEqual("100", row.Q<Label>("Current").text, "with its current value");
+            Assert.AreEqual("100", row.Q<Label>("Base").text, "and its base");
 
             foe.TryModifyAttribute(health, SourcedModifiedAttributeValue.GenerateUnworkable(foe, health, -30f, 0f));
             Sample(window);
             Assert.AreSame(row, Detail(window).Q("Attribute Health"), "a sample keeps the row");
-            Assert.AreEqual(70f, row.Q<FloatField>("Current").value, "and shows the new value");
+            Assert.AreEqual("70", row.Q<Label>("Current").text, "and shows the new value");
         }
 
         /// <summary>
         /// The GAS Debugger showed an ability's cooldown as its effect's raw magnitude, before its scaler, and nowhere how
         /// long it had left; a badge printed a value as "current/base" or "min/current/max" with no label (ED-4). An
-        /// ability on cooldown says how long it has left, and every value says what it is.
+        /// ability on cooldown says how long it has left, an effect how long it has, and each column says what it holds.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_4_A_cooldown_shows_the_time_it_has_left() => Guarded(ShowsCooldown());
@@ -382,17 +417,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Sample(window);
             yield return Select(window, foe);
 
-            var state = Detail(window)?.Q("Ability Fireball")?.Q<Label>("State");
-            Assert.IsNotNull(state, "the detail lists the entity's abilities");
-            StringAssert.StartsWith("Cooldown", state.text);
-            StringAssert.Contains("3.0 s", state.text, "with the time it has left");
+            var ability = Detail(window)?.Q("Ability Fireball");
+            Assert.IsNotNull(ability, "the detail lists the entity's abilities");
+            Assert.AreEqual("Cooldown", ability.Q<Label>("State").text, "with its state");
+            Assert.AreEqual("3.0 s", ability.Q<Label>("Cooldown").text, "and the time its cooldown has left");
+            Assert.AreEqual("1", ability.Q<Label>("Level").text, "and its level");
+            var titles = Detail(window).Q("Abilities_CONTAINER").Q(className: "pf-debugger__table-head").Query<Label>().ToList()
+                .Select(label => label.text);
+            Assert.That(titles, Is.EqualTo(new[] { "Ability", "Lvl", "State", "Cooldown" }), "under titles that say what each holds");
 
-            var remaining = Detail(window).Q("Effect Fireball Cooldown")?.Q<Label>("Remaining");
-            Assert.IsNotNull(remaining, "the detail lists the entity's effects");
-            Assert.AreEqual("3.0 s of 3.0 s", remaining.text, "each with the time it has left of its duration");
-
-            var level = Detail(window).Q("Ability Fireball").Q<Label>("Level");
-            Assert.AreEqual("Level 1", level.text, "a level says it is one");
+            var effect = Detail(window).Q("Effect Fireball Cooldown");
+            Assert.IsNotNull(effect, "the detail lists the entity's effects");
+            Assert.AreEqual("3.0 s", effect.Q<Label>("Left").text, "each with the time it has left");
+            Assert.AreEqual("3.0 s of 3.0 s", effect.Q<Label>("Left").tooltip, "of its duration");
+            Assert.AreEqual("1", effect.Q<Label>("Stacks").text, "its stacks");
+            Assert.AreEqual("Self", effect.Q<Label>("From").text, "and where it came from");
         }
 
         /// <summary>
@@ -402,7 +441,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void GAS_S1_The_debugger_names_a_runtime_entity()
         {
-            Assert.IsNotNull(Debugger, "one Runtime Debugger merges the GAS, Process and Tag views (Q4)");
+            Assert.IsNotNull(Debugger, "one Debugger merges the GAS, Process and Tag views (Q4)");
             var gas = new RuntimeGameplayAbilitySystem(Identity("Runtime Foe", Set((Attribute("Health"), 1f, 1f))));
             var nameOf = Debugger.GetMethod("NameOf", AnyStatic, null, new[] { typeof(IGameplayAbilitySystem) }, null);
             Assert.That(nameOf.Invoke(null, new object[] { gas }), Is.EqualTo("Runtime Foe"));
@@ -436,7 +475,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// Outside play mode the GAS Debugger showed an empty window marked "EDITOR", while the Process and Tag
-        /// debuggers offered Play Mode (Q28). The debugger offers Play Mode.
+        /// debuggers offered Play Mode (Q28). The debugger says it's not in Play mode and offers it, as the board for
+        /// outside Play mode draws it: the view toggles still switch, the search waits, and there's no status bar.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_4_In_edit_mode_the_debugger_offers_Play_Mode() => Guarded(OffersPlayMode());
@@ -445,11 +485,83 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var window = Open(live: false);
             yield return Frames();
-            var prompt = window.rootVisualElement.Q("Prompt");
+            var root = window.rootVisualElement;
+            var prompt = root.Q("Prompt");
             Assert.IsNotNull(prompt, "the debugger has a prompt");
             Assert.IsFalse(prompt.ClassListContains("pf-debugger__hidden"), "which shows in edit mode");
+            Assert.That(prompt.Query<Label>().ToList().Select(label => label.text), Has.Member("Not in Play mode."), "and says why");
             Assert.IsNotNull(prompt.Q<Button>("EnterPlayMode"), "with Enter Play Mode");
-            Assert.IsTrue(window.rootVisualElement.Q("Views").ClassListContains("pf-debugger__hidden"), "and the views wait");
+            Assert.IsTrue(root.Q("Views").ClassListContains("pf-debugger__hidden"), "and the views wait");
+            Assert.IsTrue(root.Q("DebuggerStatus").ClassListContains("pf-debugger__hidden"), "with no status bar");
+            Assert.IsFalse(root.Q<ToolbarSearchField>("Search").enabledSelf, "and no search");
+
+            var processes = root.Q<ToolbarToggle>("ShowProcesses");
+            processes.value = true;
+            yield return Frames();
+            Assert.IsTrue(processes.value, "the view toggles still switch");
+            Assert.IsFalse(root.Q<ToolbarToggle>("ShowEntities").value, "one view at a time");
+        }
+
+        /// <summary>
+        /// The board's status bar counts what the game holds: ProcessControl's state, its processes by state, and its
+        /// entities by hub (ED-4, ED-5).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_4_The_status_bar_counts_the_processes_and_entities() => Guarded(CountsInTheStatusBar());
+
+        private IEnumerator CountsInTheStatusBar()
+        {
+            RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            RuntimeHub("Runtime Ally", Set((Attribute("Health"), 100f, 100f)), out _);
+            MonoHub("Mono Hero", Set((Attribute("Health"), 100f, 100f)));
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+
+            var root = window.rootVisualElement;
+            Assert.IsFalse(root.Q("DebuggerStatus").ClassListContains("pf-debugger__hidden"), "the status bar shows while the game plays");
+            Assert.AreEqual($"ProcessControl: {control.State}", root.Q<Label>("ControlStatus").text, "with ProcessControl's state");
+            int running = control.FetchActiveProcesses().Values.Count(pcb => pcb.State == EProcessState.Running);
+            int waiting = control.FetchActiveProcesses().Values.Count(pcb => pcb.State == EProcessState.Waiting);
+            StringAssert.StartsWith($"3 processes: {running} running, {waiting} waiting", root.Q<Label>("ProcessStatus").text,
+                "its processes by state");
+            Assert.AreEqual("3 entities: 1 Mono, 2 runtime", root.Q<Label>("EntityStatus").text, "and its entities by hub");
+            StringAssert.StartsWith("Frame ", root.Q<Label>("Frame").text, "and the toolbar shows the frame");
+        }
+
+        /// <summary>
+        /// The board's Follow Selection shows the entity whose GameObject is selected in the scene, and turned off, leaves
+        /// the shown entity alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_4_Follow_Selection_shows_the_selected_hub() => Guarded(FollowsSelection());
+
+        private IEnumerator FollowsSelection()
+        {
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var hero = MonoHub("Mono Hero", Set((Attribute("Health"), 100f, 100f)));
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+            yield return Select(window, foe);
+
+            var follow = window.rootVisualElement.Q<ToolbarToggle>("FollowSelection");
+            Assert.IsNotNull(follow, "the Entities view has Follow Selection");
+            Assert.IsTrue(follow.value, "which is on at first");
+            Selection.activeGameObject = hero.gameObject;
+            yield return Frames();
+            Sample(window);
+            Assert.AreSame(hero, EntityList(window).selectedItem, "a hub's GameObject selected in the scene is the entity shown");
+            Assert.AreEqual("Mono Hero", Detail(window).Q<Label>("HeaderName").text, "in the detail");
+
+            follow.value = false;
+            yield return Select(window, foe);
+            Selection.activeGameObject = null;
+            yield return Frames();
+            Selection.activeGameObject = hero.gameObject;
+            yield return Frames();
+            Sample(window);
+            Assert.AreSame(foe, EntityList(window).selectedItem, "turned off, it leaves the shown entity alone");
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
@@ -457,8 +569,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // ═══════════════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// The debugger only watched, so an attribute could be changed only by code (ED-40, Q27). Its current and base
-        /// values take a value, which the entity takes as it is.
+        /// The debugger only watched, so an attribute could be changed only by code (ED-40, Q27). A double-click on its
+        /// current or base value sets it in place, and the entity takes it as it is.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_An_attribute_takes_the_value_typed_into_the_debugger() => Guarded(TakesAttributeValue());
@@ -473,26 +585,32 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Select(window, foe);
 
             var row = Detail(window).Q("Attribute Health");
-            var current = row.Q<FloatField>("Current");
-            Assert.IsFalse(current.isReadOnly, "the current value takes a value");
-            current.value = 42f;
+            var current = row.Q<Label>("Current");
+            Assert.IsNull(row.Q<FloatField>("CurrentField"), "a value shows as text");
+            Press(current, clicks: 2);
+            var field = row.Q<FloatField>("CurrentField");
+            Assert.IsNotNull(field, "and a double-click sets it in place");
+            Assert.AreEqual(100f, field.value, "from the value it has");
+            field.value = 42f;
             Sample(window);
             Assert.IsTrue(foe.TryGetAttributeValue(health, out var value));
             Assert.AreEqual(42f, value.CurrentValue, "the entity takes it");
             Assert.AreEqual(100f, value.BaseValue, "and keeps its base");
+            Assert.IsNull(row.Q<FloatField>("CurrentField"), "and the cell shows text again");
 
-            row.Q<FloatField>("Base").value = 120f;
+            Press(row.Q<Label>("Base"), clicks: 2);
+            row.Q<FloatField>("BaseField").value = 120f;
             Sample(window);
             foe.TryGetAttributeValue(health, out value);
             Assert.AreEqual(120f, value.BaseValue, "the base takes one too");
             Assert.AreEqual(42f, value.CurrentValue, "and leaves the current");
-            Assert.AreEqual(42f, current.value, "which the field still shows");
+            Assert.AreEqual("42", current.text, "which the cell still shows");
         }
 
         /// <summary>
         /// The debugger couldn't add a tag, and one added straight to an entity's tag cache went at its next compile
         /// (ED-40, Q27). A tag added in the debugger is a loose tag (FEAT-16), which lasts until it's removed, and its
-        /// row removes it.
+        /// row, selected, removes it.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_A_tag_added_in_the_debugger_lasts_until_its_removed() => Guarded(AddsATag());
@@ -518,15 +636,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Sample(window);
             var row = detail.Q("Tag Status.Debugged");
             Assert.IsNotNull(row, "its row shows");
-            Click(row.Q<Button>("RemoveTag"));
+            Assert.AreEqual("Status.", row.Q<Label>("Parents").text, "its parents");
+            Assert.AreEqual("Debugged", row.Q<Label>("Name").text, "then its name");
+            Assert.AreEqual("Loose tag", row.Q<Label>("From").text, "and what grants it");
+            var remove = detail.Q<Button>("RemoveTag");
+            Assert.IsFalse(remove.enabledSelf, "Remove waits for a row");
+            Press(row);
+            Assert.IsTrue(remove.enabledSelf, "and takes the selected one");
+            Assert.AreEqual("Remove Debugged", remove.text, "by name");
+            Click(remove);
             Sample(window);
-            Assert.That(foe.GetTagWeight(debugged), Is.LessThanOrEqualTo(0), "and its Remove takes it away");
+            Assert.That(foe.GetTagWeight(debugged), Is.LessThanOrEqualTo(0), "Remove takes it away");
             Assert.IsNull(detail.Q("Tag Status.Debugged"), "with its row");
         }
 
         /// <summary>
-        /// The debugger couldn't apply an effect or take one off (ED-40, Q27). An effect picked in the Effects section lands
-        /// on the entity, from the entity itself, and its row's Remove takes it off.
+        /// The debugger couldn't apply an effect or take one off (ED-40, Q27). An effect picked under the Effects table
+        /// lands on the entity, from the entity itself, and Remove takes the selected one off.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_An_effect_applied_in_the_debugger_lands_and_its_row_removes_it() => Guarded(AppliesAnEffect());
@@ -551,17 +677,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var row = detail.Q("Effect Burning");
             Assert.IsNotNull(row, "its row shows");
 
-            Click(row.Q<Button>("RemoveEffect"));
+            Press(row);
+            Assert.IsTrue(row.ClassListContains("pf-debugger__table-row--selected"), "a click selects the row");
+            var remove = detail.Q<Button>("RemoveEffect");
+            Assert.AreEqual("Remove Burning", remove.text, "which Remove names");
+            Click(remove);
             // The entity clears a removed effect off its shelf at its next tick
             foe.GetEffectSystem().Tick();
             Sample(window);
-            Assert.That(foe.GetEffectSystem().Shelf.Select(container => container.Spec.Base), Has.No.Member(burning), "and its Remove takes it off");
+            Assert.That(foe.GetEffectSystem().Shelf.Select(container => container.Spec.Base), Has.No.Member(burning), "and takes off");
             Assert.IsNull(detail.Q("Effect Burning"), "with its row");
+            Assert.IsFalse(remove.enabledSelf, "and Remove waits for another");
         }
 
         /// <summary>
-        /// The debugger couldn't grant an ability, set one off or take one away (ED-40, Q27). An ability picked in the
-        /// Abilities section is granted at the level given, its row's Activate sets it off, and its Remove takes it away.
+        /// The debugger couldn't grant an ability, set one off or take one away (ED-40, Q27). An ability picked under the
+        /// Abilities table is granted at the level given, and the selected row's Activate sets it off, and its Remove
+        /// takes it away.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_An_ability_granted_in_the_debugger_activates_and_goes() => Guarded(GrantsAnAbility());
@@ -586,19 +718,103 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("Granted", detail.Q<Label>("GrantResult").text, "and the section says so");
             var row = detail.Q("Ability Blink");
             Assert.IsNotNull(row, "its row shows");
+            Assert.AreEqual("Ready", row.Q<Label>("State").text, "ready");
 
-            Click(row.Q<Button>("ActivateAbility"));
+            var activate = detail.Q<Button>("ActivateAbility");
+            Assert.IsFalse(activate.enabledSelf, "Activate waits for a row");
+            Press(row);
+            Assert.AreEqual("Activate Blink", activate.text, "and names the selected one");
+            Click(activate);
             Sample(window);
-            Assert.AreEqual("Activated", row.Q<Label>("Result").text, "its Activate sets it off");
+            Assert.AreEqual("Activated", detail.Q("AbilityActions").Q<Label>("Result").text, "which it sets off");
 
-            Click(row.Q<Button>("RemoveAbility"));
+            Click(detail.Q<Button>("RemoveAbility"));
             Sample(window);
-            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.No.Member(blink), "and its Remove takes it away");
+            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.No.Member(blink), "and Remove takes it away");
             Assert.IsNull(detail.Q("Ability Blink"), "with its row");
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // ED-5: the Process view
+        // ED-4: the Tags view
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static MultiColumnTreeView TagTree(EditorWindow window) => window.rootVisualElement.Q<MultiColumnTreeView>("Tags");
+
+        // A tag path's row in the tree: its id, which the window keeps, and the counts its data holds
+        private static int TagId(EditorWindow window, string path)
+        {
+            var ids = (Dictionary<string, int>)Debugger.GetField("tagIds", AnyInstance).GetValue(window);
+            Assert.IsTrue(ids.TryGetValue(path, out int id), $"the tree has {path}");
+            return id;
+        }
+
+        // The tree's data is the window's own node type, which its controller asks for by name
+        private static (int Entities, int Weight) TagCounts(EditorWindow window, string path)
+        {
+            var nodeType = Debugger.GetNestedType("TagNode", BindingFlags.NonPublic);
+            var dataFor = typeof(BaseTreeView).GetMethod(nameof(BaseTreeView.GetItemDataForId)).MakeGenericMethod(nodeType);
+            var node = dataFor.Invoke(TagTree(window), new object[] { TagId(window, path) });
+            Assert.IsNotNull(node, $"{path} is in the tree");
+            var type = node.GetType();
+            return ((int)type.GetField("Entities").GetValue(node), (int)type.GetField("Weight").GetValue(node));
+        }
+
+        /// <summary>
+        /// The Tag Debugger listed one entity's tags in a window of its own (Q4). The Tags view holds every tag the
+        /// entities hold, as a tree by its path, where a parent counts the entities that hold any tag under it and adds up
+        /// their weights; the tag selected shows who holds it, and what grants it them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_4_The_Tags_view_shows_each_tag_and_who_holds_it() => Guarded(ShowsTags());
+
+        private IEnumerator ShowsTags()
+        {
+            var chilled = Tag.Generate("Status.Chilled");
+            var frost = Lasting("Frost", 5f, chilled);
+            var ice = Lasting("Ice", 5f, chilled);
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var ally = RuntimeHub("Runtime Ally", Set((Attribute("Health"), 100f, 100f)), out _);
+            Assert.IsTrue(Apply(foe, frost) && Apply(foe, ice), "the foe is chilled twice over");
+            Assert.IsTrue(Apply(ally, frost), "and the ally once");
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowTags");
+
+            var tree = TagTree(window);
+            Assert.IsNotNull(tree, "the Tags view is a tree");
+            Assert.That(tree.columns.Select(column => column.title), Is.EqualTo(new[] { "Tag", "Entities", "Weight" }));
+            Assert.AreEqual((2, 3), TagCounts(window, "Status.Chilled"), "a tag counts the entities that hold it, and their weights");
+            Assert.AreEqual((2, 3), TagCounts(window, "Status"), "and its parent takes in its children's");
+            Assert.IsTrue(tree.IsExpanded(TagId(window, "Status")), "which it shows, open");
+
+            tree.SetSelectionById(TagId(window, "Status.Chilled"));
+            yield return Frames();
+            Sample(window);
+            var detail = window.rootVisualElement.Q("TagDetail");
+            Assert.AreEqual("Status.", detail.Q<Label>("HeaderParents").text, "the detail names the tag's parents");
+            Assert.AreEqual("Chilled", detail.Q<Label>("HeaderName").text, "then the tag");
+            Assert.AreEqual("Tag · 2 entities · weight 3", detail.Q<Label>("HeaderDetail").text, "and how widely it's held");
+
+            var foeRow = detail.Q("Holder Runtime Foe");
+            Assert.IsNotNull(foeRow, "Held By lists each entity that holds it");
+            Assert.IsNotNull(detail.Q("Holder Runtime Ally"), "both of them");
+            Assert.AreEqual("2", foeRow.Q<Label>("Weight").text, "with its weight");
+            Assert.AreEqual("Frost, Ice", foeRow.Q("GrantedBy").Q<Label>("Name").text, "what grants it");
+            Assert.AreEqual("Self", foeRow.Q<Label>("Source").text, "and where that came from");
+
+            // A tag let go leaves the tree
+            foreach (var container in foe.GetEffectSystem().Shelf.ToList()) foe.RemoveGameplayEffect(container.Spec.Base);
+            foreach (var container in ally.GetEffectSystem().Shelf.ToList()) ally.RemoveGameplayEffect(container.Spec.Base);
+            foe.GetEffectSystem().Tick();
+            ally.GetEffectSystem().Tick();
+            Sample(window);
+            var nodes = (IDictionary)Debugger.GetField("tagNodes", AnyInstance).GetValue(window);
+            Assert.IsFalse(nodes.Contains("Status.Chilled"), "a tag no entity holds leaves the tree");
+            Assert.IsNotNull(window.rootVisualElement.Q("TagDetail").Q(className: "pf-note"), "and the detail");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-5: the Processes view
         // ═══════════════════════════════════════════════════════════════════════════
 
         private sealed class BusyProcess : LazyRuntimeProcess
@@ -616,19 +832,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static MultiColumnListView ProcessList(EditorWindow window) => window.rootVisualElement.Q<MultiColumnListView>("Processes");
 
-        private static IEnumerator ShowProcesses(EditorWindow window)
+        private static IEnumerator SelectProcess(EditorWindow window, ProcessControlBlock pcb)
         {
-            var toggle = window.rootVisualElement.Q<ToolbarToggle>("ShowProcesses");
-            Assert.IsNotNull(toggle, "the toolbar switches to the processes");
-            toggle.value = true;
+            var list = ProcessList(window);
+            list.SetSelection(Listed(list).IndexOf(pcb));
             yield return Frames();
             Sample(window);
         }
 
         /// <summary>
         /// Process Control's usage was the wall-clock time between a process's steps, much the same for every process
-        /// whatever its work cost (ED-5). A process's step column says how long its steps take, as ProcessControl times
-        /// them while the debugger shows them.
+        /// whatever its work cost (ED-5). A process's step time is how long its steps took over the last second, as
+        /// ProcessControl times them while the debugger shows them, and its peak the longest.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_5_A_process_shows_how_long_its_steps_take() => Guarded(ShowsStepTime());
@@ -639,9 +854,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "a busy process registers");
             var window = Open();
             yield return Frames();
-            yield return ShowProcesses(window);
-            Assert.That(Listed(ProcessList(window)).OfType<ProcessControlBlock>().Select(pcb => pcb.CacheIndex), Has.Member(relay.CacheIndex),
+            yield return ShowView(window, "ShowProcesses");
+            var list = ProcessList(window);
+            Assert.That(Listed(list).OfType<ProcessControlBlock>().Select(pcb => pcb.CacheIndex), Has.Member(relay.CacheIndex),
                 "the debugger lists the processes");
+            Assert.That(list.columns.Select(column => column.title),
+                Is.EqualTo(new[] { "ID", "Process", "Handler", "Lifecycle", "Timing", "State", "Lifetime", "Step" }), "as the board has them");
 
             // ProcessControl steps its processes from Update, which edit mode doesn't call
             var update = typeof(ProcessControl).GetMethod("Update", AnyInstance);
@@ -649,18 +867,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Sample(window);
 
             Assert.IsTrue(control.TryGetPCB(relay.CacheIndex, out var pcb), "the busy process is registered");
-            var steps = typeof(ProcessControlBlock).GetProperty("Steps")?.GetValue(pcb);
-            var seconds = typeof(ProcessControlBlock).GetProperty("StepSeconds")?.GetValue(pcb);
-            Assert.That(steps, Is.EqualTo(3), "ProcessControl counts its steps while the debugger shows them");
-            Assert.That((double)seconds / 3, Is.GreaterThan(0.0015), "and times them");
-            var list = ProcessList(window);
-            list.SetSelection(Listed(list).IndexOf(pcb));
-            yield return Frames();
-            Sample(window);
-            var stepLabel = window.rootVisualElement.Q("ProcessDetail")?.Q<Label>("StepTime");
-            Assert.IsNotNull(stepLabel, "the selected process's detail");
-            StringAssert.EndsWith(" ms per step", stepLabel.text, "says how long its steps take");
-            Assert.That(float.Parse(stepLabel.text.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThan(1.5f));
+            Assert.That(pcb.Steps, Is.EqualTo(3), "ProcessControl counts its steps while the debugger shows them");
+            Assert.That(pcb.StepSeconds / 3, Is.GreaterThan(0.0015), "and times them");
+            yield return SelectProcess(window, pcb);
+
+            var detail = window.rootVisualElement.Q("ProcessDetail");
+            Assert.AreEqual("Busy", detail.Q("ProcessHeader").Q<Label>("HeaderName").text, "the detail names the process");
+            Assert.AreEqual($"Process {relay.CacheIndex} · Runtime process", detail.Q("ProcessHeader").Q<Label>("HeaderDetail").text,
+                "and what it is");
+            Assert.AreEqual("SelfTerminating", Fact(detail, "Process Lifecycle").text, "its lifecycle");
+            Assert.AreEqual("Update", Fact(detail, "Process Timing").text, "the steps it takes");
+            var stepTime = Fact(detail, "Process Step Time");
+            Assert.IsNotNull(stepTime, "and how long they take");
+            StringAssert.EndsWith(" milliseconds", stepTime.text);
+            Assert.That(float.Parse(stepTime.text.Split(' ')[0], CultureInfo.InvariantCulture), Is.GreaterThan(1.5f), "a step, over the last second");
+            var peak = Fact(detail, "Process Peak Step");
+            StringAssert.EndsWith(" milliseconds", peak.text);
+            Assert.That(float.Parse(peak.text.Split(' ')[0], CultureInfo.InvariantCulture), Is.GreaterThan(1.5f), "and the longest");
         }
 
         /// <summary>
@@ -678,12 +901,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "a process that waits after its run registers");
             var window = Open();
             yield return Frames();
-            yield return ShowProcesses(window);
-            var list = ProcessList(window);
+            yield return ShowView(window, "ShowProcesses");
             Assert.IsTrue(control.TryGetPCB(relay.CacheIndex, out var pcb));
-            list.SetSelection(Listed(list).IndexOf(pcb));
-            yield return Frames();
-            Sample(window);
+            yield return SelectProcess(window, pcb);
 
             var detail = window.rootVisualElement.Q("ProcessDetail");
             Assert.AreEqual(EProcessState.Running, pcb.State, "the process runs");
@@ -704,6 +924,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsNotNull(filter, "the processes have a filter");
             var choices = filter.menu.MenuItems().OfType<DropdownMenuAction>().Select(action => action.name).ToList();
             Assert.That(choices, Has.No.Member("Terminated"), "with no Terminated, which no listed process can be");
+        }
+
+        /// <summary>
+        /// A paused process either holds its run, which a resume picks up, or had it cancelled, so a resume starts a new
+        /// one (Decision 5). Nothing showed which (ED-5). The State section's Run says, from the process's own
+        /// <c>RunIsHeld</c>, and a cancelled run says what Resume will do.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_5_The_Run_field_says_whether_a_paused_run_is_held() => Guarded(ShowsTheRun());
+
+        private IEnumerator ShowsTheRun()
+        {
+            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Waits", EProcessLifecycle.RunThenWait), control, ProcessDataPacket.Default(), out var relay),
+                "a process that waits after its run registers");
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowProcesses");
+            Assert.IsTrue(control.TryGetPCB(relay.CacheIndex, out var pcb));
+            yield return SelectProcess(window, pcb);
+
+            var detail = window.rootVisualElement.Q("ProcessDetail");
+            var run = Fact(detail, "Process Run");
+            Assert.IsNotNull(run, "the State section shows the run");
+            Assert.IsTrue(pcb.RunIsHeld, "the process's run is going");
+            Assert.AreEqual("Going", run.text, "which the field says");
+            var cancelled = detail.Q<HelpBox>("RunCancelled");
+            Assert.IsTrue(cancelled.ClassListContains("pf-debugger__hidden"), "with nothing to say of it");
+
+            Click(detail.Q<Button>("Pause"));
+            Sample(window);
+            Assert.AreEqual(EProcessState.Waiting, pcb.State, "paused");
+            Assert.AreEqual(pcb.RunIsHeld ? "Held" : "Cancelled", run.text, "it says whether the pause held the run");
+            Assert.AreEqual(pcb.RunIsHeld, cancelled.ClassListContains("pf-debugger__hidden"), "and, cancelled, what Resume does");
+            Assert.AreEqual("None", Fact(detail, "Process Queued").text, "with no state queued");
+            Assert.IsTrue(Fact(detail, "Process Queued").ClassListContains("pf-debugger__fact-value--none"), "which shows as none");
         }
     }
 }
