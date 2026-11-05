@@ -940,6 +940,142 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const string HiddenClass = "pf-debugger__hidden";
 
         // ═══════════════════════════════════════════════════════════════════════════
+        // FEAT-12: the Timeline
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // The game's time, held still until a test moves it
+        private sealed class StoppedClock : IForgeClock
+        {
+            public float Now;
+            public float DeltaTime => 0f;
+            public float UnscaledDeltaTime => 0f;
+            public float FixedDeltaTime => 0.02f;
+            public float Time => Now;
+            public float UnscaledTime => Now;
+            public int FrameCount => 1;
+        }
+
+        // Two stages, each of a task that lands nothing, so the ability runs them both and ends as it activates
+        private Ability TwoStages(string name)
+        {
+            var ability = AbilityWithCooldown(name, null);
+            ability.Behaviour = new AbilityBehaviour
+            {
+                Stages = new List<AbilityTaskBehaviourStage>
+                {
+                    new() { Tasks = new List<AbstractAbilityTask> { new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect>() } } },
+                    new() { Tasks = new List<AbstractAbilityTask> { new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect>() } } },
+                },
+            };
+            return ability;
+        }
+
+        private static object Member(object of, string name)
+        {
+            var type = of.GetType();
+            var field = type.GetField(name, AnyInstance);
+            return field != null ? field.GetValue(of) : type.GetProperty(name, AnyInstance)?.GetValue(of);
+        }
+
+        private static string TrackName(object track) => $"{Member(track, "EntityName")} · {Member(track, "Name")}";
+
+        /// <summary>
+        /// The Debugger showed what an entity held now, never what it did over time (FEAT-12, Decision 30). Its Timeline
+        /// view records, as the game plays, each run of an ability, stage by stage, a refused activation, and an effect's
+        /// time on the shelf. A track selected shows its ability's graph, its stages and their tasks, beside its runs, or
+        /// an effect's applications; and in a narrow column its list sits above its detail.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_12_The_Timeline_records_abilities_and_effects_as_they_run() => Guarded(RecordsATimeline());
+
+        private IEnumerator RecordsATimeline()
+        {
+            var clock = new StoppedClock { Now = 10f };
+            var before = ForgeTime.Use(clock);
+            try
+            {
+                var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+                var abilities = foe.GetAbilitySystem();
+                var combo = TwoStages("Combo");
+                var cooling = Lasting("Channel Cooldown", 30f);
+                var channel = AbilityWithCooldown("Channel", cooling);
+                channel.Behaviour = new AbilityBehaviour
+                {
+                    Stages = new List<AbilityTaskBehaviourStage>
+                    {
+                        new() { Tasks = new List<AbstractAbilityTask> { new DelayTask { DelayMilliseconds = 600000 } } },
+                    },
+                };
+                Assert.IsTrue(abilities.GiveAbility(combo, 1, out int comboSlot), "the foe knows Combo");
+                Assert.IsTrue(abilities.GiveAbility(channel, 1, out int channelSlot), "and Channel");
+                var frost = Lasting("Frost", 5f);
+                var window = Open();
+                yield return Frames();
+                yield return ShowView(window, "ShowTimeline");
+
+                bool Activate(int slot) => abilities.TryActivateAbility(abilities.CreateActivationRequest(slot, ProcessDataPacket.Default(),
+                    EAbilityActivationPolicyExtended.ActivateIfIdle));
+                Assert.IsTrue(Activate(comboSlot), "Combo activates, and ends as it does");
+                clock.Now = 11f;
+                Assert.IsTrue(Activate(channelSlot), "Channel activates, and goes on");
+                Assert.IsTrue(Apply(foe, cooling), "its cooldown comes on");
+                Assert.IsFalse(Activate(channelSlot), "and it's refused again while it cools down");
+                Assert.IsTrue(Apply(foe, frost), "Frost lands");
+                clock.Now = 13f;
+                foe.RemoveGameplayEffect(frost);
+                foe.GetEffectSystem().Tick();
+                Sample(window);
+
+                var tracks = window.rootVisualElement.Q<MultiColumnListView>("Tracks");
+                Assert.IsNotNull(tracks, "the Timeline view lists its tracks");
+                Assert.That(Listed(tracks).Select(TrackName),
+                    Is.EquivalentTo(new[] { "Runtime Foe · Combo", "Runtime Foe · Channel", "Runtime Foe · Channel Cooldown", "Runtime Foe · Frost" }),
+                    "a track for each ability that ran and each effect that landed");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Combo"));
+                yield return Frames();
+                Sample(window);
+                var detail = window.rootVisualElement.Q("TimelineDetail");
+                Assert.AreEqual("Combo", detail.Q<Label>("HeaderName").text, "the detail names the ability");
+                Assert.AreEqual("Ability · Runtime Foe · 1 run", detail.Q<Label>("HeaderDetail").text, "and how often it ran");
+                var graph = detail.Q("Graph");
+                Assert.IsNotNull(graph, "its graph shows");
+                Assert.IsNotNull(graph.Q("Stage 1"), "its first stage");
+                Assert.IsNotNull(graph.Q("Stage 2"), "and its second");
+                Assert.AreEqual("Apply Effects", graph.Q("Stage 1").Q<Label>("Task").text, "each with its tasks");
+                var run = detail.Q("Run 1");
+                Assert.IsNotNull(run, "its run shows");
+                Assert.AreEqual("10.0 s", run.Q<Label>("Start").text, "when it started");
+                Assert.AreEqual("2/2", run.Q<Label>("Stages").text, "the stages it ran");
+                Assert.AreEqual("Ended", run.Q<Label>("Outcome").text, "and how it ended");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Channel"));
+                yield return Frames();
+                Sample(window);
+                detail = window.rootVisualElement.Q("TimelineDetail");
+                Assert.AreEqual("Running", detail.Q("Run 1").Q<Label>("Outcome").text, "a run that goes on is running");
+                Assert.That(detail.Q("Run 2").Q<Label>("Outcome").text, Does.StartWith("Refused"), "and a refusal says so");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Frost"));
+                yield return Frames();
+                Sample(window);
+                detail = window.rootVisualElement.Q("TimelineDetail");
+                Assert.AreEqual("Effect · Runtime Foe · 1 application", detail.Q<Label>("HeaderDetail").text, "an effect's detail counts its applications");
+                var landed = detail.Q("Application 1");
+                Assert.AreEqual("11.0 s", landed.Q<Label>("Start").text, "when it landed");
+                Assert.AreEqual("2.0 s", landed.Q<Label>("Length").text, "and how long it held");
+
+                Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null).Invoke(window, new object[] { 360f });
+                Assert.AreEqual(TwoPaneSplitViewOrientation.Vertical, window.rootVisualElement.Q<TwoPaneSplitView>("TimelineSplit").orientation,
+                    "in a narrow column, its list sits above its detail");
+            }
+            finally
+            {
+                ForgeTime.Use(before);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
         // ED-5: the Processes view
         // ═══════════════════════════════════════════════════════════════════════════
 
