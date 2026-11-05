@@ -297,6 +297,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static VisualElement Detail(EditorWindow window) => window.rootVisualElement.Q("EntityDetail");
 
+        private static void Click(Button button)
+        {
+            Assert.IsNotNull(button, "the button is there");
+            using var click = NavigationSubmitEvent.GetPooled();
+            click.target = button;
+            button.SendEvent(click);
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-4: the GAS view
         // ═══════════════════════════════════════════════════════════════════════════
@@ -445,6 +453,151 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
+        // ED-40: the debugger's edits (Q27)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The debugger only watched, so an attribute could be changed only by code (ED-40, Q27). Its current and base
+        /// values take a value, which the entity takes as it is.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_40_An_attribute_takes_the_value_typed_into_the_debugger() => Guarded(TakesAttributeValue());
+
+        private IEnumerator TakesAttributeValue()
+        {
+            var health = Attribute("Health");
+            var foe = RuntimeHub("Runtime Foe", Set((health, 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+            yield return Select(window, foe);
+
+            var row = Detail(window).Q("Attribute Health");
+            var current = row.Q<FloatField>("Current");
+            Assert.IsFalse(current.isReadOnly, "the current value takes a value");
+            current.value = 42f;
+            Sample(window);
+            Assert.IsTrue(foe.TryGetAttributeValue(health, out var value));
+            Assert.AreEqual(42f, value.CurrentValue, "the entity takes it");
+            Assert.AreEqual(100f, value.BaseValue, "and keeps its base");
+
+            row.Q<FloatField>("Base").value = 120f;
+            Sample(window);
+            foe.TryGetAttributeValue(health, out value);
+            Assert.AreEqual(120f, value.BaseValue, "the base takes one too");
+            Assert.AreEqual(42f, value.CurrentValue, "and leaves the current");
+            Assert.AreEqual(42f, current.value, "which the field still shows");
+        }
+
+        /// <summary>
+        /// The debugger couldn't add a tag, and one added straight to an entity's tag cache went at its next compile
+        /// (ED-40, Q27). A tag added in the debugger is a loose tag (FEAT-16), which lasts until it's removed, and its
+        /// row removes it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_40_A_tag_added_in_the_debugger_lasts_until_its_removed() => Guarded(AddsATag());
+
+        private IEnumerator AddsATag()
+        {
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+            yield return Select(window, foe);
+
+            var detail = Detail(window);
+            var name = detail.Q<TextField>("NewTag");
+            Assert.IsNotNull(name, "the Tags section takes a tag's name");
+            name.value = "Status.Debugged";
+            Click(detail.Q<Button>("AddTag"));
+            Sample(window);
+            var debugged = Tag.Generate("Status.Debugged");
+            foe.CompileGrantedTags();
+            Assert.AreEqual(1, foe.GetTagWeight(debugged), "the entity has it, through a compile");
+
+            Sample(window);
+            var row = detail.Q("Tag Status.Debugged");
+            Assert.IsNotNull(row, "its row shows");
+            Click(row.Q<Button>("RemoveTag"));
+            Sample(window);
+            Assert.That(foe.GetTagWeight(debugged), Is.LessThanOrEqualTo(0), "and its Remove takes it away");
+            Assert.IsNull(detail.Q("Tag Status.Debugged"), "with its row");
+        }
+
+        /// <summary>
+        /// The debugger couldn't apply an effect or take one off (ED-40, Q27). An effect picked in the Effects section lands
+        /// on the entity, from the entity itself, and its row's Remove takes it off.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_40_An_effect_applied_in_the_debugger_lands_and_its_row_removes_it() => Guarded(AppliesAnEffect());
+
+        private IEnumerator AppliesAnEffect()
+        {
+            var burning = Lasting("Burning", 5f);
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+            yield return Select(window, foe);
+
+            var detail = Detail(window);
+            var pick = detail.Q<ObjectField>("NewEffect");
+            Assert.IsNotNull(pick, "the Effects section takes an effect");
+            pick.value = burning;
+            Click(detail.Q<Button>("ApplyEffect"));
+            Sample(window);
+            Assert.That(foe.GetEffectSystem().Shelf.Select(container => container.Spec.Base), Has.Member(burning), "it lands on the entity");
+            Assert.AreEqual("Applied", detail.Q<Label>("ApplyResult").text, "and the section says so");
+            var row = detail.Q("Effect Burning");
+            Assert.IsNotNull(row, "its row shows");
+
+            Click(row.Q<Button>("RemoveEffect"));
+            // The entity clears a removed effect off its shelf at its next tick
+            foe.GetEffectSystem().Tick();
+            Sample(window);
+            Assert.That(foe.GetEffectSystem().Shelf.Select(container => container.Spec.Base), Has.No.Member(burning), "and its Remove takes it off");
+            Assert.IsNull(detail.Q("Effect Burning"), "with its row");
+        }
+
+        /// <summary>
+        /// The debugger couldn't grant an ability, set one off or take one away (ED-40, Q27). An ability picked in the
+        /// Abilities section is granted at the level given, its row's Activate sets it off, and its Remove takes it away.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_40_An_ability_granted_in_the_debugger_activates_and_goes() => Guarded(GrantsAnAbility());
+
+        private IEnumerator GrantsAnAbility()
+        {
+            var blink = AbilityWithCooldown("Blink", null);
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            Sample(window);
+            yield return Select(window, foe);
+
+            var detail = Detail(window);
+            var pick = detail.Q<ObjectField>("NewAbility");
+            Assert.IsNotNull(pick, "the Abilities section takes an ability");
+            pick.value = blink;
+            detail.Q<IntegerField>("NewAbilityLevel").value = 1;
+            Click(detail.Q<Button>("GrantAbility"));
+            Sample(window);
+            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.Member(blink), "the entity has it");
+            Assert.AreEqual("Granted", detail.Q<Label>("GrantResult").text, "and the section says so");
+            var row = detail.Q("Ability Blink");
+            Assert.IsNotNull(row, "its row shows");
+
+            Click(row.Q<Button>("ActivateAbility"));
+            Sample(window);
+            Assert.AreEqual("Activated", row.Q<Label>("Result").text, "its Activate sets it off");
+
+            Click(row.Q<Button>("RemoveAbility"));
+            Sample(window);
+            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.No.Member(blink), "and its Remove takes it away");
+            Assert.IsNull(detail.Q("Ability Blink"), "with its row");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
         // ED-5: the Process view
         // ═══════════════════════════════════════════════════════════════════════════
 
@@ -537,21 +690,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var pause = detail.Q<Button>("Pause");
             Assert.IsNotNull(pause, "the detail can pause it");
             Assert.IsTrue(pause.enabledSelf, "Pause is offered for a running process");
-            using (var click = NavigationSubmitEvent.GetPooled())
-            {
-                click.target = pause;
-                pause.SendEvent(click);
-            }
+            Click(pause);
             Sample(window);
             Assert.AreEqual(EProcessState.Waiting, pcb.State, "Pause pauses it");
 
             var resume = detail.Q<Button>("Resume");
             Assert.IsTrue(resume.enabledSelf, "and Resume is offered");
-            using (var click = NavigationSubmitEvent.GetPooled())
-            {
-                click.target = resume;
-                resume.SendEvent(click);
-            }
+            Click(resume);
             Sample(window);
             Assert.AreEqual(EProcessState.Running, pcb.State, "Resume runs it again");
 

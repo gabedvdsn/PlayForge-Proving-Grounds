@@ -27,6 +27,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A tag added straight to an entity's tag cache lasted only until the cache was compiled again, as it is when an
+        /// ability starts or ends, an item changes or an effect lands, so a game, or the Runtime Debugger, could grant a
+        /// tag only through an effect (FEAT-16). A loose tag, granted with no effect, ability or item behind it as Unreal's
+        /// loose gameplay tags are, lasts until it's removed, and each grant counts.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_16_A_loose_tag_lasts_until_its_removed([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            await Frames.Step();
+            var add = typeof(IGameplayAbilitySystem).GetMethod("AddLooseTag");
+            var remove = typeof(IGameplayAbilitySystem).GetMethod("RemoveLooseTag");
+            var loose = typeof(IGameplayAbilitySystem).GetMethod("GetLooseTags");
+            Assert.IsNotNull(add, "an entity takes a loose tag");
+            var stunned = Tag.Generate(Make.Unique("Loose.Stunned"));
+
+            add.Invoke(gas, new object[] { stunned });
+            add.Invoke(gas, new object[] { stunned });
+            gas.CompileGrantedTags();
+            await Frames.Step();
+            Assert.AreEqual(2, gas.GetTagWeight(stunned), "a loose tag lasts through a compile, and each grant counts");
+            Assert.That((IEnumerable<Tag>)loose.Invoke(gas, null), Is.EqualTo(new[] { stunned, stunned }), "the entity lists its grants");
+
+            Assert.IsTrue((bool)remove.Invoke(gas, new object[] { stunned }), "one grant comes off");
+            Assert.AreEqual(1, gas.GetTagWeight(stunned));
+            remove.Invoke(gas, new object[] { stunned });
+            Assert.That(gas.GetTagWeight(stunned), Is.LessThanOrEqualTo(0), "and the last takes the tag with it");
+            Assert.IsFalse((bool)remove.Invoke(gas, new object[] { stunned }), "an entity without it has nothing to remove");
+        });
+
+        /// <summary>
         /// A query counted a tag's weight for an exact match through the cache and distinct tags otherwise, and the
         /// GAS asked through the list, which has no weights. So "at least two" meant two grants of a tag or two
         /// different tags, depending on how it was asked.
