@@ -565,12 +565,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // ED-40: the debugger's edits (Q27)
+        // ED-40: the debugger's edits (Q27), in the sections' foot rows (canvas version 22)
         // ═══════════════════════════════════════════════════════════════════════════
 
+        // What the last action did, on the status bar's right
+        private static string ActionStatus(EditorWindow window) => window.rootVisualElement.Q<Label>("ActionStatus").text;
+
+        // An ability whose one stage waits ten minutes, so it runs until something stops it
+        private Ability Channel(string name)
+        {
+            var ability = AbilityWithCooldown(name, null);
+            ability.Behaviour = new AbilityBehaviour
+            {
+                Stages = new List<AbilityTaskBehaviourStage>
+                {
+                    new() { Tasks = new List<AbstractAbilityTask> { new DelayTask { DelayMilliseconds = 600000 } } },
+                },
+            };
+            return ability;
+        }
+
         /// <summary>
-        /// The debugger only watched, so an attribute could be changed only by code (ED-40, Q27). A double-click on its
-        /// current or base value sets it in place, and the entity takes it as it is.
+        /// The debugger only watched, so an attribute could be changed only by code (ED-40, Q27). The Attributes foot row
+        /// sets the selected attribute's base and current values, and the entity takes them as they are; a double-click on
+        /// a value goes to its field.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_An_attribute_takes_the_value_typed_into_the_debugger() => Guarded(TakesAttributeValue());
@@ -584,33 +602,46 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Sample(window);
             yield return Select(window, foe);
 
-            var row = Detail(window).Q("Attribute Health");
-            var current = row.Q<Label>("Current");
-            Assert.IsNull(row.Q<FloatField>("CurrentField"), "a value shows as text");
-            Press(current, clicks: 2);
-            var field = row.Q<FloatField>("CurrentField");
-            Assert.IsNotNull(field, "and a double-click sets it in place");
-            Assert.AreEqual(100f, field.value, "from the value it has");
-            field.value = 42f;
+            var detail = Detail(window);
+            var foot = detail.Q("AttributeFoot");
+            Assert.IsNotNull(foot, "the Attributes section has a foot row");
+            var currentField = foot.Q<FloatField>("SelectedCurrent");
+            var baseField = foot.Q<FloatField>("SelectedBase");
+            Assert.AreEqual("None", foot.Q<Label>("SelectedAttribute").text, "which waits for a row");
+            Assert.IsFalse(currentField.enabledSelf, "with its fields in place, disabled");
+
+            var row = detail.Q("Attribute Health");
+            Press(row);
+            Assert.IsTrue(row.ClassListContains("pf-debugger__table-row--selected"), "a click selects the row");
+            Assert.AreEqual("Health", foot.Q<Label>("SelectedAttribute").text, "and the foot row names it");
+            Assert.IsTrue(currentField.enabledSelf, "with its fields on");
+            Assert.AreEqual(100f, currentField.value, "showing its current value");
+            Assert.AreEqual(100f, baseField.value, "and its base");
+            Assert.IsTrue(currentField.isDelayed, "which take a value on Enter");
+
+            currentField.value = 42f;
             Sample(window);
             Assert.IsTrue(foe.TryGetAttributeValue(health, out var value));
             Assert.AreEqual(42f, value.CurrentValue, "the entity takes it");
             Assert.AreEqual(100f, value.BaseValue, "and keeps its base");
-            Assert.IsNull(row.Q<FloatField>("CurrentField"), "and the cell shows text again");
+            Assert.AreEqual("42", row.Q<Label>("Current").text, "which its row shows");
+            Assert.AreEqual("Set Health's current value to 42", ActionStatus(window), "and the status bar says");
 
-            Press(row.Q<Label>("Base"), clicks: 2);
-            row.Q<FloatField>("BaseField").value = 120f;
+            baseField.value = 120f;
             Sample(window);
             foe.TryGetAttributeValue(health, out value);
             Assert.AreEqual(120f, value.BaseValue, "the base takes one too");
             Assert.AreEqual(42f, value.CurrentValue, "and leaves the current");
-            Assert.AreEqual("42", current.text, "which the cell still shows");
+
+            Press(row.Q<Label>("Base"), clicks: 2);
+            var focused = baseField.panel?.focusController?.focusedElement as VisualElement;
+            Assert.IsTrue(focused == baseField || (focused != null && baseField.Contains(focused)), "a double-click on a value goes to its field");
         }
 
         /// <summary>
         /// The debugger couldn't add a tag, and one added straight to an entity's tag cache went at its next compile
-        /// (ED-40, Q27). A tag added in the debugger is a loose tag (FEAT-16), which lasts until it's removed, and its
-        /// row, selected, removes it.
+        /// (ED-40, Q27). A tag added in the Tags foot row is a loose tag (FEAT-16), which lasts until it's removed, and
+        /// Remove takes back the selected one, where it's loose.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_40_A_tag_added_in_the_debugger_lasts_until_its_removed() => Guarded(AddsATag());
@@ -624,34 +655,49 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Select(window, foe);
 
             var detail = Detail(window);
-            var name = detail.Q<TextField>("NewTag");
-            Assert.IsNotNull(name, "the Tags section takes a tag's name");
+            var foot = detail.Q("TagFoot");
+            Assert.IsNotNull(foot, "the Tags section has a foot row");
+            var name = foot.Q<TextField>("NewTag");
+            var add = foot.Q<Button>("AddTag");
+            var remove = foot.Q<Button>("RemoveTag");
+            Assert.IsNotNull(name, "which takes a tag's name");
+            Assert.IsNotNull(foot.Q<Button>("PickTag"), "or one of the project's tags");
+            Assert.IsFalse(add.enabledSelf, "Add Tag waits for one");
+            Assert.IsFalse(remove.enabledSelf, "and Remove for a row");
+
             name.value = "Status.Debugged";
-            Click(detail.Q<Button>("AddTag"));
+            Assert.IsTrue(add.enabledSelf, "a name turns Add Tag on");
+            Click(add);
             Sample(window);
             var debugged = Tag.Generate("Status.Debugged");
             foe.CompileGrantedTags();
             Assert.AreEqual(1, foe.GetTagWeight(debugged), "the entity has it, through a compile");
+            Assert.AreEqual("Added Status.Debugged", ActionStatus(window), "and the status bar says so");
+            Assert.AreEqual("", name.value, "and the field empties");
 
             Sample(window);
             var row = detail.Q("Tag Status.Debugged");
             Assert.IsNotNull(row, "its row shows");
             Assert.AreEqual("Status.", row.Q<Label>("Parents").text, "its parents");
             Assert.AreEqual("Debugged", row.Q<Label>("Name").text, "then its name");
-            Assert.AreEqual("Loose tag", row.Q<Label>("From").text, "and what grants it");
-            var remove = detail.Q<Button>("RemoveTag");
-            Assert.IsFalse(remove.enabledSelf, "Remove waits for a row");
+            Assert.AreEqual("Loose", row.Q<Label>("From").text, "and what grants it");
+
+            var granted = detail.Q("Tag Test.Debugger.RuntimeFoe");
+            Assert.IsNotNull(granted, "the entity's asset tag shows too");
+            Press(granted);
+            Assert.IsFalse(remove.enabledSelf, "which Remove can't take back");
             Press(row);
-            Assert.IsTrue(remove.enabledSelf, "and takes the selected one");
-            Assert.AreEqual("Remove Debugged", remove.text, "by name");
+            Assert.IsTrue(remove.enabledSelf, "but a loose tag it can");
+            Assert.AreEqual("Remove", remove.text, "as plain Remove");
             Click(remove);
             Sample(window);
             Assert.That(foe.GetTagWeight(debugged), Is.LessThanOrEqualTo(0), "Remove takes it away");
             Assert.IsNull(detail.Q("Tag Status.Debugged"), "with its row");
+            Assert.IsFalse(remove.enabledSelf, "and waits for another");
         }
 
         /// <summary>
-        /// The debugger couldn't apply an effect or take one off (ED-40, Q27). An effect picked under the Effects table
+        /// The debugger couldn't apply an effect or take one off (ED-40, Q27). An effect picked in the Effects foot row
         /// lands on the entity, from the entity itself, and Remove takes the selected one off.
         /// </summary>
         [UnityTest]
@@ -667,20 +713,27 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Select(window, foe);
 
             var detail = Detail(window);
-            var pick = detail.Q<ObjectField>("NewEffect");
-            Assert.IsNotNull(pick, "the Effects section takes an effect");
+            var foot = detail.Q("EffectFoot");
+            Assert.IsNotNull(foot, "the Effects section has a foot row");
+            var pick = foot.Q<ObjectField>("NewEffect");
+            var apply = foot.Q<Button>("ApplyEffect");
+            var remove = foot.Q<Button>("RemoveEffect");
+            Assert.IsNotNull(pick, "which takes an effect");
+            Assert.IsFalse(apply.enabledSelf, "Apply waits for one");
+            Assert.IsFalse(remove.enabledSelf, "and Remove for a row");
             pick.value = burning;
-            Click(detail.Q<Button>("ApplyEffect"));
+            Assert.IsTrue(apply.enabledSelf, "an effect turns Apply on");
+            Click(apply);
             Sample(window);
             Assert.That(foe.GetEffectSystem().Shelf.Select(container => container.Spec.Base), Has.Member(burning), "it lands on the entity");
-            Assert.AreEqual("Applied", detail.Q<Label>("ApplyResult").text, "and the section says so");
+            Assert.AreEqual("Applied Burning", ActionStatus(window), "and the status bar says so");
             var row = detail.Q("Effect Burning");
             Assert.IsNotNull(row, "its row shows");
 
             Press(row);
             Assert.IsTrue(row.ClassListContains("pf-debugger__table-row--selected"), "a click selects the row");
-            var remove = detail.Q<Button>("RemoveEffect");
-            Assert.AreEqual("Remove Burning", remove.text, "which Remove names");
+            Assert.IsTrue(remove.enabledSelf, "which Remove takes");
+            Assert.AreEqual("Remove", remove.text, "as plain Remove");
             Click(remove);
             // The entity clears a removed effect off its shelf at its next tick
             foe.GetEffectSystem().Tick();
@@ -691,16 +744,16 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// The debugger couldn't grant an ability, set one off or take one away (ED-40, Q27). An ability picked under the
-        /// Abilities table is granted at the level given, and the selected row's Activate sets it off, and its Remove
-        /// takes it away.
+        /// The debugger couldn't grant an ability, set one off or stop it (ED-40, Q27). An ability picked in the Abilities
+        /// foot row is granted at the level given, Activate sets the selected one off, and Interrupt, in place but off
+        /// until it runs, stops it.
         /// </summary>
         [UnityTest]
-        public IEnumerator ED_40_An_ability_granted_in_the_debugger_activates_and_goes() => Guarded(GrantsAnAbility());
+        public IEnumerator ED_40_An_ability_granted_in_the_debugger_activates_and_is_interrupted() => Guarded(GrantsAnAbility());
 
         private IEnumerator GrantsAnAbility()
         {
-            var blink = AbilityWithCooldown("Blink", null);
+            var channel = Channel("Channel");
             var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
             var window = Open();
             yield return Frames();
@@ -708,30 +761,43 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Select(window, foe);
 
             var detail = Detail(window);
-            var pick = detail.Q<ObjectField>("NewAbility");
-            Assert.IsNotNull(pick, "the Abilities section takes an ability");
-            pick.value = blink;
-            detail.Q<IntegerField>("NewAbilityLevel").value = 1;
-            Click(detail.Q<Button>("GrantAbility"));
+            var foot = detail.Q("AbilityFoot");
+            Assert.IsNotNull(foot, "the Abilities section has a foot row");
+            var pick = foot.Q<ObjectField>("NewAbility");
+            var grant = foot.Q<Button>("GrantAbility");
+            var activate = foot.Q<Button>("ActivateAbility");
+            var interrupt = foot.Q<Button>("InterruptAbility");
+            Assert.IsNotNull(pick, "which takes an ability");
+            Assert.IsFalse(grant.enabledSelf, "Grant waits for one");
+            pick.value = channel;
+            foot.Q<IntegerField>("NewAbilityLevel").value = 1;
+            Click(grant);
             Sample(window);
-            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.Member(blink), "the entity has it");
-            Assert.AreEqual("Granted", detail.Q<Label>("GrantResult").text, "and the section says so");
-            var row = detail.Q("Ability Blink");
+            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.Member(channel), "the entity has it");
+            Assert.AreEqual("Granted Channel", ActionStatus(window), "and the status bar says so");
+            var row = detail.Q("Ability Channel");
             Assert.IsNotNull(row, "its row shows");
             Assert.AreEqual("Ready", row.Q<Label>("State").text, "ready");
 
-            var activate = detail.Q<Button>("ActivateAbility");
             Assert.IsFalse(activate.enabledSelf, "Activate waits for a row");
             Press(row);
-            Assert.AreEqual("Activate Blink", activate.text, "and names the selected one");
+            Assert.IsTrue(activate.enabledSelf, "and takes the selected one");
+            Assert.AreEqual("Activate", activate.text, "as plain Activate");
+            Assert.IsFalse(interrupt.enabledSelf, "while Interrupt stays in place, off, as it isn't running");
             Click(activate);
             Sample(window);
-            Assert.AreEqual("Activated", detail.Q("AbilityActions").Q<Label>("Result").text, "which it sets off");
+            Assert.AreEqual("Activated Channel", ActionStatus(window), "Activate sets it off");
+            Assert.AreEqual("Stage 1/1", row.Q<Label>("State").text, "and its row says the stage it's in");
+            Assert.IsTrue(interrupt.enabledSelf, "while Interrupt is on");
 
-            Click(detail.Q<Button>("RemoveAbility"));
+            Click(interrupt);
+            yield return Frames();
             Sample(window);
-            Assert.That(foe.GetAbilitySystem().GetAbilityContainers().Select(container => container.Spec.Base), Has.No.Member(blink), "and Remove takes it away");
-            Assert.IsNull(detail.Q("Ability Blink"), "with its row");
+            var container = foe.GetAbilitySystem().GetAbilityContainers().Single(each => each.Spec.Base == channel);
+            Assert.IsFalse(container.IsActive, "Interrupt stops it");
+            Assert.AreEqual("Interrupted Channel", ActionStatus(window), "as the status bar says");
+            Assert.AreEqual("Ready", row.Q<Label>("State").text, "and its row is ready again");
+            Assert.IsFalse(interrupt.enabledSelf, "with Interrupt off");
         }
 
         // ═══════════════════════════════════════════════════════════════════════════

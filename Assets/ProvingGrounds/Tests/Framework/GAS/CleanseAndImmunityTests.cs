@@ -86,5 +86,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.IsTrue(World.Apply(gas, gas, poison), "with the ward gone, the poison lands");
         });
+
+        /// <summary>
+        /// A cleanse and an immunity named an effect by its asset tag or a context tag only, so "whatever makes you
+        /// Burning" needed a context tag on every effect that burns (FEAT-8, Decision 30). They name an effect by a tag it
+        /// grants too, as Unreal's do.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_8_A_cleanse_and_an_immunity_name_an_effect_by_a_tag_it_grants([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var burning = Make.NewTag("Test.State.Burning");
+            var fire = Make.Effect("Fire", new EffectConfig { Target = null, Policy = EEffectDurationPolicy.Infinite });
+            fire.Tags.GrantedTags = new List<Tag> { burning };
+            var douse = Make.Effect("Douse", new EffectConfig { Target = null, Policy = EEffectDurationPolicy.Instant });
+            Name(douse, "RemovesEffectsTagged", burning);
+            var fireproof = Status("Fireproof", Make.NewTag("Test.Status.Buff"));
+            Name(fireproof, "BlocksEffectsTagged", burning);
+
+            Assert.IsTrue(World.Apply(gas, gas, fire), "the fire lands");
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(gas, gas, douse), "the douse lands");
+            await Frames.Step(2);
+            Assert.IsFalse(On(gas, fire), "a cleanse takes off an effect by a tag it grants");
+
+            Assert.IsTrue(World.Apply(gas, gas, fireproof), "the fireproofing lands");
+            await Frames.Step();
+            Assert.IsFalse(World.Apply(gas, gas, fire), "and an immunity refuses one by a tag it grants");
+            Assert.IsFalse(On(gas, fire), "which isn't on the entity");
+        });
     }
 }
