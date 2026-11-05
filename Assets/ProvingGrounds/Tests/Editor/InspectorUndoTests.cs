@@ -1638,6 +1638,58 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// An ability had no input buffer to set (FEAT-6). The Activation section edits its Buffer Window and Buffer
+        /// Priority, after When Busy, whose Queue the buffer is.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_6_The_Ability_inspector_edits_the_buffer()
+        {
+            var jab = ScriptableObject.CreateInstance<Ability>();
+            jab.Definition = new AbilityDefinition { Name = "Jab", Textures = new List<TextureItem>() };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(jab);
+                yield return Frames();
+
+                var activation = root.Q("Activation_CONTAINER");
+                Assert.IsNotNull(activation, "the inspector has an Activation section");
+                Assert.IsNotNull(activation.Q<PropertyField>("BufferWindow"), "which edits how long a press waits in the buffer");
+                Assert.IsNotNull(activation.Q<PropertyField>("BufferPriority"), "and which buffered press fires first");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(jab);
+            }
+        }
+
+        /// <summary>A stage couldn't say when it runs (TS-7). A stage's drawer edits its condition: a tag, where it's looked for, and whether it must be there.</summary>
+        [UnityTest]
+        public IEnumerator TS_7_A_stage_edits_its_condition()
+        {
+            var attack = ScriptableObject.CreateInstance<Ability>();
+            attack.Definition = new AbilityDefinition { Name = "Attack", Textures = new List<TextureItem>() };
+            attack.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var stage = Draw(host, attack, $"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Stages)}.Array.data[0]");
+                yield return Frames();
+                Assert.IsNotNull(stage.Q<PropertyField>("Condition"), "a stage edits when it runs");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(attack);
+            }
+        }
+
+        /// <summary>
         /// The impact didn't say how it is delivered, and still drew Reverse On Removal, which the impact model removed
         /// (ED-2). It says its delivery, which the duration gives it, and what a periodic impact commits, and it follows
         /// the duration as it changes. It sets no look in code: it drew tinted boxes with colored headings.

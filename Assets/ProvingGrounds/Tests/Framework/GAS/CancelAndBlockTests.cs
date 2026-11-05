@@ -111,7 +111,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// <summary>
         /// Blocking was the claim alone, per activation policy, so nothing kept one kind of ability from activating while
         /// another ran (FEAT-5). While a stage that blocks a kind runs, an ability of that kind, or a child of it, can't
-        /// activate; once the stage is over, it can.
+        /// activate: asked for under Refuse, it's refused, as here, and under Queue it waits in the buffer (FEAT-6's
+        /// test). Once the stage is over, it can.
         /// </summary>
         [UnityTest]
         public IEnumerator FEAT_5_A_stage_blocks_the_abilities_it_names([Values] Hub hub) => Live(async () =>
@@ -126,7 +127,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsTrue(Activate(abilities, meditate), "the meditation starts");
             await Frames.Step();
             Assert.IsFalse(abilities.CanActivateAbility(jab.Index), "a light attack can't activate while the focus blocks attacks");
-            Assert.IsFalse(Activate(abilities, jab), "and is refused");
+            Assert.IsFalse(Activate(abilities, jab, EAbilityActivationPolicyExtended.ActivateIfIdle), "and is refused");
             Assert.AreEqual(0, Ledger.Prepares("Jab Task"), "so it never ran");
 
             await Frames.Until(() => !meditate.IsActive, 12, "the meditation ends");

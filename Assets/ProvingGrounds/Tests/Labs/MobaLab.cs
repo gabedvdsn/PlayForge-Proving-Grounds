@@ -207,7 +207,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             return status;
         }
 
-        /// <summary>A hero casts one of its abilities, at a target or, with none, at itself. False when it's refused.</summary>
+        /// <summary>
+        /// A hero casts one of its abilities, at a target or, with none, at itself, under Refuse: a cast that can't go now
+        /// is refused, not buffered (FEAT-6). False when it's refused.
+        /// </summary>
         public bool Cast(IGameplayAbilitySystem hero, Ability ability, IGameplayAbilitySystem target = null)
         {
             var abilities = hero.GetAbilitySystem();
@@ -218,7 +221,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 request = ProcessDataPacket.Default();
                 request.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
             }
-            return abilities.TryActivateAbility(abilities.CreateActivationRequest(container.Index, request));
+            return abilities.TryActivateAbility(abilities.CreateActivationRequest(container.Index, request, EAbilityActivationPolicyExtended.ActivateIfIdle));
         }
 
         public bool Ready(IGameplayAbilitySystem hero, Ability ability) =>
