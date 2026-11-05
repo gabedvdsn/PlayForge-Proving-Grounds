@@ -1024,6 +1024,158 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // What a multiple selection shows of an inspector: Description mixed and Name read-only, and no linking, asset tag
+        // or Used By, which act on one asset
+        private static void AssertSteppedAside(VisualElement root, string kind)
+        {
+            var description = root.Q<TextField>("Description");
+            Assert.IsNotNull(description, $"the {kind} inspector edits a multiple selection");
+            Assert.IsTrue(description.showMixedValue, "descriptions that differ show as mixed");
+            Assert.IsFalse(root.Q<TextField>("Name").enabledSelf, "a multiple selection can't rename");
+            var linking = root.Query<Button>().ToList()
+                .Where(button => button.text.StartsWith("Link ") || button.text.StartsWith("Unlink")).ToList();
+            Assert.IsEmpty(linking, $"linking waits for one {kind}");
+            Assert.IsNull(root.Q<Button>("AssetTagUpdate"), "nor does an asset tag offer Update");
+            Assert.IsNull(root.Q(className: "pf-used-by"), $"and Used By waits for one {kind} too");
+        }
+
+        // An edit to the Description reaches both assets, and one Undo takes it back from both
+        private static void AssertEditsBoth(VisualElement root, System.Func<string> first, System.Func<string> second,
+            string firstWas, string secondWas)
+        {
+            Undo.IncrementCurrentGroup();
+            Commit(root.Q<TextField>("Description"), "Shared.");
+            Assert.AreEqual("Shared.", first(), "the edit reaches the first asset");
+            Assert.AreEqual("Shared.", second(), "and the second");
+            Undo.FlushUndoRecordObjects();
+            Undo.PerformUndo();
+            Assert.AreEqual(firstWas, first(), "one Undo takes it back from both");
+            Assert.AreEqual(secondWas, second());
+        }
+
+        /// <summary>
+        /// The Effect inspector refused a multiple selection, since its scalers rebuilt on a copy of the first selected
+        /// effect (ED-12). It takes one now: a field the effects disagree on shows as mixed, the ticks and the delivery
+        /// among them, and an edit reaches both. What acts on one effect steps aside: Name, the asset tag, linking, Used
+        /// By, and the lists each effect keeps of its own, its additional impacts and its workers, which a note replaces.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Effect_inspector_edits_every_selected_effect()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(GameplayEffectEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+            var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 2);
+            burning.Definition.Description = "Burns.";
+            var chilled = MakeEffect(EEffectDurationPolicy.Durational);
+            chilled.Definition.Name = "Chilled";
+            chilled.Definition.Description = "Slows.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(burning, chilled);
+                yield return Frames();
+
+                AssertSteppedAside(root, "effect");
+                Assert.IsTrue(root.Q("Ticks")?.Q<IntegerField>("Number")?.showMixedValue == true, "ticks that differ show as mixed");
+                Assert.IsTrue(root.Q<TextField>("Delivery").showMixedValue, "and so does a delivery that differs");
+                Assert.IsNull(root.Q<Button>("AddImpact"), "additional impacts wait for one effect");
+                Assert.That(root.Query<PropertyField>().ToList().Where(field => field.bindingPath == nameof(GameplayEffect.Workers)),
+                    Is.Empty, "and so do its workers");
+                AssertEditsBoth(root, () => burning.Definition.Description, () => chilled.Definition.Description, "Burns.", "Slows.");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+                Object.DestroyImmediate(chilled);
+            }
+        }
+
+        /// <summary>
+        /// The Entity inspector refused a multiple selection, since its Max fields' scalers rebuilt on a copy of the first
+        /// selected entity (ED-12). It takes one now: a Max field the entities disagree on shows as mixed, and Equipped Too
+        /// waits until every entity allows duplicates. What acts on one entity steps aside, its attribute table among it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Entity_inspector_edits_every_selected_entity()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(EntityIdentityEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+            var heroStats = ScriptableObject.CreateInstance<AttributeSet>();
+            var goblinStats = ScriptableObject.CreateInstance<AttributeSet>();
+            var hero = ScriptableObject.CreateInstance<EntityIdentity>();
+            hero.Name = "Hero";
+            hero.Description = "Saves the day.";
+            hero.AttributeSet = heroStats;
+            hero.AllowDuplicateItems = true;
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "Goblin";
+            goblin.Description = "Steals.";
+            goblin.AttributeSet = goblinStats;
+            goblin.MaxAbilitiesOperation.Magnitude = 5;
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(hero, goblin);
+                yield return Frames();
+
+                AssertSteppedAside(root, "entity");
+                Assert.IsNull(root.Q("AttributeTable"), "the attribute table waits for one entity");
+                Assert.IsFalse(root.Q<Toggle>("AllowDuplicateEquippedItems").enabledSelf,
+                    "Equipped Too waits until every entity allows duplicates");
+                Assert.IsTrue(root.Query<IntegerField>("Number").ToList().Any(number => number.showMixedValue),
+                    "a Max field that differs shows as mixed");
+                AssertEditsBoth(root, () => hero.Description, () => goblin.Description, "Saves the day.", "Steals.");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(hero);
+                Object.DestroyImmediate(goblin);
+                Object.DestroyImmediate(heroStats);
+                Object.DestroyImmediate(goblinStats);
+            }
+        }
+
+        /// <summary>
+        /// The Attribute Set inspector refused a multiple selection, since its elements' scalers rebuilt on a copy of the
+        /// first selected set (ED-12). It takes one now, and what acts on one set steps aside, All Attributes among it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_The_Attribute_Set_inspector_edits_every_selected_set()
+        {
+            Assert.IsTrue(System.Attribute.IsDefined(typeof(AttributeSetEditor), typeof(CanEditMultipleObjects)),
+                "the Inspector gives it a multiple selection");
+            var goblin = ScriptableObject.CreateInstance<AttributeSet>();
+            goblin.Name = "Goblin Stats";
+            goblin.Description = "Weak.";
+            var ogre = ScriptableObject.CreateInstance<AttributeSet>();
+            ogre.Name = "Ogre Stats";
+            ogre.Description = "Strong.";
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(goblin, ogre);
+                yield return Frames();
+
+                AssertSteppedAside(root, "set");
+                Assert.IsNull(root.Q("AttributeTable"), "All Attributes waits for one set");
+                AssertEditsBoth(root, () => goblin.Description, () => ogre.Description, "Weak.", "Strong.");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(goblin);
+                Object.DestroyImmediate(ogre);
+            }
+        }
+
         /// <summary>
         /// The MonoProcess inspector binds every field, but without [CanEditMultipleObjects] the Inspector never gave it
         /// a multiple selection: it showed "Multi-object editing not supported" instead.

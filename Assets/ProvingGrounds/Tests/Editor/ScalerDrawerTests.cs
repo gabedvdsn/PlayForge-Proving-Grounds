@@ -348,6 +348,119 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A magnitude field drawn for two selected effects read the first effect's kind, and its kind menu gave both a
+        /// new scaler that started with the first effect's value (ED-12). Fields whose kinds differ show a mixed kind;
+        /// choosing one gives it to each effect's field, from that field's own value, and a field of that kind keeps its
+        /// scaler. Levels and Make Constant work on each field's own values, each as one Undo step.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_A_magnitude_field_edits_every_selected_asset()
+        {
+            var burning = Burning();
+            var chilled = Burning();
+            chilled.name = "Chilled";
+            chilled.Definition.Name = "Chilled";
+            chilled.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation
+            {
+                Magnitude = 3f,
+                RealMagnitude = EMagnitudeOperation.UseMagnitude,
+            };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(new Object[] { burning, chilled });
+                var field = Draw(host, serialized, DurationPath);
+                yield return Frames();
+
+                Assert.IsTrue(field.Q<PopupField<string>>("Kind").showMixedValue, "kinds that differ show as mixed");
+                Assert.IsNull(field.Q("LevelTable"), "and neither field's table is drawn as both's");
+
+                Undo.IncrementCurrentGroup();
+                field.Q<PopupField<string>>("Kind").value = "By Level";
+                yield return Frames();
+                var table = burning.DurationSpecification.DurationOperation.Scaler;
+                var made = chilled.DurationSpecification.DurationOperation.Scaler;
+                Assert.AreEqual(new[] { 6f, 6.5f, 7f, 7.5f, 8f }, table.LevelValues, "a field of that kind keeps its scaler");
+                Assert.IsInstanceOf<SimpleScaler>(made, "the other takes the kind");
+                Assert.AreEqual(new[] { 3f }, made.LevelValues, "from its own value");
+                Assert.AreEqual(EMagnitudeOperation.UseScaler, chilled.DurationSpecification.DurationOperation.RealMagnitude);
+
+                var count = field.Q<IntegerField>("LevelCount");
+                Assert.IsTrue(count.showMixedValue, "tables of different lengths show their count as mixed");
+                Assert.AreEqual("—", field.Q<Label>("Range").text, "and ranges that differ show as mixed");
+                Undo.IncrementCurrentGroup();
+                count.value = 2;
+                Assert.AreEqual(new[] { 6f, 6.5f }, burning.DurationSpecification.DurationOperation.Scaler.LevelValues,
+                    "two levels cut the longer table");
+                Assert.AreEqual(new[] { 3f, 3f }, chilled.DurationSpecification.DurationOperation.Scaler.LevelValues,
+                    "and the shorter one's new level takes its own last value");
+
+                Undo.IncrementCurrentGroup();
+                ScalerActions.MakeConstant(serialized.FindProperty(DurationPath));
+                Assert.IsNull(burning.DurationSpecification.DurationOperation.Scaler, "Make Constant takes each scaler away");
+                Assert.AreEqual(6f, burning.DurationSpecification.DurationOperation.Magnitude, "and keeps the value each read at level 1");
+                Assert.AreEqual(3f, chilled.DurationSpecification.DurationOperation.Magnitude);
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual(new[] { 6f, 6.5f }, burning.DurationSpecification.DurationOperation.Scaler.LevelValues,
+                    "one Undo takes it back from both");
+                Assert.AreEqual(new[] { 3f, 3f }, chilled.DurationSpecification.DurationOperation.Scaler.LevelValues);
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+                Object.DestroyImmediate(chilled);
+            }
+        }
+
+        /// <summary>
+        /// A scaler drawn on its own, as an attribute set element's Scaling, read the first selected set's kind (ED-12).
+        /// Kinds that differ show as mixed, and choosing one gives each set's element its own scaler of that kind, as one
+        /// Undo step; an element of that kind keeps its scaler.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_12_A_scaler_drawn_on_its_own_edits_every_selected_asset()
+        {
+            var health = ScriptableObject.CreateInstance<Attribute>();
+            var goblin = ScriptableObject.CreateInstance<AttributeSet>();
+            goblin.Attributes.Add(new AttributeSetElement { Attribute = health });
+            goblin.Attributes[0].Current.Scaling = new CachedSimpleScaler { LevelValues = new[] { 10f, 20f }, StretchOverLevels = false };
+            var ogre = ScriptableObject.CreateInstance<AttributeSet>();
+            ogre.Attributes.Add(new AttributeSetElement { Attribute = health });
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(new Object[] { goblin, ogre });
+                var field = Draw(host, serialized, "Attributes.Array.data[0].Current.Scaling");
+                yield return Frames();
+
+                var kind = field.Q<PopupField<string>>("Kind");
+                Assert.IsTrue(kind.showMixedValue, "kinds that differ show as mixed");
+                Undo.IncrementCurrentGroup();
+                kind.value = "By Level";
+                yield return Frames();
+                Assert.AreEqual(new[] { 10f, 20f }, goblin.Attributes[0].Current.Scaling.LevelValues, "an element of that kind keeps its scaler");
+                Assert.IsInstanceOf<CachedSimpleScaler>(ogre.Attributes[0].Current.Scaling, "the other takes the kind");
+                Assert.AreNotSame(goblin.Attributes[0].Current.Scaling, ogre.Attributes[0].Current.Scaling);
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsNull(ogre.Attributes[0].Current.Scaling, "one Undo takes it back");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(goblin);
+                Object.DestroyImmediate(ogre);
+                Object.DestroyImmediate(health);
+            }
+        }
+
+        /// <summary>
         /// Save as Scaler Asset saves a field's scaler as a Scaler asset and makes the field share it; Use a Scaler Asset
         /// makes another field share it too. The asset's inspector counts the fields that use it, and a shared field says
         /// how many fields share it (ED-33).
