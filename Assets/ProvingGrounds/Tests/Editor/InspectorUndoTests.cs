@@ -2021,5 +2021,31 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(parry);
             }
         }
+        /// <summary>
+        /// An effect changed attributes and tags and nothing else, so what it showed and sounded was each game's own code
+        /// (FEAT-1). The Effect inspector has a Cues section, an effect's own after Impact, which edits its cue handlers.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_1_The_Effect_inspector_edits_its_cues()
+        {
+            var slam = ScriptableObject.CreateInstance<GameplayEffect>();
+            slam.Definition = new GameplayEffectDefinition { Name = "Slam", Textures = new List<TextureItem>() };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(slam);
+                yield return Frames();
+                var cues = root.Q(name: "Cues_CONTAINER");
+                Assert.IsNotNull(cues, "the inspector has a Cues section");
+                Assert.IsNotNull(cues.Q<PropertyField>("Cues"), "which edits the effect's cue handlers");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(slam);
+            }
+        }
     }
 }
