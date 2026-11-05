@@ -69,5 +69,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds
                 throw new AssertionException($"Invariants broken:\n  {string.Join("\n  ", violations)}");
             }
         });
+
+        /// <summary>
+        /// Ends the world outside the test runner, as a lab scene does after it plays one of this test's rounds. It skips
+        /// the audit, which reads the test's outcome from the runner.
+        /// </summary>
+        public async UniTask EndWorldOutsideTests()
+        {
+            if (World == null) return;
+            try
+            {
+                await World.Destroy();
+            }
+            finally
+            {
+                World = null;
+            }
+        }
     }
 }
