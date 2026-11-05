@@ -1,5 +1,7 @@
+using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
@@ -7,7 +9,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// Scalers in Decision 28's model (ED-33): one can be a shared Scaler asset that fields reference, and its levels map
     /// exactly unless it stretches over a level range.
     /// </summary>
-    public class ScalerTests
+    public class ScalerTests : ProvingGroundsTest
     {
         // A magnitude read at a level of a 1 to 5 range, through the scaler pipeline the runtime uses
         private static float At(ScalerMagnitudeOperation magnitude, int level) =>
@@ -71,5 +73,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.IsTrue(new SimpleScaler().StretchOverLevels, "a scaler saved before the option keeps stretching");
         }
+
+        /// <summary>
+        /// An attribute set's element shares a Scaler asset through the cached Shared kind: Power's Base reads the asset's
+        /// scaler, twice Strength, and follows Strength as the entity's values change (ED-33).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_33_An_attribute_set_element_shares_a_scaler([Values] Hub hub) => Live(async () =>
+        {
+            var strength = Make.Attribute("Strength");
+            var power = Make.Attribute("Power");
+            var twice = ScriptableObject.CreateInstance<ScalerAsset>();
+            twice.Scaler = new CachedAttributeScaler { CaptureAttribute = strength };
+            try
+            {
+                var set = Make.Set(Make.Element(strength, 10f, 10f), Make.Element(power, 0f, 0f,
+                    baseSpecOverride: new AttributeMagnitudeSpec
+                    {
+                        Magnitude = 2f,
+                        RealMagnitude = EMagnitudeOperation.MultiplyWithScaler,
+                        Scaling = new SharedCachedScaler { Asset = twice },
+                    },
+                    linkCurrentToBase: true));
+                var gas = World.Entity(hub, set);
+                await Frames.Step();
+
+                gas.TryGetAttributeValue(power, out var value);
+                Assert.That(value.BaseValue, Is.EqualTo(20f).Within(0.001f), "Power's Base reads the shared scaler: twice Strength");
+            }
+            finally
+            {
+                Object.DestroyImmediate(twice);
+            }
+        });
     }
 }

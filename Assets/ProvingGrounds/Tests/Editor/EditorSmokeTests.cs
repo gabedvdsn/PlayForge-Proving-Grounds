@@ -186,6 +186,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             yield return new Subject { Name = "a MonoProcess", Make = made => new[] { NewProcess(made) } };
             yield return new Subject { Name = "two MonoProcesses", Make = made => new[] { NewProcess(made), NewProcess(made) } };
+            // A Scaler asset's inspector has no asset header, so it isn't among the asset types (ED-33)
+            yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
         }
 
         // A new asset of each type, a MonoProcess, and the fullest Demo asset in each of the Demos' folders
@@ -194,6 +196,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             foreach (var type in AssetTypes)
                 yield return new Subject { Name = $"a new {type.Name}", Make = made => new[] { NewAsset(made, type) } };
             yield return new Subject { Name = "a MonoProcess", Make = made => new[] { NewProcess(made) } };
+            yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
 
             var folder = DemosFolder;
             foreach (var group in DemoAssets().GroupBy(inSample => Path.GetDirectoryName(inSample)))
@@ -364,7 +367,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var inspected = typeof(CustomEditor).GetField("m_InspectedType", Private);
             Assume.That(inspected, Is.Not.Null, "an inspector names the type it draws");
-            var opened = AssetTypes.Append(typeof(SmokeProcess)).ToList();
+            var opened = AssetTypes.Append(typeof(SmokeProcess)).Append(typeof(ScalerAsset)).ToList();
             var missing = typeof(TheForge).Assembly.GetTypes()
                 .SelectMany(type => type.GetCustomAttributes<CustomEditor>(false))
                 .Select(attribute => (Type)inspected.GetValue(attribute))
@@ -709,15 +712,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Open = made => ForgeImportWindow.ShowFor(new SerializedObject(New<GameplayEffect>(made)), "Duration",
                     new[] { nameof(GameplayEffect.DurationSpecification) }),
             };
+            // Import Values and Save as Scaler Asset, from a magnitude field's menu (ED-33)
             yield return new Window
             {
-                Name = "Scaler Import", Type = typeof(ScalerImportWindow),
-                Open = made => ScalerImportWindow.Show(Property(EffectWithScaler(made), ScalerPath), new VisualElement(), _ => { }),
+                Name = "Import Values", Type = typeof(ScalerValuesWindow),
+                Open = made => ScalerValuesWindow.Show(Property(EffectWithScaler(made), ScalerPath), "Smoke Duration"),
             };
             yield return new Window
             {
-                Name = "Curve Editor", Type = typeof(CurveEditorWindow),
-                Open = made => CurveEditorWindow.Show(Property(EffectWithScaler(made), ScalerPath)),
+                Name = "Save as Scaler Asset", Type = typeof(SaveScalerAssetWindow),
+                Open = made => SaveScalerAssetWindow.Show(Property(EffectWithScaler(made), "DurationSpecification.DurationOperation"),
+                    "Smoke Duration"),
             };
             yield return new Window
             {
