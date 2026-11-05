@@ -95,6 +95,46 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(World.Apply(gas, gas, poison), Is.False, "the target is already cleansed");
         });
 
+        /// <summary>
+        /// An effect's requirements were checked again only when an effect was applied or removed, so a tag granted with
+        /// no effect behind it, as a loose tag is, didn't end an effect its removal names until another effect came or
+        /// went (GAS-56).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_56_A_loose_tag_ends_an_effect_that_names_it([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var poison = Poison(out var poisoned);
+            var cleansed = Make.NewTag("Test.Status.Cleansed");
+            RemoveWhen(poison, cleansed);
+            Assert.That(World.Apply(gas, gas, poison), "it applies");
+            await Frames.Step();
+
+            gas.AddLooseTag(cleansed);
+            await Frames.Step(2);
+
+            Assert.That(gas.GetTagWeight(poisoned), Is.LessThanOrEqualTo(0), "the loose tag ends it, with no other effect coming or going");
+        });
+
+        /// <summary>The same for a tag an ability grants while the entity holds it (GAS-56).</summary>
+        [UnityTest]
+        public IEnumerator GAS_56_A_tag_an_ability_grants_ends_an_effect_that_names_it([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var poison = Poison(out var poisoned);
+            var cleansed = Make.NewTag("Test.Status.Cleansed");
+            RemoveWhen(poison, cleansed);
+            Assert.That(World.Apply(gas, gas, poison), "it applies");
+            await Frames.Step();
+
+            var ward = Make.Ability("Ward", Make.Stage());
+            ward.Tags.PassiveGrantedTags = new List<Tag> { cleansed };
+            Assert.That(gas.GetAbilitySystem().GiveAbility(ward, 1, out _), "an ability that grants the tag");
+            await Frames.Step(2);
+
+            Assert.That(gas.GetTagWeight(poisoned), Is.LessThanOrEqualTo(0), "its tag ends it");
+        });
+
         private static void RemoveWhen(GameplayEffect effect, Tag tag)
         {
             effect.TargetRequirements.RemovalRequirements.RequireTags = new List<TagQuery> { TagQuery.HasTag(tag) };
