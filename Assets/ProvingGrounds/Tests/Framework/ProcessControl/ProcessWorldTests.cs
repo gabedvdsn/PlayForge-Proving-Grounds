@@ -153,5 +153,75 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             first.Relay.TerminateImmediate();
             await Frames.Step();
         });
+
+        /// <summary>
+        /// A sequence in a world of its own that waits until something is so goes on at the world's next step once it is,
+        /// within one frame (FEAT-10, step 5). Its wait asked Unity's loop, once a frame, so a world stepped in a loop never
+        /// saw it change.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_A_wait_in_a_world_of_its_own_asks_at_each_step() => Live(async () =>
+        {
+            var world = new ProcessWorld();
+            bool go = false, done = false;
+            var sequence = TaskSequenceBuilder.Create("FEAT-10 Wait")
+                .DelayUntil(() => go)
+                .Stage(stage => stage.Task(_ => done = true))
+                .BuildSequence();
+            var relay = ProcessControl.Register(sequence).In(world).Run().Relay;
+
+            int frame = UnityEngine.Time.frameCount;
+            for (int i = 0; i < 10; i++) world.Step(1f / 60f);
+            Assert.IsFalse(done, "it waits");
+            go = true;
+            int steps = 0;
+            while (!done && steps < 30)
+            {
+                world.Step(1f / 60f);
+                steps++;
+            }
+
+            Assert.AreEqual(frame, UnityEngine.Time.frameCount, "all within one frame");
+            Assert.IsTrue(done, "it goes on once what it waits for is so");
+            Assert.That(steps, Is.LessThanOrEqualTo(3), "at the world's next steps");
+            relay.TerminateImmediate();
+            await Frames.Step();
+        });
+
+        /// <summary>
+        /// A sequence paused in a world of its own holds, and goes on as it's unpaused, by the world's steps within one frame
+        /// (FEAT-10, step 5).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_10_A_paused_sequence_in_a_world_of_its_own_goes_on_by_its_steps() => Live(async () =>
+        {
+            var world = new ProcessWorld();
+            bool done = false;
+            var sequence = TaskSequenceBuilder.Create("FEAT-10 Pause")
+                .Stage(stage => stage.Delay(1f))
+                .Stage(stage => stage.Task(_ => done = true))
+                .BuildSequence();
+            var relay = ProcessControl.Register(sequence).In(world).Run().Relay;
+
+            int frame = UnityEngine.Time.frameCount;
+            for (int i = 0; i < 30; i++) world.Step(1f / 60f);
+            Assert.IsTrue(relay.Pause(), "half way through its delay, it pauses");
+            for (int i = 0; i < 120; i++) world.Step(1f / 60f);
+            Assert.IsFalse(done, "and holds while paused");
+
+            Assert.IsTrue(relay.Unpause(), "unpaused");
+            int steps = 0;
+            while (!done && steps < 200)
+            {
+                world.Step(1f / 60f);
+                steps++;
+            }
+
+            Assert.AreEqual(frame, UnityEngine.Time.frameCount, "all within one frame");
+            Assert.IsTrue(done, "it goes on by the world's steps");
+            Assert.That(steps, Is.InRange(25, 45), "for the half of its delay left");
+            relay.TerminateImmediate();
+            await Frames.Step();
+        });
     }
 }
