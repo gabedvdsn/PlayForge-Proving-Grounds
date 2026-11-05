@@ -53,6 +53,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Nested") == 1, 5, "it ends with the ability");
         });
 
+        /// <summary>
+        /// Run Sequence ran only a sequence a static method made, by name, so a sequence made in code, as an ability built
+        /// as the game runs makes one, couldn't run in an ability (FEAT-21). Given a definition made in code, each
+        /// activation runs a fresh sequence from it, with the activation's data.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_21_Run_Sequence_runs_a_sequence_made_in_code([Values] Hub hub) => Live(async () =>
+        {
+            var definitionField = typeof(RunSequenceTask).GetField("Definition");
+            Assert.IsNotNull(definitionField, "Run Sequence takes a sequence made in code");
+            int runs = 0;
+            SequenceDataPacket seen = null;
+            var definition = TaskSequenceBuilder.Create("Made").Task(data =>
+            {
+                runs++;
+                seen = data;
+            }).Build();
+            var task = new RunSequenceTask();
+            definitionField.SetValue(task, definition);
+
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(Make.Ability("Made", Make.Stage(task)), 1, out int index), "the entity knows it");
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "the ability activates");
+                await Frames.Until(() => !abilities.IsExecuting, 10, "and its sequence runs to its end");
+            }
+            Assert.AreEqual(2, runs, "a fresh run of the sequence each activation");
+            Assert.IsInstanceOf<AbilityDataPacket>(seen, "with the activation's own data");
+        });
+
         private AbilitySystemComponent RunNested(Hub hub, string provider, out int index)
         {
             _nested = new ProbeSequenceTask(World, "Nested", frames: 1000);
