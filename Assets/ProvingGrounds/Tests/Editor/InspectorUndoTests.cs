@@ -1599,6 +1599,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// An ability couldn't say what cancels it, what it blocks, or what its caster must keep while it runs (FEAT-5).
+        /// The Stages section edits the ability's Cancelled By and Blocks, which each stage that lists none takes; each
+        /// stage edits its own; and the requirements table has a While active row for the caster.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_5_The_Ability_inspector_edits_cancel_block_and_While_active()
+        {
+            var channel = ScriptableObject.CreateInstance<Ability>();
+            channel.Definition = new AbilityDefinition { Name = "Channel", Textures = new List<TextureItem>() };
+            channel.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(channel);
+                yield return Frames();
+
+                var stages = root.Q("Stages_CONTAINER");
+                Assert.IsNotNull(stages, "the inspector has a Stages section");
+                Assert.IsNotNull(stages.Q<PropertyField>("DefaultCancelledBy"), "which edits what cancels the ability's stages");
+                Assert.IsNotNull(stages.Q<PropertyField>("DefaultBlocks"), "and what they block");
+                var requirements = root.Q("Requirements_CONTAINER");
+                Assert.IsNotNull(requirements?.Q("WhileActiveRequirements"), "the requirements table has a While active row");
+
+                host.Document.rootVisualElement.Clear();
+                var stage = Draw(host, channel, $"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Stages)}.Array.data[0]");
+                yield return Frames();
+                Assert.IsNotNull(stage.Q<PropertyField>("CancelledBy"), "a stage edits what cancels it");
+                Assert.IsNotNull(stage.Q<PropertyField>("Blocks"), "and what it blocks");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(channel);
+            }
+        }
+
+        /// <summary>
         /// The impact didn't say how it is delivered, and still drew Reverse On Removal, which the impact model removed
         /// (ED-2). It says its delivery, which the duration gives it, and what a periodic impact commits, and it follows
         /// the duration as it changes. It sets no look in code: it drew tinted boxes with colored headings.
@@ -1779,7 +1818,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var abilityField = Draw(host, fireball, $"{nameof(Ability.Tags)}.{nameof(AbilityTags.TagRequirements)}");
                 yield return Frames();
                 Assert.That(abilityField.Query(className: "pf-table__row").ToList().Select(row => row.name),
-                    Is.EqualTo(new[] { "SourceRequirements", "TargetRequirements" }), "an ability's rows are the caster's and the target's");
+                    Is.EqualTo(new[] { "SourceRequirements", "WhileActiveRequirements", "TargetRequirements" }),
+                    "an ability's rows are the caster's, the caster's while it runs (FEAT-5), and the target's");
 
                 host.Document.rootVisualElement.Clear();
                 var root = host.Inspect(burning);
