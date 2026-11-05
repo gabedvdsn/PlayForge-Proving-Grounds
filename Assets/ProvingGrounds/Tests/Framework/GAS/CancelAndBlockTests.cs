@@ -191,5 +191,62 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             abilities.Inject(container.Index, InterruptSequenceInjection.Instance);
             await Frames.Until(() => Ledger.Cleans("Channeling") == 2, 5, "the second channel ends as the test does");
         });
+
+        // Half a second of game time each frame, so a channel's ticks half a second apart come one a frame
+        private sealed class HalfSecondClock : IForgeClock
+        {
+            public float DeltaTime => 0.5f;
+            public float UnscaledDeltaTime => 0.5f;
+            public float FixedDeltaTime => 0.5f;
+            public float Time => UnityEngine.Time.time;
+            public float UnscaledTime => UnityEngine.Time.unscaledTime;
+            public int FrameCount => UnityEngine.Time.frameCount;
+        }
+
+        /// <summary>
+        /// A stun ended a channel at the stunned entity's next step, so a tick that came due in that frame landed first, as
+        /// the MOBA lab found (FEAT-5). The While active group is checked as the tags change, as tag events are heard at
+        /// once: no tick lands after the stun.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_5_A_stun_ends_a_channel_before_its_next_tick([Values] Hub hub) => Live(async () =>
+        {
+            var previous = ForgeTime.Use(new HalfSecondClock());
+            try
+            {
+                var health = Make.Attribute("Health");
+                var stunned = Make.NewTag("Test.State.Stunned");
+                var tick = Make.Effect("Tick", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1f });
+                var channel = Make.Ability("Channel", Make.Stage(new ApplyEffectsAbilityTask
+                {
+                    Effects = new List<GameplayEffect> { tick, tick, tick, tick, tick, tick }, DelayBetweenApplicationMs = 500,
+                }));
+                WhileActive(channel, stunned);
+                var stun = Make.Effect("Stun", new EffectConfig { Target = null, Policy = EEffectDurationPolicy.Infinite });
+                stun.Tags.GrantedTags = new List<Tag> { stunned };
+                var caster = World.Entity(hub, name: "Caster");
+                var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Target");
+                var abilities = caster.GetAbilitySystem();
+                var container = Give(abilities, channel);
+                float Health() => target.TryGetAttributeValue(health, out var value) ? value.CurrentValue : float.NaN;
+
+                var request = ProcessDataPacket.Default();
+                request.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+                Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(container.Index, request)), "the channel starts");
+                await Frames.Step(2);
+                float before = Health();
+                Assert.That(before, Is.LessThan(100f), "and ticks");
+
+                Assert.IsTrue(World.Apply(caster, caster, stun), "a stun lands");
+                await Frames.Step();
+                Assert.IsFalse(container.IsActive, "and ends the channel");
+                await Frames.Step(3);
+                Assert.AreEqual(before, Health(), "with no tick after it");
+            }
+            finally
+            {
+                ForgeTime.Use(previous);
+            }
+        });
     }
 }

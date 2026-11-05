@@ -233,6 +233,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A relative-operation worker read the impacted attribute's value, never its Relative Attribute, so lifesteal by a
+        /// Lifesteal share healed the attacker by its own health times the blow (GAS-57, which the MOBA lab found). With a
+        /// Relative Attribute set, it reads that: a quarter of a blow of 40 heals 10. With none, as GAS-41's above, it
+        /// reads the impacted attribute still.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_57_A_relative_worker_reads_its_relative_attribute([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var lifesteal = Make.Attribute("Lifesteal");
+            var set = Make.Set(Make.Element(health, 50f, 100f, EAttributeOverflowPolicy.ZeroToBase), Make.Element(lifesteal, 0.25f, 0.25f));
+            set.WorkerGroup.ImpactWorkers.Add(new RelativeOperationContextImpactWorker
+            {
+                ImpactedAttribute = health, AnyImpactType = true, ImpactType = new List<Tag>(),
+                ImpactTarget = EAttributeTargetExpanded.CurrentOrBase, ImpactSign = ESignPolicy.Negative,
+                AnyContextTag = true, ImpactAbilityContextTags = new List<Tag>(),
+                WorkAttribute = health, WorkImpactType = new List<Tag>(), WorkSignPolicy = ESignPolicy.Positive,
+                RelativeAttribute = lifesteal, Operation = ECalculationOperation.Multiply, WithRespectTo = ESourceTarget.Source,
+                ExecutionMode = EWorkerExecution.Deferred,
+            });
+
+            var source = World.Entity(hub, set, "Source");
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            World.Apply(source, target, Make.Effect("Hit", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -40f }));
+            await Frames.Step(2);
+
+            Assert.That(Current(target, health), Is.EqualTo(60f), "the blow lands");
+            Assert.That(Current(source, health), Is.EqualTo(60f), "and a quarter of it heals the source, from 50");
+        });
+
+        /// <summary>
         /// The frame's snapshot copied neither the applied and removed effects nor the deaths and ability injections, so
         /// FrameComplete listeners never saw them. No red test came first, as the snapshot had nowhere to show them.
         /// </summary>
