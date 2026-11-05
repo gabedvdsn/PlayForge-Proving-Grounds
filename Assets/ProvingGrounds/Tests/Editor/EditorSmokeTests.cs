@@ -998,8 +998,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 sweep.Edits++;
                 Undo.PerformUndo();
                 yield return Frames(2);
-                if (EditorJsonUtility.ToJson(target) != before) sweep.Broken.Add(Describe(control));
+                var after = EditorJsonUtility.ToJson(target);
+                if (after != before) sweep.Broken.Add($"{Describe(control)}, which leaves {Difference(before, after)}");
             }
+        }
+
+        // Where two of an asset's JSON differ, for the sweep's report
+        private static string Difference(string before, string after)
+        {
+            int at = 0;
+            while (at < before.Length && at < after.Length && before[at] == after[at]) at++;
+            int from = Math.Max(0, at - 60);
+            string Around(string json) => json.Substring(from, Math.Min(json.Length - from, 140));
+            return $"\"…{Around(after)}…\" where it was \"…{Around(before)}…\"";
         }
 
         /// <summary>
