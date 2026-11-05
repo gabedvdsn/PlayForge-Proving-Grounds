@@ -156,5 +156,48 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(potions, Is.GreaterThan(0), "and drank a potion");
             Assert.That(landed, Is.GreaterThan(30), "while the caster's casts landed");
         });
+
+        /// <summary>
+        /// A jagged strike lands every time, and its laceration one time in four, each strike drawing once from a seeded
+        /// source, so the round comes out the same each time it's played (FEAT-8).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Lab_A_jagged_strike_lacerates_on_a_roll([Values] Hub hub) => Live(async () =>
+        {
+            var lab = Lab(hub);
+            var previous = ForgeRandom.Use(new SeededRandom(3));
+            try
+            {
+                // The draws the strikes will make, from the same seed
+                var oracle = new SeededRandom(3);
+                int hits = 0;
+                for (int i = 0; i < 6; i++) if (oracle.Value < 0.25f) hits++;
+                Assert.That(hits, Is.InRange(1, 5), "the seed gives hits and misses");
+
+                for (int i = 0; i < 6; i++) Assert.IsTrue(lab.Cast(World, lab.JaggedStrike), "the strike lands every time");
+                Assert.AreEqual(hits, lab.Stacks(lab.Laceration), "and lacerates on each good roll");
+                Assert.AreEqual(100f - 6 * 10f, lab.Value(lab.Health), "with six blows of 10");
+
+                await Frames.Until(() => !lab.Has(lab.Laceration), 8, "the lacerations run out");
+                Assert.AreEqual(100f - 6 * 10f - 3f * hits, lab.Value(lab.Health), "their three ticks each dealt once a stack");
+            }
+            finally
+            {
+                ForgeRandom.Use(previous);
+            }
+        });
+
+        /// <summary>The blessing lends the caster Smite while it lasts, and takes it back as it runs out (FEAT-8).</summary>
+        [UnityTest]
+        public IEnumerator Lab_The_blessing_lends_the_caster_an_ability([Values] Hub hub) => Live(async () =>
+        {
+            var lab = Lab(hub);
+            var abilities = lab.Caster.GetAbilitySystem();
+            Assert.IsTrue(World.Apply(lab.Caster, lab.Caster, lab.Blessing), "the caster is blessed");
+            Assert.IsTrue(abilities.HasAbility(lab.Smite), "and can cast Smite");
+
+            await Frames.Until(() => !lab.Caster.TryGetEffectContainer(lab.Blessing, out _), 8, "the blessing runs out");
+            Assert.IsFalse(abilities.HasAbility(lab.Smite), "and Smite goes with it");
+        });
     }
 }

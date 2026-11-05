@@ -7,9 +7,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     /// <summary>
     /// The Status-effect lab, the first of Phase 5's labs: a training dummy and a caster, with poison, burn and bleed under
-    /// each stacking policy, a cleanse, an antidote that makes the dummy immune to poison, and a barrier whose shield
-    /// takes damage before health. It's a small game, built in code as a game would author it; its bot, the tests in
-    /// <see cref="StatusEffectLabTests"/>, plays it. Every effect advances a second a frame, so a round is exact.
+    /// each stacking policy, a cleanse, an antidote that makes the dummy immune to poison, a barrier whose shield takes
+    /// damage before health, a jagged strike that lacerates on a roll, and a blessing that lends an ability. It's a small
+    /// game, built in code as a game would author it; its bot, the tests in <see cref="StatusEffectLabTests"/>, plays it.
+    /// Every effect advances a second a frame, so a round is exact.
     /// </summary>
     public sealed class StatusEffectLab
     {
@@ -46,6 +47,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// <summary>40 health back, up to its base.</summary>
         public readonly GameplayEffect Potion;
 
+        /// <summary>1 damage a second for 3 seconds, its stacks sharing one duration; it lands one time in four (FEAT-8).</summary>
+        public readonly GameplayEffect Laceration;
+
+        /// <summary>A blow of 10 that lacerates on a roll: it lands every time, and its laceration by its chance (FEAT-8).</summary>
+        public readonly GameplayEffect JaggedStrike;
+
+        /// <summary>The ability the blessing lends.</summary>
+        public readonly Ability Smite;
+
+        /// <summary>For 3 seconds, its target can cast Smite (FEAT-8).</summary>
+        public readonly GameplayEffect Blessing;
+
         public StatusEffectLab(World world, ForgeAssets make, Hub hub)
         {
             Health = make.Attribute("Health");
@@ -79,6 +92,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Barrier = make.Effect("Barrier", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Shield, Magnitude = 30f });
             Strike = make.Effect("Strike", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = -20f });
             Potion = make.Effect("Potion", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = 40f });
+
+            Laceration = Status(make, "Laceration", Tag.Generate(Debuff.Name + ".Laceration"), Health, -1f, seconds: 3, EEffectStackPolicy.StacksShareOneDuration);
+            Laceration.ImpactSpecification.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = 0.25f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+            JaggedStrike = make.Effect("Jagged Strike", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = -10f });
+            JaggedStrike.ImpactSpecification.Packets = new[] { new ContainedEffectPacket { Policy = EApplyTickRemove.OnApply, ContainedEffect = Laceration } };
+
+            Smite = make.Ability("Smite");
+            Blessing = make.Effect("Blessing", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 3f, Target = null, FixedDeltaTime = 1f });
+            Blessing.GrantedAbilities = new List<Ability> { Smite };
         }
 
         // A debuff that deals its damage to health once a second for its duration, and stacks as the policy says

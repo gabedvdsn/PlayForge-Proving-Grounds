@@ -1556,6 +1556,49 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// An effect had no chance to apply and lent no abilities (FEAT-8). The Impact section edits its Chance to Apply,
+        /// after who it affects, and the Tags section its Granted Abilities, after its Granted Tags; each section's summary
+        /// says so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_8_The_Effect_inspector_edits_the_chance_to_apply_and_granted_abilities()
+        {
+            var chance = typeof(GameplayEffectImpact).GetField("ChanceToApply");
+            var granted = typeof(GameplayEffect).GetField("GrantedAbilities");
+            Assert.IsNotNull(chance, "an effect has a chance to apply");
+            Assert.IsNotNull(granted, "and abilities it grants");
+            var strike = MakeEffect(EEffectDurationPolicy.Infinite);
+            var smite = ScriptableObject.CreateInstance<Ability>();
+            smite.Definition = new AbilityDefinition { Name = "Smite", Textures = new List<TextureItem>() };
+            chance.SetValue(strike.ImpactSpecification,
+                new ScalerMagnitudeOperation { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude });
+            granted.SetValue(strike, new List<Ability> { smite });
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Inspect(strike);
+                yield return Frames();
+
+                Assert.IsNotNull(root.Q<PropertyField>("ChanceToApply"), "the Impact section edits the chance to apply");
+                Assert.IsNotNull(root.Q<PropertyField>("GrantedAbilities"), "and the Tags section the abilities it grants");
+                var impact = root.Q("Impact_CONTAINER")?.Q<Label>(className: "pf-section__summary");
+                Assert.IsNotNull(impact, "the Impact section has a summary");
+                StringAssert.Contains("30% chance", impact.text, "which says the chance");
+                var tags = root.Q("Tags_CONTAINER")?.Q<Label>(className: "pf-section__summary");
+                Assert.IsNotNull(tags, "the Tags section has a summary");
+                StringAssert.Contains("Grants Smite", tags.text, "which says what the effect grants");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(strike);
+                Object.DestroyImmediate(smite);
+            }
+        }
+
+        /// <summary>
         /// The impact didn't say how it is delivered, and still drew Reverse On Removal, which the impact model removed
         /// (ED-2). It says its delivery, which the duration gives it, and what a periodic impact commits, and it follows
         /// the duration as it changes. It sets no look in code: it drew tinted boxes with colored headings.
