@@ -880,6 +880,66 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
+        // ED-43: a narrow column
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static readonly string[] Splits = { "EntitySplit", "ProcessSplit", "TagSplit" };
+
+        /// <summary>
+        /// The Debugger kept its wide layout in a docked column, so at 360 px its lists and details squeezed side by side
+        /// and its tables clipped (ED-43, the user's rule in EDITOR_STYLE's Debugger section). Below 720 px each view's list
+        /// sits above its detail, the toolbar's views take a row of their own, the frame count moves to the status bar, the
+        /// Processes list keeps ID, Process, State and Step, and Held By drops Source. In a full window again, it's as it was.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_43_The_Debugger_fits_a_narrow_column() => Guarded(FitsANarrowColumn());
+
+        private IEnumerator FitsANarrowColumn()
+        {
+            var chilled = Tag.Generate("Status.Chilled");
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            Assert.IsTrue(Apply(foe, Lasting("Frost", 5f, chilled)), "the foe is chilled");
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowTags");
+            TagTree(window).SetSelectionById(TagId(window, "Status.Chilled"));
+            yield return Frames();
+            Sample(window);
+
+            var fit = Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null);
+            Assert.IsNotNull(fit, "the window fits its layout to its width");
+            var root = window.rootVisualElement;
+            var columns = ProcessList(window).columns;
+
+            fit.Invoke(window, new object[] { 360f });
+            Assert.IsTrue(root.ClassListContains("pf-debugger--narrow"), "a 360 px column is narrow");
+            foreach (var name in Splits)
+                Assert.AreEqual(TwoPaneSplitViewOrientation.Vertical, root.Q<TwoPaneSplitView>(name).orientation, $"{name}'s list sits above its detail");
+            Assert.That(columns.Where(column => column.visible).Select(column => column.name), Is.EqualTo(new[] { "ID", "Process", "State", "Step" }),
+                "the Processes list keeps ID, Process, State and Step");
+            Assert.IsTrue(root.Q<Label>("Frame").ClassListContains(HiddenClass), "the frame count leaves the toolbar");
+            var frame = root.Q<Label>("FrameStatus");
+            Assert.IsNotNull(frame, "for the status bar");
+            Assert.IsFalse(frame.ClassListContains(HiddenClass), "where it shows");
+            Assert.That(frame.text, Does.StartWith("Frame "), "as the frame count");
+            var sources = root.Q("TagDetail").Query(className: "pf-debugger__col-source").ToList();
+            Assert.That(sources, Has.Count.EqualTo(2), "Held By's Source column, its title and its row");
+            Assert.That(sources.All(cell => cell.ClassListContains(HiddenClass)), "drops out");
+
+            fit.Invoke(window, new object[] { 1280f });
+            Assert.IsFalse(root.ClassListContains("pf-debugger--narrow"), "a full window isn't narrow");
+            foreach (var name in Splits)
+                Assert.AreEqual(TwoPaneSplitViewOrientation.Horizontal, root.Q<TwoPaneSplitView>(name).orientation, $"{name}'s list sits beside its detail again");
+            Assert.That(columns.All(column => column.visible), "the Processes list shows every column");
+            Assert.IsFalse(root.Q<Label>("Frame").ClassListContains(HiddenClass), "the frame count is back on the toolbar");
+            Assert.IsTrue(frame.ClassListContains(HiddenClass), "and off the status bar");
+            Assert.That(root.Q("TagDetail").Query(className: "pf-debugger__col-source").ToList().All(cell => !cell.ClassListContains(HiddenClass)),
+                "and Held By shows Source");
+        }
+
+        private const string HiddenClass = "pf-debugger__hidden";
+
+        // ═══════════════════════════════════════════════════════════════════════════
         // ED-5: the Processes view
         // ═══════════════════════════════════════════════════════════════════════════
 
