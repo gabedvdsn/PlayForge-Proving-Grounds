@@ -373,5 +373,80 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 ForgeTime.Use(previous);
             }
         });
+
+        /// <summary>
+        /// Restoring an entity let go of its abilities and gave them back as new ones, so another entity's effect that one
+        /// of them applied kept hold of the old one, and that entity's next save named no slot for it (GAS-60, found by the
+        /// rollback scenario). A restore keeps each ability the entity holds in the slot its save gives it, so the other's
+        /// save is as it was.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_60_A_restore_keeps_the_ability_another_entitys_effect_came_from([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var caster = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Caster");
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            var bleed = Make.Effect("Bleed", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 5f, Target = health, Magnitude = -1f, PeriodicTicks = true, Ticks = 5,
+            });
+            var slash = Make.Ability("Slash", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { bleed } }));
+            var catalog = Catalog(("health", health), ("bleed", bleed), ("slash", slash));
+            var ids = new EntityIds(("caster", caster), ("target", target));
+            var abilities = caster.GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(slash, 1, out int slot), "the caster knows Slash");
+
+            var request = ProcessDataPacket.Default();
+            request.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(slot, request, EAbilityActivationPolicyExtended.ActivateIfIdle)),
+                "it slashes the target");
+            await Frames.Step(2);
+            Assert.IsTrue(target.TryGetEffectContainer(bleed, out _), "which bleeds");
+            string before = JsonUtility.ToJson(Capture(target, catalog, ids));
+            StringAssert.Contains("\"Asset\":\"slash\"", before, "and its save names the slash that bled it");
+
+            Assert.IsTrue(Restore(caster, Capture(caster, catalog, ids), catalog, ids), "the caster loads its own save");
+            Assert.AreEqual(before, JsonUtility.ToJson(Capture(target, catalog, ids)), "and the target's save still names the slash, in its slot");
+            await Frames.Step();
+        });
+
+        /// <summary>
+        /// A save kept an effect's time left as a float, which its double timer rounded (GAS-61, found by the rollback
+        /// scenario), so a restored effect ran on from a time a hair off, and a twin never restored came to differ from it
+        /// in the last digit. A save keeps the timer's own double, so the two keep time alike to the last digit.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_61_A_restored_effect_keeps_time_with_its_twin_to_the_last_digit() => Live(async () =>
+        {
+            var clock = new ManualClock { Step = 1f / 30f };
+            var previous = ForgeTime.Use(clock);
+            try
+            {
+                var health = Make.Attribute("Health");
+                var bleed = Make.Effect("Bleed", new EffectConfig
+                {
+                    Policy = EEffectDurationPolicy.Durational, Duration = 2f, Target = health, Magnitude = -2f, PeriodicTicks = true, Ticks = 8,
+                });
+                var catalog = Catalog(("health", health), ("bleed", bleed));
+                var restored = World.Entity(Hub.Runtime, Make.Set(Make.Element(health, 100f, 100f)), "Restored");
+                var twin = World.Entity(Hub.Runtime, Make.Set(Make.Element(health, 100f, 100f)), "Twin");
+                Assert.IsTrue(World.Apply(restored, restored, bleed), "one bleeds");
+                Assert.IsTrue(World.Apply(twin, twin, bleed), "and its twin alike");
+                await Frames.Step(20);
+                Assert.IsTrue(Restore(restored, Capture(restored, catalog), catalog), "the one loads its own save");
+                for (int i = 0; i < 12; i++)
+                {
+                    await Frames.Step();
+                    var a = Capture(restored, catalog).Effects[0];
+                    var b = Capture(twin, catalog).Effects[0];
+                    Assert.AreEqual(b.Remaining[0], a.Remaining[0], 0d, $"{i + 1} steps on, its time left is its twin's, to the last digit");
+                    Assert.AreEqual(b.UntilTick[0], a.UntilTick[0], 0d, "and so is its time to its next tick");
+                }
+            }
+            finally
+            {
+                ForgeTime.Use(previous);
+            }
+        });
     }
 }
