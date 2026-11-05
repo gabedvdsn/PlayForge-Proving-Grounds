@@ -1,11 +1,8 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
-using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.TestTools;
 using ForgeAttribute = FarEmerald.PlayForge.Attribute;
@@ -21,8 +18,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class ScaleTests : ProvingGroundsTest
     {
         private const int Entities = 500, EffectsEach = 20, Targets = 200;
-
-        private static readonly string[] StepLoops = { "PlayForge.Update", "PlayForge.LateUpdate", "PlayForge.FixedUpdate" };
 
         /// <summary>
         /// 500 entities, each with 20 effects that tick every quarter second, run 2.1 seconds: each effect ticks 8 times on
@@ -59,11 +54,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Burning(hub, health, burns, few);
             await Frames.Step(5);
-            double perFew = await StepNanoseconds(30) / few;
+            double perFew = await StressMeasure.StepNanoseconds(Frames, 30) / few;
 
             Burning(hub, health, burns, Entities - few);
             await Frames.Step(5);
-            double perMany = await StepNanoseconds(30) / Entities;
+            double perMany = await StressMeasure.StepNanoseconds(Frames, 30) / Entities;
 
             TestContext.WriteLine($"µs an entity a frame, {few} → {Entities}: {perFew / 1000:F2} → {perMany / 1000:F2}");
             Assert.That(perMany, Is.LessThan(3 * perFew), "an entity's frame, in PlayForge's step loops");
@@ -141,35 +136,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             gas.TryGetAttributeValue(health, out var value);
             return value.CurrentValue;
-        }
-
-        // Nanoseconds a frame spent in PlayForge's step loops, over `frames` frames: the fastest of three runs, as the slow
-        // runs are the ones a collection or the editor interrupted
-        private async UniTask<double> StepNanoseconds(int frames)
-        {
-            double fastest = double.MaxValue;
-            for (int run = 0; run < 3; run++)
-            {
-                var recorders = StepLoops.Select(name => ProfilerRecorder.StartNew(ProfilerCategory.Scripts, name, frames + 4)).ToArray();
-                try
-                {
-                    await Frames.Step(frames);
-                    double perFrame = 0;
-                    foreach (var recorder in recorders)
-                    {
-                        if (recorder.Count == 0) continue;
-                        long total = 0;
-                        for (int i = 0; i < recorder.Count; i++) total += recorder.GetSample(i).Value;
-                        perFrame += total / (double)recorder.Count;
-                    }
-                    fastest = Math.Min(fastest, perFrame);
-                }
-                finally
-                {
-                    foreach (var recorder in recorders) recorder.Dispose();
-                }
-            }
-            return fastest;
         }
     }
 }

@@ -1,5 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -7,6 +11,51 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     public class ProcessRegistrationTests : ProvingGroundsTest
     {
+        // A process that only steps, so what's timed is ProcessControl's own work
+        private sealed class Idle : AbstractRuntimeProcess
+        {
+            public Idle() : base("Idle", EProcessStepPriorityMethod.Manual, 0, EProcessStepTiming.Update, EProcessLifecycle.Synchronous) { }
+
+            public override UniTask RunProcess(CancellationToken token) => UniTask.CompletedTask;
+        }
+
+        /// <summary>
+        /// Ending a process searched its step group's list for it from the front and shifted what came after, so ending the
+        /// newest of 10,000 cost several times what ending the newest of 1,000 did, and ending every one of them cost the
+        /// square of how many there were.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PC_34_Ending_a_process_costs_as_much_among_10000_as_among_1000() => Live(async () =>
+        {
+            double few = await EndingNewestFirst(1000), many = await EndingNewestFirst(10000);
+
+            TestContext.WriteLine($"µs to end a process, newest first, among 1000 → 10000: {few:F2} → {many:F2}");
+            Assert.That(many, Is.LessThan(3 * few), "to end one");
+        });
+
+        // Microseconds to end a process, newest first, with `count` of them registered: the fastest of three rounds
+        private async UniTask<double> EndingNewestFirst(int count)
+        {
+            double fastest = double.MaxValue;
+            var relays = new ProcessRelay[count];
+            var watch = new Stopwatch();
+            for (int round = 0; round < 3; round++)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    if (!ProcessControl.Register(new Idle(), ProcessDataPacket.Default(), out relays[i])) Assert.Fail($"process {i} was refused");
+                }
+                await Frames.Step();
+
+                watch.Restart();
+                for (int i = count - 1; i >= 0; i--) World.Control.TerminateImmediate(relays[i].CacheIndex, false);
+                watch.Stop();
+                fastest = Math.Min(fastest, watch.Elapsed.TotalMilliseconds * 1000 / count);
+                await Frames.Step(2);
+            }
+            return fastest;
+        }
+
         /// <summary>
         /// WhenInitialize runs with the block already in place, so a throw there left a process half registered,
         /// and the exception went to whoever called Register. It's refused now, and nothing of it stays.

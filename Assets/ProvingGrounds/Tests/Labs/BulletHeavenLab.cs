@@ -99,15 +99,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         }
 
-        /// <summary>Fires a bolt from the wizard at an enemy, through the pool. False when ProcessControl refuses it.</summary>
-        public bool Fire(IGameplayAbilitySystem at)
+        /// <summary>
+        /// Fires a bolt from the wizard at an enemy, through the pool. False when ProcessControl refuses it. An
+        /// <paramref name="own"/> bolt the world ends if the test doesn't; a soak's millions aren't owned, as the world would
+        /// keep every one, and the world ends whatever is left as it goes anyway.
+        /// </summary>
+        public bool Fire(IGameplayAbilitySystem at, bool own = true)
         {
             var data = ProcessDataPacket.Default();
             data.SetPrimary(Tags.TARGET_REAL, (ITarget)at);
             data.SetPrimary(Tags.DERIVATION, wizardOrigin);
             var registration = ProcessControl.Register(BoltTemplate).HandledBy(Wizard).With(data).Run();
             if (!registration) return false;
-            world.Own(registration.Relay);
+            if (own) world.Own(registration.Relay);
             Fired++;
             return true;
         }
