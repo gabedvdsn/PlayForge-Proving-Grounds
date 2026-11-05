@@ -446,6 +446,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             foreach (var target in targets) Assert.That(Carries(target, ward), Is.False, $"and {target.name} isn't once it has ended");
         });
 
+        /// <summary>
+        /// An ability's stage list had no initializer, so an ability whose behaviour was made in code had none until it was
+        /// saved and loaded, and adding a stage to it threw. One with no stage still activates and ends, as it did.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_63_An_ability_made_in_code_has_a_stage_list([Values] Hub hub) => Live(async () =>
+        {
+            Assert.IsNotNull(new AbilityBehaviour().Stages, "a new behaviour has a stage list to add to");
+
+            // A behaviour made in code, with no stage: the ability activates and ends
+            var ability = Make.Ability("Bare");
+            ability.Behaviour = new AbilityBehaviour();
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(ability, 1, out int index), "granted");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "it activates");
+            await Frames.Step(3);
+            Assert.IsFalse(abilities.IsExecuting, "and ends, having no stage to run");
+        });
+
         // Mono entities at these distances along x, each with a collider and 100 health
         private List<GameplayAbilitySystem> TargetsAt(ForgeAttribute health, params float[] distances)
         {
