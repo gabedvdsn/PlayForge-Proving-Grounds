@@ -43,5 +43,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
             Assert.AreEqual(8f, Might(), "+8");
         });
+
+        /// <summary>
+        /// A level and its max set at once applied the level first, so a level past the old max was held at it, and only
+        /// the max moved (GAS-59). Set to 3 of 10 from 1 of 1, the level is 3; raised by 4 of 4, it's 7 of 14.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_59_A_level_raised_past_its_old_max_at_once_takes_it([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            Assert.IsTrue(gas.FindLevelSystem(out var levels), "the entity keeps levels");
+            var key = gas.GetAssetTag();
+            levels.TrySetLevel(key, new IntValuePair(1, 1));
+            Assert.AreEqual(1, levels.GetLevel(key).MaxValue, "held at most level 1");
+
+            levels.TrySetLevel(key, new IntValuePair(3, 10));
+            Assert.AreEqual(3, gas.GetLevel().CurrentValue, "set to 3 of 10, it's at 3");
+            Assert.AreEqual(10, gas.GetLevel().MaxValue, "of 10");
+
+            levels.TryModifyLevel(key, new IntValuePair(4, 4));
+            Assert.AreEqual(7, gas.GetLevel().CurrentValue, "raised by 4 of 4, it's at 7");
+            Assert.AreEqual(14, gas.GetLevel().MaxValue, "of 14");
+            await Frames.Step();
+        });
     }
 }
