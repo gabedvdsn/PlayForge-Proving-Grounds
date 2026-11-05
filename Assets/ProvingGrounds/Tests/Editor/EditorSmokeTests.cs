@@ -686,6 +686,7 @@ yield return new Window
                 Name = "Visualizer", Type = typeof(PlayForgeVisualizer),
                 Open = made => TheForge.OpenVisualizer(New<Ability>(made)),
             };
+            yield return new Window { Name = "Problems", Type = typeof(ForgeProblemsWindow), Open = _ => ForgeProblemsWindow.ShowWindow() };
             yield return new Window { Name = "GAS Debugger", Type = typeof(GASDebugger), Open = _ => GASDebugger.ShowWindow() };
             yield return new Window
             {
