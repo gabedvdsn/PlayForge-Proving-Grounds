@@ -32,6 +32,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Summoner,
             Tactics,
             Combat,
+            Battle,
         }
 
         public enum ERoundState
@@ -77,8 +78,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [Tooltip("Plays the rounds again once they're all done")]
         public bool Loop;
 
+        [Tooltip("A capsule for each entity in the scene. Off for a lab that draws its own")]
+        public bool ShowBodies = true;
+
+        [Tooltip("A card for each entity's attributes, effects and tags")]
+        public bool ShowCards = true;
+
+        [Tooltip("How far back the camera stands, as a share of how much it frames")]
+        [Min(1f)] public float Framing = 2.4f;
+
         /// <summary>Plays as fast as it can, with no wait between rounds, as the scenes' test does.</summary>
         internal static bool Fast;
+
+        /// <summary>Whether a scene plays its rounds to watch, slowly, as a test's run doesn't: a round can vary each time then.</summary>
+        internal static bool Watching { get; private set; }
 
         private const int MaxCards = 12;
         private static readonly int[] Paces = { 2, 4, 8, 12, 24, 60, 0 };
@@ -109,6 +122,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             ELab.Summoner => "Summoner",
             ELab.Tactics => "Tactics",
             ELab.Combat => "Combat",
+            ELab.Battle => "Battle",
             _ => lab.ToString(),
         };
 
@@ -126,6 +140,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             ELab.Summoner => typeof(SummonerLabTests),
             ELab.Tactics => typeof(TacticsLabTests),
             ELab.Combat => typeof(CombatLabTests),
+            ELab.Battle => typeof(BattleLabTests),
             _ => throw new ArgumentOutOfRangeException(nameof(lab), lab, null),
         };
 
@@ -142,6 +157,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             previousFrameRate = Application.targetFrameRate;
             previousVSync = QualitySettings.vSyncCount;
+            Watching = !Fast;
             QualitySettings.vSyncCount = 0;
             ApplyPace();
 
@@ -259,6 +275,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private void OnDestroy()
         {
+            Watching = false;
             Application.targetFrameRate = previousFrameRate;
             QualitySettings.vSyncCount = previousVSync;
             styles?.Dispose();
@@ -271,7 +288,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private void LateUpdate()
         {
             ReadEntities();
-            PlaceBodies();
+            if (ShowBodies) PlaceBodies();
             FrameCamera();
         }
 
@@ -322,28 +339,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         }
 
-        // Keeps every capsule in view, from above and in front
+        // Keeps every capsule in view, or every entity in the scene where the lab draws its own, from above and in front
         private void FrameCamera()
         {
             var eye = Camera.main;
             if (eye == null) return;
             var bounds = new Bounds(Vector3.up, Vector3.one * 4f);
             bool first = true;
-            foreach (var body in bodies.Values)
+            void Take(Vector3 at)
             {
-                if (body == null) continue;
                 if (first)
                 {
-                    bounds = new Bounds(body.position, Vector3.one * 2f);
+                    bounds = new Bounds(at, Vector3.one * 2f);
                     first = false;
                 }
                 else
                 {
-                    bounds.Encapsulate(body.position);
+                    bounds.Encapsulate(at);
                 }
             }
 
-            float distance = Mathf.Max(8f, bounds.extents.magnitude * 2.4f);
+            if (ShowBodies)
+            {
+                foreach (var body in bodies.Values)
+                    if (body != null) Take(body.position);
+            }
+            else
+            {
+                foreach (var gas in entities)
+                {
+                    var host = gas.ToGASObject();
+                    if (host != null) Take(host.transform.position);
+                }
+            }
+
+            float distance = Mathf.Max(8f, bounds.extents.magnitude * Framing);
             var at = bounds.center + new Vector3(0f, 0.75f, -1f).normalized * distance;
             float blend = Fast ? 1f : 1f - Mathf.Exp(-4f * Time.unscaledDeltaTime);
             eye.transform.position = Vector3.Lerp(eye.transform.position, at, blend);
@@ -360,7 +390,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             styles ??= new Styles();
             DrawLabels();
             DrawRounds();
-            DrawCards();
+            if (ShowCards) DrawCards();
         }
 
         // Each capsule's name, and its Health where it has one

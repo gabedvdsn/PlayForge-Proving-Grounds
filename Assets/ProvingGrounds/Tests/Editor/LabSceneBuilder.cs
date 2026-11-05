@@ -44,6 +44,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var component = host.AddComponent(runner);
                 var serialized = new SerializedObject(component);
                 serialized.FindProperty("Lab").intValue = Convert.ToInt32(lab);
+                if ((string)title.Invoke(null, new[] { lab }) == "Battle")
+                {
+                    // The battle draws its own fighters and plays in real time, framed closer
+                    serialized.FindProperty("FramesPerSecond").intValue = 60;
+                    serialized.FindProperty("SecondsBetweenRounds").floatValue = 4f;
+                    serialized.FindProperty("ShowBodies").boolValue = false;
+                    serialized.FindProperty("ShowCards").boolValue = false;
+                    serialized.FindProperty("Framing").floatValue = 1.75f;
+                }
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
                 EditorSceneManager.SaveScene(scene, path);
