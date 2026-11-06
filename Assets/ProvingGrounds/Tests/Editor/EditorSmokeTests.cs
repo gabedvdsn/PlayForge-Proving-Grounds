@@ -717,16 +717,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     dialog.ShowUtility();
                 },
             };
-            yield return new Window
-            {
-                Name = "Level Provider Picker", Type = typeof(LevelProviderPickerWindow),
-                Open = made =>
-                {
-                    var picker = ScriptableObject.CreateInstance<LevelProviderPickerWindow>();
-                    picker.Initialize(Property(New<GameplayEffect>(made), "_linkedSource"), () => { });
-                    picker.ShowUtility();
-                },
-            };
+            // The Level Provider Picker is gone: Unity's object picker lists the level providers (ED-66)
             foreach (var type in (Type[])typeof(TheForge).GetField("Types", AnyStatic).GetValue(null))
             {
                 yield return new Window
