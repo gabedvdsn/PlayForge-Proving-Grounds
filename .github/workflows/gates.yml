@@ -2,7 +2,8 @@
 # orders, the planted failures, and the EditMode suite. Each job checks PlayForge out beside Proving Grounds, where the
 # package reference, file:../../PlayForge/Assets/PlayForge, finds it, and runs the Unity editor in GameCI's container.
 # The jobs need a Unity license in the repository's secrets: see "Continuous integration" in the README. Until it's
-# there, they're skipped, with a warning saying so.
+# there, they're skipped, with a warning saying so. GameCI's test runner is pinned to v4.3.2: v4.4.0, which v4 names,
+# wraps a new CLI that rejected the coverage input and ran nothing.
 
 name: Gates
 
@@ -21,6 +22,11 @@ on:
   # And each day, so PlayForge's commits are tested on a day Proving Grounds doesn't change
   schedule:
     - cron: "17 6 * * *"
+
+# The test runner reports each suite's results as a check run
+permissions:
+  contents: read
+  checks: write
 
 concurrency:
   group: gates-${{ github.ref }}-${{ github.event_name }}
@@ -68,20 +74,20 @@ jobs:
           - order: seed 90210
             parameters: "-randomOrderSeed 90210"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: ProvingGrounds
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: gabedvdsn/PlayForge
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
           key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
           restore-keys: library-
-      - uses: game-ci/unity-test-runner@v4
+      - uses: game-ci/unity-test-runner@v4.3.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
@@ -91,10 +97,11 @@ jobs:
           projectPath: ProvingGrounds
           testMode: playmode
           customParameters: ${{ matrix.parameters }}
-          coverageEnabled: false
+          coverageOptions: ""
           artifactsPath: artifacts
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: PlayMode results, order ${{ matrix.order }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playmode-${{ strategy.job-index }}
@@ -107,21 +114,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: ProvingGrounds
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: gabedvdsn/PlayForge
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
           key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
           restore-keys: library-
       # Every planted test must fail, so the run fails; the check after it reads why each one did
-      - uses: game-ci/unity-test-runner@v4
+      - uses: game-ci/unity-test-runner@v4.3.2
         continue-on-error: true
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -132,12 +139,12 @@ jobs:
           projectPath: ProvingGrounds
           testMode: playmode
           customParameters: -testCategory Planted
-          coverageEnabled: false
+          coverageOptions: ""
           artifactsPath: artifacts
           githubToken: ""
       - name: Each planted failure is caught, for its own reason
         run: python3 ProvingGrounds/Tools/check-planted.py artifacts/playmode-results.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: planted
@@ -150,20 +157,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: ProvingGrounds
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: gabedvdsn/PlayForge
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
           key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
           restore-keys: library-
-      - uses: game-ci/unity-test-runner@v4
+      - uses: game-ci/unity-test-runner@v4.3.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
@@ -172,10 +179,11 @@ jobs:
         with:
           projectPath: ProvingGrounds
           testMode: editmode
-          coverageEnabled: false
+          coverageOptions: ""
           artifactsPath: artifacts
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: EditMode results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: editmode
