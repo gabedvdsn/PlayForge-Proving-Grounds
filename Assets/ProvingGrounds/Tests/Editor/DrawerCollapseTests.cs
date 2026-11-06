@@ -45,6 +45,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             public void Clear() => document.rootVisualElement.Clear();
 
+            // An asset's inspector, as the Inspector shows it
+            public VisualElement Show(UnityEditor.Editor editor)
+            {
+                var root = editor.CreateInspectorGUI();
+                document.rootVisualElement.Add(root);
+                root.Bind(editor.serializedObject);
+                return root;
+            }
+
             public void Destroy()
             {
                 Object.DestroyImmediate(owner);
@@ -57,6 +66,25 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             for (int i = 0; i < 4; i++) yield return null;
         }
+
+        // Lets the panel run until a field it builds as it binds is there, for a second at most
+        private static IEnumerator Until(System.Func<bool> done, double seconds = 1.0)
+        {
+            var until = EditorApplication.timeSinceStartup + seconds;
+            while (!done() && EditorApplication.timeSinceStartup < until) yield return null;
+        }
+
+        // An ability's stage, by its place
+        private static string Stage(int index) =>
+            $"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Stages)}.Array.data[{index}]";
+
+        // The ability inspector's list of stages, which its field builds as it binds
+        private static System.Func<ListView> StagesList(VisualElement inspector) =>
+            () => inspector.Q<PropertyField>("Stages")?.Q<ListView>();
+
+        // A list's own footer button, not one of the lists its elements hold, which come first in its tree
+        private static Button OwnButton(ListView list, string name) => list.Query<Button>(name).ToList()
+            .FirstOrDefault(button => button.GetFirstAncestorOfType<ListView>() == list);
 
         // Presses a button, as a user does
         private static void Press(Button button)
@@ -187,14 +215,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 new AbilityTaskBehaviourStage(), new AbilityTaskBehaviourStage(), new AbilityTaskBehaviourStage(),
             };
+            var editor = UnityEditor.Editor.CreateEditor(ability);
             var host = new Host();
             try
             {
                 yield return null;
                 Assume.That(host.Panel, Is.Not.Null, "the document has a panel");
-                var serialized = new SerializedObject(ability);
-                string Stage(int index) =>
-                    $"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Stages)}.Array.data[{index}]";
+                var serialized = editor.serializedObject;
 
                 var stages = Enumerable.Range(0, 3).Select(index => host.Draw(serialized, Stage(index))).ToList();
                 yield return Frames();
@@ -203,9 +230,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Frames();
                 Assume.That(IsCollapsed(stages[1]), Is.True, "the second stage collapses");
 
-                Press(Find(stages[0], "Delete this stage"));
+                // The stages' list deletes a stage, as its − does with the stage selected (ED-64)
                 host.Clear();
+                var list = StagesList(host.Show(editor));
+                yield return Until(() => list() != null && OwnButton(list(), "unity-list-view__remove-button") != null);
+                Assume.That(list(), Is.Not.Null, "the inspector lists the stages");
+                // As in the Inspector, the list is laid out before it's used: one used before its first layout binds
+                // its rows to elements a delete has taken
+                yield return Until(() => list().layout.height > 0f);
+                yield return Frames();
+                list().SetSelection(0);
+                Press(OwnButton(list(), "unity-list-view__remove-button"));
+                yield return Frames();
                 Assume.That(ability.Behaviour.Stages.Count, Is.EqualTo(2), "the first stage is deleted");
+
+                host.Clear();
                 var first = host.Draw(serialized, Stage(0));
                 var second = host.Draw(serialized, Stage(1));
                 yield return Frames();
@@ -215,6 +254,62 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 host.Destroy();
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
+        /// A stage dragged to another place in the stages' list takes its collapse state with it, and those it passes
+        /// keep theirs (ED-64). A stage keeps its state by its place, which the list's drag changed under it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_64_A_dragged_stage_keeps_its_collapse_state()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            ability.Behaviour ??= new AbilityBehaviour();
+            ability.Behaviour.Stages = new List<AbilityTaskBehaviourStage>
+            {
+                new AbilityTaskBehaviourStage { ApplyUsageEffects = true }, new AbilityTaskBehaviourStage(), new AbilityTaskBehaviourStage(),
+            };
+            var editor = UnityEditor.Editor.CreateEditor(ability);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Panel, Is.Not.Null, "the document has a panel");
+                var serialized = editor.serializedObject;
+
+                var stages = Enumerable.Range(0, 3).Select(index => host.Draw(serialized, Stage(index))).ToList();
+                yield return Frames();
+                Press(CollapseButton(stages[0]));
+                yield return Frames();
+                Assume.That(IsCollapsed(stages[0]), Is.True, "the first stage collapses");
+
+                // The list moves the first stage to the end, as a drag does
+                host.Clear();
+                var list = StagesList(host.Show(editor));
+                yield return Until(() => list() != null);
+                Assume.That(list(), Is.Not.Null, "the inspector lists the stages");
+                // As in the Inspector, the list is laid out before it's used: one used before its first layout binds
+                // its rows to elements a delete has taken
+                yield return Until(() => list().layout.height > 0f);
+                yield return Frames();
+                list().viewController.Move(0, 2);
+                yield return Frames();
+                Assume.That(ability.Behaviour.Stages[2].ApplyUsageEffects, Is.True, "the first stage is now last");
+
+                host.Clear();
+                var moved = Enumerable.Range(0, 3).Select(index => host.Draw(serialized, Stage(index))).ToList();
+                yield return Frames();
+                Assert.IsTrue(IsCollapsed(moved[2]), "the dragged stage stays collapsed");
+                Assert.IsFalse(IsCollapsed(moved[0]), "and those it passed stay open");
+                Assert.IsFalse(IsCollapsed(moved[1]));
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(editor);
                 Object.DestroyImmediate(ability);
             }
         }
