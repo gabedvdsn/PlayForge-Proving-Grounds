@@ -1,0 +1,182 @@
+# Proving Grounds' full gates, as they run before every push on the developer's machine: the PlayMode suite in three
+# orders, the planted failures, and the EditMode suite. Each job checks PlayForge out beside Proving Grounds, where the
+# package reference, file:../../PlayForge/Assets/PlayForge, finds it, and runs the Unity editor in GameCI's container.
+# The jobs need a Unity license in the repository's secrets: see "Continuous integration" in the README. Until it's
+# there, they're skipped, with a warning saying so.
+
+name: Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      playforge-ref:
+        description: The PlayForge branch, tag or commit to test against
+        default: main
+  # A push to PlayForge's main asks for a run, when PlayForge's repository holds a token for it
+  repository_dispatch:
+    types: [playforge-pushed]
+  # And each day, so PlayForge's commits are tested on a day Proving Grounds doesn't change
+  schedule:
+    - cron: "17 6 * * *"
+
+concurrency:
+  group: gates-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  # The PlayForge commit to test: the one a dispatch names, the one asked for, or main
+  PLAYFORGE_REF: ${{ github.event.client_payload.sha || github.event.inputs.playforge-ref || 'main' }}
+
+jobs:
+  license:
+    name: Unity license
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          if { [ -n "$UNITY_LICENSE" ] || [ -n "$UNITY_SERIAL" ]; } && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=No Unity license::The gates are skipped until the repository's secrets hold a Unity license. See Continuous integration in the README."
+          fi
+
+  playmode:
+    name: PlayMode, order ${{ matrix.order }}
+    needs: license
+    if: needs.license.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - order: as written
+            parameters: ""
+          - order: seed 1729
+            parameters: "-randomOrderSeed 1729"
+          - order: seed 90210
+            parameters: "-randomOrderSeed 90210"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ProvingGrounds
+      - uses: actions/checkout@v4
+        with:
+          repository: gabedvdsn/PlayForge
+          ref: ${{ env.PLAYFORGE_REF }}
+          path: PlayForge
+      - uses: actions/cache@v4
+        with:
+          path: ProvingGrounds/Library
+          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-
+      - uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ProvingGrounds
+          testMode: playmode
+          customParameters: ${{ matrix.parameters }}
+          coverageEnabled: false
+          artifactsPath: artifacts
+          checkName: PlayMode results, order ${{ matrix.order }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playmode-${{ strategy.job-index }}
+          path: artifacts
+
+  planted:
+    name: Planted failures
+    needs: license
+    if: needs.license.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ProvingGrounds
+      - uses: actions/checkout@v4
+        with:
+          repository: gabedvdsn/PlayForge
+          ref: ${{ env.PLAYFORGE_REF }}
+          path: PlayForge
+      - uses: actions/cache@v4
+        with:
+          path: ProvingGrounds/Library
+          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-
+      # Every planted test must fail, so the run fails; the check after it reads why each one did
+      - uses: game-ci/unity-test-runner@v4
+        continue-on-error: true
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ProvingGrounds
+          testMode: playmode
+          customParameters: -testCategory Planted
+          coverageEnabled: false
+          artifactsPath: artifacts
+          githubToken: ""
+      - name: Each planted failure is caught, for its own reason
+        run: python3 ProvingGrounds/Tools/check-planted.py artifacts/playmode-results.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: planted
+          path: artifacts
+
+  editmode:
+    name: EditMode
+    needs: license
+    if: needs.license.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ProvingGrounds
+      - uses: actions/checkout@v4
+        with:
+          repository: gabedvdsn/PlayForge
+          ref: ${{ env.PLAYFORGE_REF }}
+          path: PlayForge
+      - uses: actions/cache@v4
+        with:
+          path: ProvingGrounds/Library
+          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-
+      - uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ProvingGrounds
+          testMode: editmode
+          coverageEnabled: false
+          artifactsPath: artifacts
+          checkName: EditMode results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editmode
+          path: artifacts

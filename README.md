@@ -1,8 +1,9 @@
 # PlayForge Proving Grounds
 
-The test project for [PlayForge](../PlayForge). It consumes `PlayForge/Assets/PlayForge` as a local UPM package,
-so every test runs against the canonical source and the packaging gets tested along the way. Its roadmap is
-`Docs/REFACTOR_PLAN.md` in the PlayForge repo, and that plan's Environment section has the setup details.
+The test project for [PlayForge](https://github.com/gabedvdsn/PlayForge). It consumes `PlayForge/Assets/PlayForge`
+as a local UPM package, from a PlayForge checkout in a folder named `PlayForge` beside this one, so every test runs
+against the canonical source and the packaging gets tested along the way. Its roadmap is `Docs/REFACTOR_PLAN.md` in
+the PlayForge repo, and that plan's Environment section has the setup details.
 
 ## Running the tests
 
@@ -16,8 +17,8 @@ Close the editor for this project first; batch mode can't share it. Paths below 
 python Tools/test-report.py results.xml
 ```
 
-Exit code 0 means everything passed and 2 means tests failed. A run takes about 10 seconds. In the editor, use
-Window → General → Test Runner → PlayMode.
+Exit code 0 means everything passed and 2 means tests failed. A PlayMode run takes about three minutes. In the
+editor, use Window → General → Test Runner → PlayMode.
 
 The editor tests, for PlayForge's editor code and for the framework outside play mode, are EditMode tests. Run them
 the same way, with `-testPlatform EditMode`:
@@ -45,6 +46,29 @@ so exit code 2 is the right answer here and the report is what counts. Run this 
 ```bash
 python Tools/check-planted.py planted.xml
 ```
+
+## Continuous integration
+
+`.github/workflows/gates.yml` runs the full gates on GitHub Actions: the PlayMode suite in three orders (as written,
+and seeds 1729 and 90210), the planted failures, which `Tools/check-planted.py` checks, and the EditMode suite. Each
+job checks PlayForge out beside this project, where the package reference expects it, and runs Unity 6000.0.33f1 in
+GameCI's container. It runs on a push to `main`, on a pull request, by hand (Actions → Gates → Run workflow, with the
+PlayForge commit to test), each day, and on a push to PlayForge's `main` when PlayForge's repository holds a token
+for it.
+
+The jobs need a Unity license. Until the repository's secrets hold one, they're skipped, with a warning saying so. In
+Settings → Secrets and variables → Actions, add:
+
+| Secret | What it holds |
+|---|---|
+| `UNITY_EMAIL` | The Unity account's email |
+| `UNITY_PASSWORD` | The account's password |
+| `UNITY_LICENSE` | For Unity Personal: the text of the license file the Hub writes as it activates, `C:\ProgramData\Unity\Unity_lic.ulf` on Windows |
+| `UNITY_SERIAL` | For Unity Pro or Plus, in place of `UNITY_LICENSE`: the serial number |
+
+For each push to PlayForge's `main` to run the gates, add `PROVING_GROUNDS_DISPATCH_TOKEN` to PlayForge's own secrets:
+a fine-grained personal access token for this repository, with Contents read and write. PlayForge's
+`.github/workflows/proving-grounds.yml` sends it. Without it, the daily run tests PlayForge's latest `main`.
 
 ## The suites
 
