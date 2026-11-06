@@ -189,8 +189,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 ExpandScalers(field);
                 yield return Frames();
-                Assert.IsNotNull(field.Query<Toggle>().ToList().FirstOrDefault(toggle => toggle.label == "Stretch Over Levels"),
-                    "and its Stretch Over Levels says so");
+                // Its Values say so: Per Level, beside Spread Over Levels, which was a Stretch Over Levels box (ED-54)
+                var values = field.Q<BaseField<int>>("ValuesMode");
+                Assert.IsNotNull(values, "and its Values say so");
+                Assert.AreEqual(0, values.value, "Per Level");
             }
             finally
             {
@@ -550,6 +552,336 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 log.Dispose();
             }
             Assert.That(log.Errors, Is.Empty, "errors while the window was open");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-51 to ED-54: a scaler's fields, its menu, its levels and its spread
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private const string HiddenClass = "pf-scaler__hidden";
+
+        // Whether a part is drawn and not hidden by its kind
+        private static bool Shown(VisualElement element) => element != null && !element.ClassListContains(HiddenClass);
+
+        // An effect whose Duration reads a scaler, drawn on its own in a panel
+        private static IEnumerator DrawDuration(Host host, GameplayEffect effect, AbstractScaler scaler, System.Action<PropertyField> check)
+        {
+            effect.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler };
+            var serialized = new SerializedObject(effect);
+            var field = Draw(host, serialized, DurationPath);
+            yield return Frames();
+            check(field);
+            field.RemoveFromHierarchy();
+        }
+
+        /// <summary>
+        /// A scaler showed parts its kind never reads, and hid parts it does: a Fixed Value showed a table of values per
+        /// level, while a Randomized scaler, whose base value is its table, hid it (ED-51, the user's report). A scaler
+        /// draws what its kind reads, and a kind's field that applies only to some of its settings shows only for them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_51_A_scaler_draws_what_its_kind_reads()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+
+                yield return DrawDuration(host, effect, new ConstantScaler { Value = 3f }, field =>
+                {
+                    Assert.IsNotNull(field.Q<PropertyField>("Value"), "a Fixed Value shows its value");
+                    Assert.IsNull(field.Q("LevelTable"), "and no table, which it never reads");
+                    Assert.IsNull(field.Q("Behaviours"), "nor behaviours");
+                });
+                yield return DrawDuration(host, effect, new SetByCallerScaler(), field =>
+                {
+                    Assert.IsNotNull(field.Q<PropertyField>("Key"), "a Set By Caller shows its key");
+                    Assert.IsNotNull(field.Q<PropertyField>("Default"), "and its default");
+                    Assert.IsNull(field.Q("LevelTable"), "and no table");
+                });
+                yield return DrawDuration(host, effect, new EffectStacksScaler(), field =>
+                {
+                    Assert.IsNull(field.Q("LevelTable"), "an Effect Stacks shows no table");
+                    Assert.IsNull(field.Q("Behaviours"), "nor behaviours");
+                });
+                yield return DrawDuration(host, effect, new ThresholdScaler(), field =>
+                {
+                    Assert.IsNotNull(field.Q<PropertyField>("Thresholds"), "a Threshold shows its thresholds");
+                    Assert.IsNull(field.Q("LevelTable"), "and no table");
+                });
+                yield return DrawDuration(host, effect, new AttributeBackedScaler(), field =>
+                {
+                    Assert.IsNull(field.Q("LevelTable"), "an Attribute Backed shows no table");
+                    Assert.IsNotNull(field.Q("Behaviours"), "but its behaviours, which adjust the attribute it reads");
+                });
+
+                var randomized = new RandomizedScaler { VarianceMode = EVarianceMode.Percentage, LevelValues = new[] { 10f, 20f } };
+                yield return DrawDuration(host, effect, randomized, field =>
+                {
+                    Assert.IsNotNull(field.Q("LevelTable"), "a Randomized shows the table its base value comes from");
+                    Assert.IsTrue(Shown(field.Q<PropertyField>("Variance")), "a percentage's variance");
+                    Assert.IsFalse(Shown(field.Q<PropertyField>("MinMultiplier")), "and not a multiplier's range");
+                });
+                randomized.VarianceMode = EVarianceMode.Multiplier;
+                yield return DrawDuration(host, effect, randomized, field =>
+                {
+                    Assert.IsFalse(Shown(field.Q<PropertyField>("Variance")), "a multiplier hides the variance");
+                    Assert.IsTrue(Shown(field.Q<PropertyField>("MinMultiplier")), "and shows its range");
+                    Assert.IsTrue(Shown(field.Q<PropertyField>("MaxMultiplier")));
+                });
+
+                var conditional = new ConditionalScaler { Condition = EScalerCondition.LevelAbove };
+                yield return DrawDuration(host, effect, conditional, field =>
+                {
+                    Assert.IsTrue(Shown(field.Q<PropertyField>("ThresholdValue")), "a level condition shows its threshold");
+                    Assert.IsFalse(Shown(field.Q<PropertyField>("TagCondition")), "and not a tag's");
+                    Assert.IsFalse(Shown(field.Q<PropertyField>("CheckAttribute")), "nor an attribute's");
+                    Assert.IsNotNull(field.Q("LevelTable"), "with no True scaler, it reads its own values, so shows them");
+                });
+                conditional.TrueScaler = new ConstantScaler { Value = 2f };
+                yield return DrawDuration(host, effect, conditional, field =>
+                    Assert.IsNull(field.Q("LevelTable"), "with one, it doesn't"));
+
+                yield return DrawDuration(host, effect, new SimpleScaler { LevelValues = new[] { 1f, 2f }, StretchOverLevels = false }, field =>
+                {
+                    var block = field.Q(className: "pf-scaler-block");
+                    Assert.IsNotNull(block, "a scaler's fields sit on one block");
+                    Assert.IsNotNull(block.Q("Combine"), "its Combine");
+                    Assert.IsNotNull(block.Q("LevelTable"), "its values");
+                    Assert.IsNotNull(block.Q("Behaviours"), "and its behaviours");
+                    Assert.IsNull(block.Q("Kind"), "under the field's kind, which isn't on it");
+                });
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// The menu beside a scaler field opened as narrow as its button, so none of its items could be read (ED-52, the
+        /// user's report). It opens as wide as its items.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_52_The_field_menu_opens_wide_enough_to_read()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, new SerializedObject(effect), DurationPath);
+                yield return Frames();
+                var menu = field.Q<Button>("FieldMenu");
+                Assert.IsNotNull(menu, "the field has its menu");
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    submit.target = menu;
+                    menu.SendEvent(submit);
+                }
+                yield return Frames();
+                var opened = host.Document.rootVisualElement.panel.visualTree.Query(className: "unity-base-dropdown__container-outer").ToList().FirstOrDefault();
+                Assert.IsNotNull(opened, "the menu opens");
+                Assert.That(opened.layout.width, Is.GreaterThan(150f), "as wide as its items, as Save as Scaler Asset…");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        // A scaler a user writes: a base of their own, with a field, then a kind with fields of many types, one kept out of
+        // the inspector, one shown only for a setting, and a scaler of its own inside it
+        [System.Serializable]
+        public abstract class UserBaseScaler : AbstractScaler
+        {
+            public float Weight = 1f;
+        }
+
+        [System.Serializable]
+        public class UserScaler : UserBaseScaler
+        {
+            public enum EMode { Flat, Curved }
+
+            public EMode Mode;
+            [ForgeShowWhen(nameof(Mode), EMode.Curved)] public AnimationCurve Shape = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            public bool Enabled = true;
+            public int Count = 2;
+            public string Note = "x";
+            public Tag Marker;
+            public System.Collections.Generic.List<float> Steps = new() { 1f, 2f };
+            public Vector2 Range = new(0f, 1f);
+            [SerializeField] private float secret = 3f;
+            [HideInInspector] public float Hidden;
+            [SerializeReference] public AbstractScaler Inner;
+
+            public float Secret => secret;
+            public override void Initialize(IAttributeImpactCarrier deriv) { }
+            public override float Evaluate(IAttributeImpactCarrier deriv) => Weight;
+            public override EScalerParts Parts => EScalerParts.None;
+        }
+
+        /// <summary>
+        /// A scaler of the user's own draws each field it adds, whatever its type, as Unity draws the type (the user's
+        /// question, ED-51): the fields of a base of the user's own, which the drawer lost by stopping at the first
+        /// abstract class, among them. A field kept out of the inspector stays out, one marked to show for a setting shows
+        /// only for it, and the parts of every scaler show as its Parts say.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_51_A_scaler_of_the_users_own_draws_each_of_its_fields()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var scaler = new UserScaler();
+                yield return DrawDuration(host, effect, scaler, field =>
+                {
+                    Assert.That(field.Q<PopupField<string>>("Kind")?.choices, Has.Member("User"), "the kind menu lists it, by its name");
+                    foreach (var name in new[] { "Weight", "Mode", "Enabled", "Count", "Note", "Marker", "Steps", "Range", "secret", "Inner" })
+                        Assert.IsNotNull(field.Q<PropertyField>(name), $"its {name} draws");
+                    Assert.IsNull(field.Q<PropertyField>("Hidden"), "a field kept out of the inspector stays out");
+                    Assert.IsFalse(Shown(field.Q<PropertyField>("Shape")), "a field for another setting is hidden");
+                    Assert.IsNull(field.Q("LevelTable"), "and the values it doesn't read aren't drawn");
+                });
+                scaler.Mode = UserScaler.EMode.Curved;
+                yield return DrawDuration(host, effect, scaler, field =>
+                    Assert.IsTrue(Shown(field.Q<PropertyField>("Shape")), "the setting that uses it shows it"));
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        // Burning, linked to an ability of the levels given, Fireball
+        private static (GameplayEffect Effect, Ability Ability) Linked(int levels)
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            ability.name = "Fireball";
+            ability.Definition.Name = "Fireball";
+            ability.MaxLevel = levels;
+            var effect = Burning();
+            effect.LinkToProvider(ability);
+            return (effect, ability);
+        }
+
+        /// <summary>
+        /// A scaler's Levels set how many levels it had, whatever its asset's level provider, whose levels it must keep
+        /// (ED-53, the user's report). A scaler that follows its provider shows the provider's levels, and no count: a
+        /// level past its values reads the last, and typing there gives it its own. Its own levels give it a count again,
+        /// and Quick Fill fills the levels the table shows.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_53_A_scalers_levels_follow_its_level_provider()
+        {
+            var (effect, ability) = Linked(4);
+            var host = new Host();
+            var log = new WindowLog();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
+                {
+                    LevelValues = new[] { 6f, 8f }, StretchOverLevels = false, Configuration = ELevelConfig.LockToLevelProvider,
+                };
+                var serialized = new SerializedObject(effect);
+                var field = Draw(host, serialized, DurationPath);
+                yield return Frames();
+
+                var source = field.Q<PopupField<string>>("LevelSource");
+                Assert.IsNotNull(source, "the Levels row names where its levels come from");
+                StringAssert.Contains("Fireball", source.value, "the provider");
+                StringAssert.Contains("1–4", source.value, "and its levels");
+                Assert.IsNull(field.Q<IntegerField>("LevelCount"), "with no count to change");
+                Assert.That(Enumerable.Range(1, 4).Select(level => field.Q<FloatField>($"Level{level}")?.value),
+                    Is.EqualTo(new float?[] { 6f, 8f, 8f, 8f }), "a value for each of the provider's levels, the last holding past the end");
+                Assert.IsNull(field.Q<FloatField>("Level5"), "and none past them");
+
+                Undo.IncrementCurrentGroup();
+                field.Q<FloatField>("Level4").value = 9f;
+                yield return Frames();
+                Assert.AreEqual(new[] { 6f, 8f, 8f, 9f }, effect.DurationSpecification.DurationOperation.Scaler.LevelValues,
+                    "typing at a level past the values gives it its own");
+
+                effect.DurationSpecification.DurationOperation.Scaler.LevelValues = new[] { 6f };
+                serialized.Update();
+                QuickFillWizard.Show(serialized.FindProperty($"{DurationPath}.Scaler"), null);
+                var wizard = Resources.FindObjectsOfTypeAll<QuickFillWizard>().FirstOrDefault();
+                Assert.IsNotNull(wizard, "Quick Fill opens");
+                Assert.AreEqual(4, typeof(QuickFillWizard).GetField("_levelCount", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(wizard),
+                    "and fills the provider's levels, not the one value the scaler has");
+                wizard.Close();
+                yield return Frames();
+
+                // The rows are built again as the values change, so the popup is found again
+                source = field.Q<PopupField<string>>("LevelSource");
+                source.value = source.choices.First(choice => choice.StartsWith("Own"));
+                yield return Frames();
+                Assert.AreEqual(ELevelConfig.Unlocked, effect.DurationSpecification.DurationOperation.Scaler.Configuration, "its own levels");
+                Assert.IsNotNull(field.Q<IntegerField>("LevelCount"), "give it a count again");
+            }
+            finally
+            {
+                foreach (var window in Resources.FindObjectsOfTypeAll<QuickFillWizard>().ToList()) window.Close();
+                host.Destroy();
+                log.Dispose();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while the wizard was open");
+        }
+
+        /// <summary>
+        /// What Stretch Over Levels did was hard to see (ED-54, the user's report). A scaler's Values are Per Level or Spread
+        /// Over Levels, side by side; spread, the table says the level each value sits at, over the provider's levels, and
+        /// how a level between two reads. Back to Per Level, it shows a value for each level.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_54_Spread_over_levels_says_where_each_value_sits()
+        {
+            var (effect, ability) = Linked(5);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
+                {
+                    LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = true, Configuration = ELevelConfig.LockToLevelProvider,
+                };
+                var serialized = new SerializedObject(effect);
+                var field = Draw(host, serialized, DurationPath);
+                yield return Frames();
+
+                var mode = field.Q<BaseField<int>>("ValuesMode");
+                Assert.IsNotNull(mode, "the Values row chooses between them");
+                Assert.AreEqual(1, mode.value, "Spread Over Levels");
+                Assert.That(Enumerable.Range(1, 3).Select(point => field.Q<Label>($"At{point}")?.text), Is.EqualTo(new[] { "1", "3", "5" }),
+                    "each value says the level it sits at, over Fireball's levels");
+                Assert.IsNotNull(field.Q("BetweenLevels"), "and how a level between two reads");
+
+                mode.value = 0;
+                yield return Frames();
+                Assert.IsFalse(effect.DurationSpecification.DurationOperation.Scaler.StretchOverLevels, "Per Level");
+                Assert.IsNotNull(field.Q<FloatField>("Level5"), "shows a value for each of Fireball's levels");
+                Assert.IsNull(field.Q("BetweenLevels"), "and nothing between them");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
         }
     }
 }
