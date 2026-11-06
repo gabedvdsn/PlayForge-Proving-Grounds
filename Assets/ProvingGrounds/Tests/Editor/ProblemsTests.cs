@@ -268,6 +268,170 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Quick fixes (FEAT-25, the user's request)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // The one problem an asset has whose message holds the text
+        private static ForgeProblem ProblemOf(Object asset, string text)
+        {
+            var found = ForgeValidator.Check(asset).Where(problem => problem.Message.Contains(text)).ToList();
+            Assert.AreEqual(1, found.Count, $"one problem says \"{text}\"");
+            Assert.IsNotNull(found[0].Rule, "and it names the rule that found it");
+            return found[0];
+        }
+
+        // Applies a problem's fix as the Problems view does, as one Undo step
+        private static void Fix(ForgeProblem problem, string name)
+        {
+            Assert.AreEqual(name, problem.Fix?.Name, "it has a quick fix that says what it does");
+            Undo.IncrementCurrentGroup();
+            problem.Fix.Apply();
+        }
+
+        /// <summary>
+        /// Each problem a simple step fixes has a Quick Fix, which does what it says: a link with no provider takes its own
+        /// levels, a field that reads a scaler it hasn't got reads its number, a magnitude outside its bounds is held to
+        /// them, a set's element with no attribute goes, a stale asset tag is stored, and a scaler two fields hold is copied
+        /// for the second. One Undo takes a fix back. A problem that needs a choice, as which stage applies usage effects,
+        /// has none (FEAT-25).
+        /// </summary>
+        [Test]
+        public void FEAT_25_A_quick_fix_does_what_it_says()
+        {
+            var made = new List<Object>();
+            try
+            {
+                var ability = LinkedAbility();
+                made.Add(ability);
+                Fix(ProblemOf(ability, "level provider"), "Use Own Levels");
+                Assert.AreEqual(EAbilityLinkMode.Standalone, ability.LinkMode, "the ability takes its own levels");
+                Undo.PerformUndo();
+                Assert.AreEqual(EAbilityLinkMode.LinkedToProvider, ability.LinkMode, "and one Undo takes the fix back");
+
+                var effect = Effect("Unscaled");
+                made.Add(effect);
+                effect.ImpactSpecification.MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = 5f, RealMagnitude = EMagnitudeOperation.UseScaler };
+                Fix(ProblemOf(effect, "has none, so it reads 0"), "Make It Constant");
+                Assert.AreEqual(EMagnitudeOperation.UseMagnitude, effect.ImpactSpecification.MagnitudeOperation.RealMagnitude, "the field reads its number");
+
+                var health = ScriptableObject.CreateInstance<Attribute>();
+                health.Name = "Health";
+                made.Add(health);
+                var set = ScriptableObject.CreateInstance<AttributeSet>();
+                set.Name = "Stats";
+                set.AssetTag = TagOf("AttributeSet.Stats");
+                made.Add(set);
+                set.Attributes.Add(new AttributeSetElement
+                {
+                    Attribute = health,
+                    Current = new AttributeMagnitudeSpec { Magnitude = 150f },
+                    Base = new AttributeMagnitudeSpec { Magnitude = 150f },
+                    Overflow = new AttributeOverflowData { Policy = EAttributeOverflowPolicy.ZeroToCeil, Ceil = new AttributeValue(100f, 100f) },
+                });
+                set.Attributes.Add(new AttributeSetElement());
+                Fix(ProblemOf(set, "Base 150 is outside its bounds"), "Clamp to Bounds");
+                Assert.AreEqual(100f, set.Attributes[0].Base.Magnitude, "Base is held to its bounds");
+                Assert.AreEqual(100f, set.Attributes[0].Current.Magnitude, "and Current with it");
+                Fix(ProblemOf(set, "has no attribute"), "Remove the Element");
+                Assert.AreEqual(1, set.Attributes.Count, "the element with no attribute goes");
+
+                var renamed = LinkedAbility();
+                made.Add(renamed);
+                renamed.LinkMode = EAbilityLinkMode.Standalone;
+                renamed.Definition.Name = "Renamed";
+                Fix(ProblemOf(renamed, "but its name gives"), "Store the Tag");
+                Assert.That(Messages(renamed), Has.None.Contains("but its name gives"), "the tag its name gives is stored");
+
+                // A tag whose path is right, with no display name, as the Demos' were saved, says that, not the path twice
+                var unnamed = LinkedAbility();
+                made.Add(unnamed);
+                unnamed.LinkMode = EAbilityLinkMode.Standalone;
+                var unnamedTags = unnamed.Tags;
+                var bare = unnamedTags.AssetTag;
+                bare.DisplayName = "";
+                unnamedTags.AssetTag = bare;
+                unnamed.Tags = unnamedTags;
+                Fix(ProblemOf(unnamed, "has no display name, but its name gives it Linked"), "Store the Tag");
+                Assert.AreEqual("Linked", unnamed.Tags.AssetTag.DisplayName, "and its fix stores the display name");
+
+                var shared = Effect("Shared");
+                made.Add(shared);
+                var scaler = new SimpleScaler { LevelValues = new[] { 1f, 2f } };
+                shared.DurationSpecification = new GameplayEffectDuration
+                {
+                    DurationPolicy = EEffectDurationPolicy.Durational,
+                    DurationOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
+                    TickIntervalOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
+                };
+                Fix(ProblemOf(shared, "hold one scaler"), "Give It Its Own");
+                Assert.AreNotSame(shared.DurationSpecification.DurationOperation.Scaler, shared.DurationSpecification.TickIntervalOperation.Scaler,
+                    "each field holds a scaler of its own");
+                Assert.AreEqual(new[] { 1f, 2f }, shared.DurationSpecification.TickIntervalOperation.Scaler.LevelValues, "with the same values");
+
+                var unapplied = LinkedAbility();
+                made.Add(unapplied);
+                unapplied.LinkMode = EAbilityLinkMode.Standalone;
+                unapplied.Cooldown = ScriptableObject.CreateInstance<GameplayEffect>();
+                made.Add(unapplied.Cooldown);
+                Assert.IsNull(ProblemOf(unapplied, "No stage applies usage effects").Fix, "a problem that needs a choice has no quick fix");
+            }
+            finally
+            {
+                foreach (var each in made) if (each != null) Object.DestroyImmediate(each);
+            }
+        }
+
+        /// <summary>
+        /// The Problems view's By Rule view groups problems under the rule each breaks, and a rule whose problems a step
+        /// fixes has Fix All, which fixes them all as one Undo step (FEAT-25).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_25_By_Rule_groups_problems_and_fixes_them_all()
+        {
+            var first = Save(LinkedAbility(), "Rule Ability A");
+            var second = Save(LinkedAbility(), "Rule Ability B");
+            var log = new WindowLog();
+            try
+            {
+                var window = ForgeProblemsWindow.ShowWindow();
+                for (int i = 0; i < 4; i++) yield return null;
+                var root = window.rootVisualElement;
+                root.Q<ToolbarSearchField>("Search").value = "Rule Ability";
+                var byRule = root.Q<ToolbarToggle>("ByRule");
+                Assert.IsNotNull(byRule, "the toolbar switches to By Rule");
+                byRule.value = true;
+                for (int i = 0; i < 4; i++) yield return null;
+
+                var groups = root.Query(name: "RuleGroup").ToList();
+                var links = groups.FirstOrDefault(group => group.Q<Label>("RuleName")?.text == "Links with no level provider");
+                Assert.IsNotNull(links, "the link problems sit under their rule");
+                Assert.AreEqual("2", links.Q<Label>("RuleCount")?.text, "both of them");
+                Assert.AreEqual(2, links.Query(name: "RuleProblem").ToList().Count, "each a row");
+                Assert.AreEqual(2, links.Query<Button>("Fix").ToList().Count, "each with its quick fix");
+
+                Undo.IncrementCurrentGroup();
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    var fixAll = links.Q<Button>("FixAll");
+                    Assert.IsNotNull(fixAll, "the rule fixes them all");
+                    submit.target = fixAll;
+                    fixAll.SendEvent(submit);
+                }
+                Assert.AreEqual(EAbilityLinkMode.Standalone, first.LinkMode, "Fix All fixes the first");
+                Assert.AreEqual(EAbilityLinkMode.Standalone, second.LinkMode, "and the second");
+                Undo.PerformUndo();
+                Assert.AreEqual(EAbilityLinkMode.LinkedToProvider, first.LinkMode, "one Undo takes both back");
+                Assert.AreEqual(EAbilityLinkMode.LinkedToProvider, second.LinkMode, "together");
+            }
+            finally
+            {
+                foreach (var window in Resources.FindObjectsOfTypeAll<ForgeProblemsWindow>().ToList()) window.Close();
+                log.Dispose();
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while the view was open");
+        }
+
         // A window logs "No graphic device" as it opens in batch mode, which the smoke suite's guard sets aside
         private sealed class WindowLog : System.IDisposable
         {
