@@ -842,9 +842,129 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A spread scaler's table named each point by a level it sat at, as 1.8 or 2.5, which no entity can be, and never
+        /// said what a real level reads (ED-62, the user's report). Its points are numbered, and under them each of the
+        /// provider's levels shows what it reads, as the runtime reads it: Fireball's five levels read 10, 15, 20, 25 and
+        /// 30 from three points of 10, 20 and 30. A stored curve that doesn't follow the points is what the levels read, and
+        /// a message says so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_62_Spread_points_are_numbered_and_each_level_shows_what_it_reads()
+        {
+            var (effect, ability) = Linked(5);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var spread = new SimpleScaler
+                {
+                    LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = true, Configuration = ELevelConfig.LockToLevelProvider,
+                    Interpolation = EScalerInterpolation.Linear,
+                };
+                spread.RegenerateCurve();
+                effect.DurationSpecification.DurationOperation.Scaler = spread;
+                var field = Draw(host, new SerializedObject(effect), DurationPath);
+                yield return Frames();
+
+                Assert.That(Enumerable.Range(1, 3).Select(point => field.Q<Label>($"At{point}")?.text), Is.EqualTo(new[] { "1", "2", "3" }),
+                    "the points are numbered");
+                Assert.That(Enumerable.Range(1, 5).Select(level => field.Q<Label>($"Reads{level}")?.text),
+                    Is.EqualTo(new[] { "10", "15", "20", "25", "30" }), "each of Fireball's levels shows what it reads");
+                Assert.IsTrue(field.Q<HelpBox>("CurveOutOfDate")?.ClassListContains("pf-scaler__hidden") ?? false,
+                    "and its curve follows its points");
+
+                // A curve made with the values, never kept: the levels read the stored curve, flat at 1
+                effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
+                {
+                    LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = true, Configuration = ELevelConfig.LockToLevelProvider,
+                };
+                host.Document.rootVisualElement.Clear();
+                field = Draw(host, new SerializedObject(effect), DurationPath);
+                yield return Frames();
+                Assert.That(Enumerable.Range(1, 5).Select(level => field.Q<Label>($"Reads{level}")?.text),
+                    Is.EqualTo(new[] { "1", "1", "1", "1", "1" }), "a stale curve is what the levels read");
+                Assert.IsFalse(field.Q<HelpBox>("CurveOutOfDate")?.ClassListContains("pf-scaler__hidden") ?? true,
+                    "and a message says its curve doesn't follow its points");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
+        /// Quick Fill drew a look of its own, a purple bold title, a green Apply, 10 px hints and tinted boxes, from styles set
+        /// in C#, with its fields outside the label column (ED-63, the user's report). It's a dialog in the style: what it
+        /// fills, the pattern and its values, rounding, and a preview of the values as the scaler's table shows them. Apply
+        /// writes them, and one Undo takes them back.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_63_Quick_fill_previews_what_it_writes_and_applies_as_one_step()
+        {
+            var (effect, ability) = Linked(5);
+            effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
+            {
+                LevelValues = new[] { 1f }, StretchOverLevels = false, Configuration = ELevelConfig.LockToLevelProvider,
+            };
+            var serialized = new SerializedObject(effect);
+            // Batch mode has no graphics device to give the window a view, which it says; anything else it logs fails
+            var log = new WindowLog();
+            try
+            {
+                QuickFillWizard.Show(serialized.FindProperty($"{DurationPath}.Scaler"), null);
+                var wizard = Resources.FindObjectsOfTypeAll<QuickFillWizard>().FirstOrDefault();
+                Assert.IsNotNull(wizard, "Quick Fill opens");
+                yield return Frames();
+                var root = wizard.rootVisualElement;
+                var wrong = root.Query<VisualElement>().ToList()
+                    .SelectMany(each => ForgeInspectorTests.LookSetInCode(each).Select(style => $"{each.GetType().Name} \"{(each as TextElement)?.text ?? each.name}\" sets {style}"))
+                    .ToList();
+                Assert.That(wrong, Is.Empty, "it sets no look in code");
+                Assert.AreEqual("Fireball's levels (1–5)", root.Q<TextField>("Fills")?.value, "it fills Fireball's levels");
+
+                root.Q<EnumField>("Pattern").value = QuickFillWizard.EFillPattern.Linear;
+                yield return Frames();
+                root.Q<FloatField>("From").value = 10f;
+                root.Q<FloatField>("To").value = 50f;
+                yield return Frames();
+                Assert.That(Enumerable.Range(1, 5).Select(level => root.Q<Label>($"Preview{level}")?.text),
+                    Is.EqualTo(new[] { "10", "20", "30", "40", "50" }), "a straight line from 10 to 50 over the five levels");
+
+                var rounding = root.Q<EnumField>("Rounding");
+                Assert.IsNotNull(rounding, "it rounds");
+                rounding.value = (System.Enum)System.Enum.Parse(rounding.value.GetType(), "ToStep");
+                yield return Frames();
+                root.Q<FloatField>("Step").value = 25f;
+                yield return Frames();
+                Assert.That(Enumerable.Range(1, 5).Select(level => root.Q<Label>($"Preview{level}")?.text),
+                    Is.EqualTo(new[] { "0", "25", "25", "50", "50" }), "rounded to the nearest 25");
+
+                Undo.IncrementCurrentGroup();
+                typeof(QuickFillWizard).GetMethod("Apply", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(wizard, null);
+                yield return Frames();
+                Assert.AreEqual(new[] { 0f, 25f, 25f, 50f, 50f }, effect.DurationSpecification.DurationOperation.Scaler.LevelValues,
+                    "Apply writes them");
+                Undo.PerformUndo();
+                Assert.AreEqual(new[] { 1f }, effect.DurationSpecification.DurationOperation.Scaler.LevelValues, "and one Undo takes them back");
+            }
+            finally
+            {
+                foreach (var window in Resources.FindObjectsOfTypeAll<QuickFillWizard>().ToList()) window.Close();
+                log.Dispose();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while the wizard was open");
+        }
+
+        /// <summary>
         /// What Stretch Over Levels did was hard to see (ED-54, the user's report). A scaler's Values are Per Level or Spread
-        /// Over Levels, side by side; spread, the table says the level each value sits at, over the provider's levels, and
-        /// how a level between two reads. Back to Per Level, it shows a value for each level.
+        /// Over Levels, side by side; spread, the table numbers its points, over the provider's levels, and says how a level
+        /// between two reads (ED-62). Back to Per Level, it shows a value for each level.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_54_Spread_over_levels_says_where_each_value_sits()
@@ -866,8 +986,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var mode = field.Q<BaseField<int>>("ValuesMode");
                 Assert.IsNotNull(mode, "the Values row chooses between them");
                 Assert.AreEqual(1, mode.value, "Spread Over Levels");
-                Assert.That(Enumerable.Range(1, 3).Select(point => field.Q<Label>($"At{point}")?.text), Is.EqualTo(new[] { "1", "3", "5" }),
-                    "each value says the level it sits at, over Fireball's levels");
+                Assert.That(Enumerable.Range(1, 3).Select(point => field.Q<Label>($"At{point}")?.text), Is.EqualTo(new[] { "1", "2", "3" }),
+                    "each point is numbered");
+                Assert.IsNotNull(field.Q<Label>("Reads5"), "and each of Fireball's levels shows what it reads");
                 Assert.IsNotNull(field.Q("BetweenLevels"), "and how a level between two reads");
 
                 mode.value = 0;
