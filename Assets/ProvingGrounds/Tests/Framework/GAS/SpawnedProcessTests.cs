@@ -81,6 +81,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => OriginProbe.Last, 5, "the task's own process spawns");
         });
 
+        /// <summary>
+        /// A process the task spawned appeared where its prefab stood unless the data held a Position, so a projectile
+        /// left the world's origin (GAS-67). Spawn At puts it at the caster or at the ability's target, and leaves the
+        /// ability's data as it was.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_67_A_spawned_process_appears_at_the_caster_or_the_target(
+            [Values(CreateMonoProcessAbilityTask.ESpawnPoint.Caster, CreateMonoProcessAbilityTask.ESpawnPoint.Target)]
+            CreateMonoProcessAbilityTask.ESpawnPoint at) => Live(async () =>
+        {
+            var caster = World.MonoEntity(name: "Caster");
+            caster.transform.position = new Vector3(5f, 0f, 0f);
+            var target = World.MonoEntity(name: "Target");
+            target.transform.position = new Vector3(0f, 0f, 9f);
+
+            var ability = Make.Ability("Spawn", Make.Stage(new CreateMonoProcessAbilityTask
+            {
+                SpawnAt = at,
+                InternalMonoProcesses = new List<AbstractMonoProcess> { ProbeTemplate() },
+            }));
+            ability.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
+            var abilities = caster.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "the ability is granted");
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index, data)), "and activates at its target");
+            await Frames.Until(() => OriginProbe.Last, 5, "the process spawns");
+
+            var expected = at == CreateMonoProcessAbilityTask.ESpawnPoint.Caster ? caster.transform.position : target.transform.position;
+            Assert.That(Vector3.Distance(OriginProbe.Last.transform.position, expected), Is.LessThan(0.01f), "where Spawn At says");
+            Assert.IsFalse(OriginProbe.Last.Data.Contains(Tags.POSITION), "and the ability's data keeps no Position of it");
+        });
+
         // ═══════════════════════════════════════════════════════════════════════════
         // A projectile's own attributes (FEAT-24)
         // ═══════════════════════════════════════════════════════════════════════════
