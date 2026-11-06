@@ -1322,6 +1322,127 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// The Timeline added each new record at the bottom, so a long list hid the newest (ED-46, the user's report). The
+        /// newest track is at the top, and a track's detail lists its latest run, or its latest application, first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_46_The_Timeline_shows_the_newest_first() => Guarded(ShowsTheNewestFirst());
+
+        private IEnumerator ShowsTheNewestFirst()
+        {
+            var clock = new StoppedClock { Now = 10f };
+            var before = ForgeTime.Use(clock);
+            try
+            {
+                var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+                var abilities = foe.GetAbilitySystem();
+                Assert.IsTrue(abilities.GiveAbility(TwoStages("Combo"), 1, out int slot), "the foe knows Combo");
+                var frost = Lasting("Frost", 30f);
+                var window = Open();
+                yield return Frames();
+                yield return ShowView(window, "ShowTimeline");
+
+                bool Activate() => abilities.TryActivateAbility(abilities.CreateActivationRequest(slot, ProcessDataPacket.Default(),
+                    EAbilityActivationPolicyExtended.ActivateIfIdle));
+                Assert.IsTrue(Activate(), "Combo runs");
+                clock.Now = 11f;
+                Assert.IsTrue(Apply(foe, frost), "then Frost lands");
+                clock.Now = 12f;
+                foe.RemoveGameplayEffect(frost);
+                foe.GetEffectSystem().Tick();
+                clock.Now = 13f;
+                Assert.IsTrue(Activate(), "Combo runs again");
+                Assert.IsTrue(Apply(foe, frost), "and Frost lands again");
+                Sample(window);
+
+                var tracks = window.rootVisualElement.Q<MultiColumnListView>("Tracks");
+                Assert.That(Listed(tracks).Select(TrackName), Is.EqualTo(new[] { "Runtime Foe · Frost", "Runtime Foe · Combo" }),
+                    "the newest track is at the top");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Combo"));
+                yield return Frames();
+                Sample(window);
+                var runs = window.rootVisualElement.Q("TimelineDetail").Q("RunRows").Children().Select(row => row.name);
+                Assert.That(runs, Is.EqualTo(new[] { "Run 2", "Run 1" }), "an ability's latest run is first");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Frost"));
+                yield return Frames();
+                Sample(window);
+                var applications = window.rootVisualElement.Q("TimelineDetail").Q("ApplicationRows").Children().Select(row => row.name);
+                Assert.That(applications, Is.EqualTo(new[] { "Application 2", "Application 1" }), "and an effect's latest application");
+            }
+            finally
+            {
+                ForgeTime.Use(before);
+            }
+        }
+
+        // The ratio between two colors' relative luminances, as WCAG measures contrast
+        private static float Contrast(Color a, Color b)
+        {
+            static float Channel(float c) => c <= 0.03928f ? c / 12.92f : Mathf.Pow((c + 0.055f) / 1.055f, 2.4f);
+            static float Luminance(Color c) => 0.2126f * Channel(c.r) + 0.7152f * Channel(c.g) + 0.0722f * Channel(c.b);
+            float x = Luminance(a), y = Luminance(b);
+            return (Mathf.Max(x, y) + 0.05f) / (Mathf.Min(x, y) + 0.05f);
+        }
+
+        /// <summary>
+        /// Selecting an effect hid part of its strip, usually the span furthest left (ED-47, the user's report). The run or
+        /// application the detail shows was drawn in the selection's color, on its track's row, which the selection colors
+        /// too. It stands out from the selected row now, by its color and by its height.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_47_The_selected_span_stands_out_on_its_selected_row() => Guarded(StandsOut());
+
+        private IEnumerator StandsOut()
+        {
+            var clock = new StoppedClock { Now = 10f };
+            var before = ForgeTime.Use(clock);
+            try
+            {
+                var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+                var frost = Lasting("Frost", 30f);
+                var window = Open();
+                yield return Frames();
+                using var laid = new LaidOut(window, 1280f, 720f);
+                Fit(window, laid, 1280f);
+                yield return Switch(window, laid, "ShowTimeline");
+                Assert.IsTrue(Apply(foe, frost), "Frost lands");
+                clock.Now = 11f;
+                foe.RemoveGameplayEffect(frost);
+                foe.GetEffectSystem().Tick();
+                clock.Now = 12f;
+                Assert.IsTrue(Apply(foe, frost), "and lands again");
+                clock.Now = 14f;
+                Sample(window);
+                yield return Frames();
+
+                var tracks = laid.Root.Q<MultiColumnListView>("Tracks");
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Frost"));
+                yield return Frames();
+                Sample(window);
+                yield return Frames();
+
+                var row = tracks.Query(className: "unity-collection-view__item--selected").First();
+                Assert.IsNotNull(row, "Frost's row is selected");
+                var span = row.Q(className: "pf-debugger__span--selected");
+                Assert.IsNotNull(span, "and its strip draws the application the detail shows");
+                var behind = row.resolvedStyle.backgroundColor;
+                var drawn = span.resolvedStyle.backgroundColor;
+                Assume.That(behind.a, Is.GreaterThan(0.5f), "the selected row has a color");
+                Assert.That(Contrast(drawn, behind), Is.GreaterThanOrEqualTo(3f),
+                    $"the span stands out from its row (#{ColorUtility.ToHtmlStringRGB(drawn)} on #{ColorUtility.ToHtmlStringRGB(behind)})");
+                var first = row.Query(className: "pf-debugger__span").ToList().FirstOrDefault(each => each != span);
+                Assert.IsNotNull(first, "the strip draws the first application too");
+                Assert.That(span.layout.height, Is.GreaterThan(first.layout.height), "and the one the detail shows is taller");
+            }
+            finally
+            {
+                ForgeTime.Use(before);
+            }
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-5: the Processes view
         // ═══════════════════════════════════════════════════════════════════════════
