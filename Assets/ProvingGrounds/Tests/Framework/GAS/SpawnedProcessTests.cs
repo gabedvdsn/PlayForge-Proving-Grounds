@@ -114,6 +114,47 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(OriginProbe.Last.Data.Contains(Tags.POSITION), "and the ability's data keeps no Position of it");
         });
 
+        /// <summary>
+        /// A projectile's effects took none of the set-by-caller magnitudes its ability's caller set, though the ability's
+        /// other effects take them, so the magnitude was lost on the way (GAS-68). They take them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_68_A_projectiles_effects_take_its_abilitys_set_by_caller_magnitudes() => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var caster = World.MonoEntity(name: "Caster");
+            var target = World.MonoEntity(Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            target.transform.position = new Vector3(0f, 0f, 3f);
+
+            var power = Make.NewTag("Test.Power");
+            var hit = Make.Effect("Hit", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health,
+                MagnitudeScaler = new SetByCallerScaler { Key = power, Default = -1f }, MagnitudeOp = EMagnitudeOperation.UseScaler,
+            });
+            var arrow = World.Template<ProjectileMonoProcess>("Arrow");
+            arrow.ProcessTiming = EProcessStepTiming.None;
+            arrow.Effects = new List<GameplayEffect> { hit };
+            arrow.Attributes = new List<ProcessAttribute> { Speed(200f) };
+
+            var ability = Make.Ability("Shoot", Make.Stage(new CreateMonoProcessAbilityTask
+            {
+                SpawnAt = CreateMonoProcessAbilityTask.ESpawnPoint.Caster,
+                InternalMonoProcesses = new List<AbstractMonoProcess> { arrow },
+            }));
+            ability.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
+            var abilities = caster.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "the ability is granted");
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            data.SetByCaller(power, -30f);
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index, data)), "and shoots");
+
+            await Frames.Until(() => target.TryGetAttributeValue(health, out var now) && now.CurrentValue < 100f, 20, "the arrow lands");
+            target.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(70f).Within(1e-3f), "for the magnitude its caller set, not the default");
+        });
+
         // ═══════════════════════════════════════════════════════════════════════════
         // A projectile's own attributes (FEAT-24)
         // ═══════════════════════════════════════════════════════════════════════════
