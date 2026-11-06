@@ -882,6 +882,40 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsNotNull(window.rootVisualElement.Q("TagDetail").Q(className: "pf-note"), "and the detail");
         }
 
+        /// <summary>
+        /// A tag made unique, as the tag picker makes one, showed its padded name, its path with a generated suffix (ED-60,
+        /// the user's report). The Tags view's tree and detail, and the entity's Tags table, show its display name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_60_A_unique_tag_shows_its_display_name() => Guarded(ShowsDisplayNames());
+
+        private IEnumerator ShowsDisplayNames()
+        {
+            var chilled = Tag.GenerateAsUnique("Status.Chilled");
+            Assume.That(chilled.Name, Is.Not.EqualTo("Status.Chilled"), "a unique tag's name is padded");
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            Assert.IsTrue(Apply(foe, Lasting("Frost", 5f, chilled)), "the foe is chilled");
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowTags");
+
+            var nodes = (IDictionary)Debugger.GetField("tagNodes", AnyInstance).GetValue(window);
+            Assert.IsTrue(nodes.Contains("Status.Chilled"), "the Tags view's tree holds the tag by its display name");
+            TagTree(window).SetSelectionById(TagId(window, "Status.Chilled"));
+            yield return Frames();
+            Sample(window);
+            var detail = window.rootVisualElement.Q("TagDetail");
+            Assert.AreEqual("Status.", detail.Q<Label>("HeaderParents").text, "its detail names its parents");
+            Assert.AreEqual("Chilled", detail.Q<Label>("HeaderName").text, "and it");
+
+            yield return ShowView(window, "ShowEntities");
+            yield return Select(window, foe);
+            var row = Detail(window).Q($"Tag {chilled.Name}");
+            Assert.IsNotNull(row, "the entity's Tags table lists the tag");
+            Assert.AreEqual("Status.", row.Q<Label>("Parents").text, "by its display name's parents");
+            Assert.AreEqual("Chilled", row.Q<Label>("Name").text, "and its leaf");
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-43: a narrow column
         // ═══════════════════════════════════════════════════════════════════════════

@@ -244,9 +244,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var used = (bool)typeof(TagDrawer).GetMethod("GroupByRoot", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(new TagDrawer(), null);
                 Assert.AreEqual(used, root.Q<Toggle>("GroupTagsByRoot").value, "Group Tags by Root shows what the tag field uses");
 
-                var fileNames = root.Q<Toggle>("ShowFileNames");
-                fileNames.value = false;
-                Assert.IsFalse(EditorPrefs.GetBool(Prefix + "ShowFileNames", true), "a toggle sets its preference");
+                // The Forge's list shows no file names, so the page has no switch for them (ED-58)
+                Assert.IsNull(root.Q<Toggle>("ShowFileNames"), "the page has no Show File Names");
+                var fullPaths = root.Q<Toggle>("ShowFullTagPath");
+                fullPaths.value = true;
+                Assert.IsTrue(EditorPrefs.GetBool(Prefix + "ShowFullTagPath", false), "a toggle sets its preference");
                 foreach (var key in BoolKeys) EditorPrefs.SetBool(key, !EditorPrefs.GetBool(key, true));
                 EditorPrefs.SetInt(Prefix + "RecentlyCreatedRows", 3);
                 EditorPrefs.SetString(Prefix + "LastTypeFilter", nameof(Ability));
@@ -262,7 +264,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Append(Prefix + "Columns_Forge.Assets").Where(EditorPrefs.HasKey),
                     Is.Empty, "Use Defaults leaves no preference set, a table's column widths among them");
-                Assert.IsTrue(fileNames.value, "and the page shows the defaults");
+                Assert.IsFalse(fullPaths.value, "and the page shows the defaults");
                 Assert.AreEqual(ForgeLog.ELevel.Info, ForgeLog.MinimumLevel, "the log level among them");
             }
             finally

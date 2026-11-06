@@ -263,6 +263,143 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
+        // ED-58 to ED-60: names, sorting and tags
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The Forge's list showed each asset's file name beside its name (ED-58, the user's report). The list shows the
+        /// asset's name alone, and the selected asset's header shows its file name under Show in Project.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_58_The_file_name_is_in_the_header_not_the_list() => Guarded(ED_58_The_file_name_is_in_the_header_not_the_listBody());
+
+        private IEnumerator ED_58_The_file_name_is_in_the_header_not_the_listBody()
+        {
+            var fire = Save(Ability("Fireball"), "Fire File");
+            var forge = Open();
+            yield return Frames();
+
+            var cell = ListOf(forge).columns["Name"].makeCell();
+            Assert.IsNull(cell.Q<Label>("File"), "the list's name cell holds no file name");
+
+            ListOf(forge).SetSelection(Listed(forge).IndexOf(fire));
+            yield return Frames();
+            var header = forge.rootVisualElement.Q("Detail").Q(className: "pf-asset-header");
+            Assert.IsNotNull(header, "the detail shows the asset's header");
+            Assert.AreEqual("Show in Project", header.Q<Button>("OpenInForge")?.text, "with Show in Project");
+            var file = header.Q<Label>("HeaderFile");
+            Assert.IsNotNull(file, "and a line under it");
+            Assert.AreEqual(fire.name, file.text, "which names the asset's file");
+            Assert.IsFalse(file.ClassListContains("pf-asset-header__under--empty"), "and shows");
+        }
+
+        /// <summary>
+        /// The Forge's tag view couldn't sort its columns (ED-59, the user's report). Its Tag, For and Uses columns sort,
+        /// in either direction. And the asset list's sort, which the window keeps through a domain reload, shows in its
+        /// header again as the window is built.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_59_The_tag_view_sorts_its_columns() => Guarded(ED_59_The_tag_view_sorts_its_columnsBody());
+
+        private IEnumerator ED_59_The_tag_view_sorts_its_columnsBody()
+        {
+            // The tag registry reads the project's assets, so each tag is in the assets that use it
+            var once = Tag.Generate("Test.ED59.Once");
+            var twice = Tag.Generate("Test.ED59.Twice");
+            var a = Ability("ED59 A");
+            a.Tags.ContextTags = new List<Tag> { once, twice };
+            Save(a, "ED59 A");
+            var b = Ability("ED59 B");
+            b.Tags.ContextTags = new List<Tag> { twice };
+            Save(b, "ED59 B");
+            var forge = Open();
+            yield return Frames();
+            forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+            forge.rootVisualElement.Q<ToolbarSearchField>("Search").value = "ED59";
+            yield return Frames();
+
+            var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+            Assert.That(tags.columns.Select(column => column.sortable), Is.All.True, "each column of the tag view sorts");
+            List<Tag> Shown() => tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().Select(record => record.Tag).ToList();
+            void SortBy(string column, SortDirection direction)
+            {
+                tags.sortColumnDescriptions.Clear();
+                tags.sortColumnDescriptions.Add(new SortColumnDescription(column, direction));
+            }
+
+            SortBy("Uses", SortDirection.Descending);
+            yield return Frames();
+            Assert.That(Shown(), Is.EqualTo(new[] { twice, once }), "by uses, the most first");
+            SortBy("Uses", SortDirection.Ascending);
+            yield return Frames();
+            Assert.That(Shown(), Is.EqualTo(new[] { once, twice }), "and the fewest");
+            SortBy("Tag", SortDirection.Descending);
+            yield return Frames();
+            Assert.That(Shown(), Is.EqualTo(new[] { twice, once }), "by tag, from the end");
+
+            // A domain reload builds the window again, with the fields it serializes
+            forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = false;
+            var assets = ListOf(forge);
+            assets.sortColumnDescriptions.Clear();
+            assets.sortColumnDescriptions.Add(new SortColumnDescription("Type", SortDirection.Descending));
+            yield return Frames();
+            forge.rootVisualElement.Clear();
+            typeof(TheForge).GetMethod("CreateGUI", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(forge, null);
+            yield return Frames();
+            var shown = ListOf(forge).sortColumnDescriptions.ToList();
+            Assert.That(shown.Select(each => (each.columnName, each.direction)), Is.EqualTo(new[] { ("Type", SortDirection.Descending) }),
+                "the asset list's header shows the sort the window kept");
+        }
+
+        /// <summary>
+        /// A tag made unique, as the tag picker makes one, showed its padded name in The Forge: its path with a generated
+        /// suffix (ED-60, the user's report). The tag list, a tag's detail and the Asset Tag column show its display name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_60_A_unique_tag_shows_its_display_name() => Guarded(ED_60_A_unique_tag_shows_its_display_nameBody());
+
+        private IEnumerator ED_60_A_unique_tag_shows_its_display_nameBody()
+        {
+            const string key = "PlayForge_ShowFullTagPath";
+            bool had = EditorPrefs.HasKey(key), was = EditorPrefs.GetBool(key);
+            var tag = Tag.GenerateAsUnique("Test.ED60.Fireball");
+            Assume.That(tag.Name, Is.Not.EqualTo("Test.ED60.Fireball"), "a unique tag's name is padded");
+            // The tag registry reads the project's assets, so the tag is in one
+            var fire = Ability("Fireball");
+            fire.Tags.AssetTag = tag;
+            Save(fire, "ED60 Fireball");
+            var text = typeof(TheForge).GetMethod("TagText", AnyStatic);
+            try
+            {
+                EditorPrefs.SetBool(key, true);
+                Assert.AreEqual("Test.ED60.Fireball", text.Invoke(null, new object[] { tag }), "the tag list's full path");
+                Assert.AreEqual("Test.ED60.Fireball", typeof(TheForge).GetMethod("AssetTagOf", AnyStatic).Invoke(null, new object[] { fire }),
+                    "the Asset Tag column");
+                EditorPrefs.SetBool(key, false);
+                Assert.AreEqual("Fireball", text.Invoke(null, new object[] { tag }), "and its leaf");
+
+                var forge = Open();
+                yield return Frames();
+                forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+                forge.rootVisualElement.Q<ToolbarSearchField>("Search").value = "ED60";
+                yield return Frames();
+                var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+                var records = tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().ToList();
+                int at = records.FindIndex(record => record.Tag == tag);
+                Assert.That(at, Is.GreaterThanOrEqualTo(0), "the search finds the tag by its display name");
+                tags.SetSelection(at);
+                yield return Frames();
+                var title = forge.rootVisualElement.Q("Detail").Q(className: "pf-forge__summary-title") as Label;
+                Assert.AreEqual("Test.ED60.Fireball", title?.text, "and its detail names it by its display name");
+            }
+            finally
+            {
+                if (had) EditorPrefs.SetBool(key, was);
+                else EditorPrefs.DeleteKey(key);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
         // ED-48: column widths
         // ═══════════════════════════════════════════════════════════════════════════
 
