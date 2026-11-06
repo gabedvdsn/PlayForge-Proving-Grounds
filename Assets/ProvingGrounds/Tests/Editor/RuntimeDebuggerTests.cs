@@ -504,7 +504,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// The board's status bar counts what the game holds: ProcessControl's state, its processes by state, and its
-        /// entities by hub (ED-4, ED-5).
+        /// entities by hub (ED-4, ED-5). In a full window: a narrow one counts without the parts (ED-43), and a batch
+        /// editor on Linux opens its windows narrow, where Windows' gives them no width at all.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_4_The_status_bar_counts_the_processes_and_entities() => Guarded(CountsInTheStatusBar());
@@ -516,6 +517,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             MonoHub("Mono Hero", Set((Attribute("Health"), 100f, 100f)));
             var window = Open();
             yield return Frames();
+            Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null).Invoke(window, new object[] { 1280f });
             Sample(window);
 
             var root = window.rootVisualElement;
