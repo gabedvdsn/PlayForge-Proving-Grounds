@@ -742,6 +742,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Open = _ => typePicker.GetMethod("Open", AnyStatic).Invoke(null,
                     new object[] { new Rect(0, 0, 240, 20), typeof(AbstractAbilityTask), (Action<Type>)(_ => { }), null }),
             };
+            // New Tag, from a tag field's picker (ED-55)
+            var newTag = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewTagWindow");
+            yield return new Window
+            {
+                Name = "New Tag", Type = newTag,
+                Open = _ => newTag.GetMethod("Show", AnyStatic).Invoke(null, new object[] { "Status.", (Action<Tag>)(_ => { }) }),
+            };
         }
 
         private static void CloseWindows()

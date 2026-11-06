@@ -1897,6 +1897,53 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Impact section felt broken (ED-50, the user's report). Past the scaler drawer (ED-51), an additional impact's
+        /// Retention Group drew as a bare bar with no label, as the tag drawer dropped its label for any field inside a list
+        /// (ED-55); and its row named no delivery, which EDITOR_STYLE puts on the right of an entry's row, nor said when it
+        /// commits. Its row names its delivery, a periodic entry says what it commits, as the first impact does, and its
+        /// Retention Group has its label.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_50_An_impact_entry_names_its_delivery_and_what_it_commits()
+        {
+            var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 6);
+            burning.ImpactSpecification.AdditionalImpacts.Add(new AttributeImpactEntry
+            {
+                Delivery = EImpactDelivery.Periodic,
+                Magnitude = new ScalerMagnitudeOperation { Magnitude = -5f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            });
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, burning, nameof(GameplayEffect.ImpactSpecification));
+                yield return Frames();
+
+                // An entry is a field in the impact's field, which binds and builds a few frames after it
+                var giveUp = EditorApplication.timeSinceStartup + 1.0;
+                while (field.Q(name: "ImpactEntry") == null && EditorApplication.timeSinceStartup < giveUp) yield return null;
+                var entry = field.Q(name: "ImpactEntry");
+                Assert.IsNotNull(entry, "the additional impact draws as an entry");
+                Assert.AreEqual("Periodic", entry.Q("HeaderRow")?.Q<Label>("HeaderDelivery")?.text, "its row names its delivery");
+                Assert.AreEqual("6 over 6 s, level 1", Shown(entry, "EntryCommits"), "and open, it says what it commits");
+                var labels = entry.Query<Label>(className: "unity-base-field__label").ToList().Select(label => label.text);
+                Assert.That(labels, Has.Member("Retention Group"), "its Retention Group has its label");
+
+                entry.Q<PopupField<EImpactDelivery>>("Delivery").value = EImpactDelivery.Continuous;
+                yield return Frames();
+                Assert.AreEqual(EImpactDelivery.Continuous, burning.ImpactSpecification.AdditionalImpacts[0].Delivery, "made continuous");
+                Assert.AreEqual("Continuous", entry.Q("HeaderRow")?.Q<Label>("HeaderDelivery")?.text, "its row says so");
+                Assert.AreEqual(DisplayStyle.None, entry.Q("EntryCommits")?.resolvedStyle.display, "and it commits nothing");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(burning);
+            }
+        }
+
+        /// <summary>
         /// The tag requirements drew a tinted box with colored subsections, a type badge and import buttons of their own
         /// (ED-37). They're the Effect mockup's table now: a row for each group, Applying, While On and Removed By, with
         /// what it requires and what it must not have, each a cell that lists its tags. A cell opens its list under the

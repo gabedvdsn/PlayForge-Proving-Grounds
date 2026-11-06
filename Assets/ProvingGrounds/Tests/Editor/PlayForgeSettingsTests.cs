@@ -275,20 +275,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// "Display full tag path" changed nothing: the tag field's text returned the full path before the code that read
-        /// the setting (ED-25).
+        /// the setting (ED-25). The field shows the whole path with the setting on, and its parents and its leaf apart
+        /// with it off, the parents in secondary text and the leaf in strong text (ED-55); TagFieldTests draws it.
         /// </summary>
         [Test]
         public void ED_25_Show_Full_Tag_Paths_changes_the_tag_field()
         {
             var tag = Tag.Generate("Status.Debuff.Burn");
-            var drawer = new TagDrawer();
-            var text = typeof(TagDrawer).GetMethod("GetDisplayText", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            EditorPrefs.SetBool(Prefix + "ShowFullTagPath", true);
-            Assert.AreEqual("Status.Debuff.Burn", text.Invoke(drawer, new object[] { tag }), "the full path");
-
-            EditorPrefs.SetBool(Prefix + "ShowFullTagPath", false);
-            Assert.AreEqual("…Burn", text.Invoke(drawer, new object[] { tag }), "the leaf");
+            var parts = typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTagField")?
+                .GetMethod("Parts", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(parts, "the tag field says how it reads a tag");
+            Assert.AreEqual(("", "Status.Debuff.Burn"), ((string, string))parts.Invoke(null, new object[] { tag, true }), "the full path");
+            Assert.AreEqual(("Status.Debuff.", "Burn"), ((string, string))parts.Invoke(null, new object[] { tag, false }), "the parents and the leaf");
         }
 
         /// <summary>
