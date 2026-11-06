@@ -896,6 +896,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Reads row reads a scaler spread over its provider's levels "up to a level" as the runtime does (GAS-64): three
+        /// values spread up to level 3 of Fireball's five read 10, 20 and 30, then 30. It ended the range at the level being
+        /// read, as the runtime did, so every level after the first read 30.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_64_The_reads_row_spreads_up_to_a_level()
+        {
+            var (effect, ability) = Linked(5);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var upTo = new SimpleScaler
+                {
+                    LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = true, Configuration = ELevelConfig.Clamped,
+                    MaxLevel = 3, Interpolation = EScalerInterpolation.Linear,
+                };
+                upTo.RegenerateCurve();
+                effect.DurationSpecification.DurationOperation.Scaler = upTo;
+                var field = Draw(host, new SerializedObject(effect), DurationPath);
+                yield return Frames();
+
+                Assert.That(Enumerable.Range(1, 5).Select(level => field.Q<Label>($"Reads{level}")?.text),
+                    Is.EqualTo(new[] { "10", "20", "30", "30", "30" }), "spread to level 3, then its last value");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
         /// Quick Fill drew a look of its own, a purple bold title, a green Apply, 10 px hints and tinted boxes, from styles set
         /// in C#, with its fields outside the label column (ED-63, the user's report). It's a dialog in the style: what it
         /// fills, the pattern and its values, rounding, and a preview of the values as the scaler's table shows them. Apply

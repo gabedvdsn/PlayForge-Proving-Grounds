@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -72,6 +73,31 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(30f, At(Reading(stretched), 5), 0.001f, "and its last at the range's end");
 
             Assert.IsTrue(new SimpleScaler().StretchOverLevels, "a scaler saved before the option keeps stretching");
+        }
+
+        /// <summary>
+        /// A scaler spread over its provider's levels "up to a level" ended its range at the lower of its Max Level and the
+        /// level being read, so a level always sat at the range's end and every level above the first read the last value
+        /// (GAS-64, the user's call). The range ends at the lower of its Max Level and the provider's last level: three
+        /// values spread up to level 3 of 5 read 10, 20 and 30, and 30 past it; up to level 9, the provider's last, 5, ends
+        /// the range.
+        /// </summary>
+        [Test]
+        public void GAS_64_A_scaler_spread_up_to_a_level_spreads_to_it()
+        {
+            var upTo = new SimpleScaler
+            {
+                LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = true,
+                Configuration = ELevelConfig.Clamped, MaxLevel = 3, Interpolation = EScalerInterpolation.Linear,
+            };
+            upTo.RegenerateCurve();
+            var levels = new[] { 1, 2, 3, 4, 5 };
+            Assert.That(levels.Select(level => At(Reading(upTo), level)), Is.EqualTo(new[] { 10f, 20f, 30f, 30f, 30f }).Within(0.001f),
+                "spread to level 3, and its last value past it");
+
+            upTo.MaxLevel = 9;
+            Assert.That(levels.Select(level => At(Reading(upTo), level)), Is.EqualTo(new[] { 10f, 15f, 20f, 25f, 30f }).Within(0.001f),
+                "up to a level past the provider's, spread over the provider's five");
         }
 
         /// <summary>
