@@ -488,10 +488,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var root = window.rootVisualElement;
             var prompt = root.Q("Prompt");
             Assert.IsNotNull(prompt, "the debugger has a prompt");
-            Assert.IsFalse(prompt.ClassListContains("pf-debugger__hidden"), "which shows in edit mode");
+            // The prompt and the views take turns in one place, each laid out while the other shows (ED-45)
+            Assert.IsFalse(prompt.ClassListContains("pf-stack__hidden"), "which shows in edit mode");
             Assert.That(prompt.Query<Label>().ToList().Select(label => label.text), Has.Member("Not in Play mode."), "and says why");
             Assert.IsNotNull(prompt.Q<Button>("EnterPlayMode"), "with Enter Play Mode");
-            Assert.IsTrue(root.Q("Views").ClassListContains("pf-debugger__hidden"), "and the views wait");
+            Assert.IsTrue(root.Q("Views").ClassListContains("pf-stack__hidden"), "and the views wait");
             Assert.IsTrue(root.Q("DebuggerStatus").ClassListContains("pf-debugger__hidden"), "with no status bar");
             Assert.IsFalse(root.Q<ToolbarSearchField>("Search").enabledSelf, "and no search");
 
@@ -940,6 +941,250 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         private const string HiddenClass = "pf-debugger__hidden";
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-45 and ED-48: a view's split and columns, through the other views
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Each view's toggle and split
+        private static readonly (string Toggle, string Split)[] SplitViews =
+        {
+            ("ShowEntities", "EntitySplit"), ("ShowProcesses", "ProcessSplit"), ("ShowTags", "TagSplit"), ("ShowTimeline", "TimelineSplit"),
+        };
+
+        // The window's content, moved into a runtime panel of a set size, where it's laid out: batch mode gives an editor
+        // window no size on Windows, and a narrow one on Linux. It takes the window root's style sheets and classes, and
+        // Unity's own editor style sheet, which styles the splits and the lists
+        private sealed class LaidOut : IDisposable
+        {
+            private readonly PanelSettings settings = ScriptableObject.CreateInstance<PanelSettings>();
+            private readonly GameObject owner = new("Laid Out") { hideFlags = HideFlags.HideAndDontSave };
+            private readonly EditorWindow window;
+            public VisualElement Root { get; } = new() { name = "LaidOut" };
+
+            public LaidOut(EditorWindow window, float width, float height)
+            {
+                this.window = window;
+                var document = owner.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                var theme = EditorGUIUtility.isProSkin ? "Dark" : "Light";
+                var unity = EditorGUIUtility.Load($"StyleSheets/Generated/DefaultCommon{theme}_inter.uss.asset") as StyleSheet;
+                Assert.IsNotNull(unity, "Unity's editor style sheet loads");
+                Root.styleSheets.Add(unity);
+                var from = window.rootVisualElement;
+                for (int i = 0; i < from.styleSheets.count; i++) Root.styleSheets.Add(from.styleSheets[i]);
+                Size(width, height);
+                foreach (var child in from.Children().ToList()) Root.Add(child);
+                Mirror();
+                document.rootVisualElement.Add(Root);
+            }
+
+            public void Size(float width, float height)
+            {
+                Root.style.width = width;
+                Root.style.height = height;
+            }
+
+            // The window root's classes, as the narrow class the window sets on it to fit its width
+            public void Mirror()
+            {
+                Root.ClearClassList();
+                foreach (var name in window.rootVisualElement.GetClasses()) Root.AddToClassList(name);
+            }
+
+            // The content goes back to its window, which closes it as it closes
+            public void Dispose()
+            {
+                if (window != null)
+                    foreach (var child in Root.Children().ToList()) window.rootVisualElement.Add(child);
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(settings);
+            }
+        }
+
+        private static void Fit(EditorWindow window, LaidOut laid, float width)
+        {
+            laid.Size(width, 720f);
+            Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null).Invoke(window, new object[] { width });
+            laid.Mirror();
+        }
+
+        private static IEnumerator Switch(EditorWindow window, LaidOut laid, string toggleName)
+        {
+            var toggle = laid.Root.Q<ToolbarToggle>(toggleName);
+            Assert.IsNotNull(toggle, $"the toolbar has {toggleName}");
+            toggle.value = true;
+            yield return Frames();
+            Sample(window);
+            yield return Frames();
+        }
+
+        // The size of a split's fixed pane: the width of the list or the detail that keeps its width beside the other, or
+        // in a narrow window, the height of the list above the detail
+        private static float FixedPane(LaidOut laid, string split, bool narrow)
+        {
+            var pane = laid.Root.Q<TwoPaneSplitView>(split).fixedPane;
+            Assert.IsNotNull(pane, $"{split} has its fixed pane");
+            return narrow ? pane.layout.height : pane.layout.width;
+        }
+
+        // What a split's layout was, for a failure's message
+        private static string Described(LaidOut laid, string split)
+        {
+            var view = laid.Root.Q<TwoPaneSplitView>(split);
+            var pane = view?.fixedPane;
+            var holder = view?.parent;
+            return $" [{split} {view?.layout}, its pane {pane?.name} {pane?.layout} style {pane?.style.width.value.value}x{pane?.style.height.value.value} " +
+                   $"basis {pane?.resolvedStyle.flexBasis}, its view {holder?.name} {holder?.layout} {string.Join(" ", holder?.GetClasses() ?? Array.Empty<string>())}]";
+        }
+
+        /// <summary>
+        /// The Entities view lost its list: back from another view, the list's column was collapsed against the window's
+        /// left edge, and only dragging the splitter brought it back (ED-45, the user's report). Each view's split keeps
+        /// its size through the other views, in a full window and in a narrow column, and through Play mode's end and
+        /// start, when the prompt takes the views' place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_45_Each_view_keeps_its_split_through_the_other_views() => Guarded(KeepsItsSplit());
+
+        private IEnumerator KeepsItsSplit()
+        {
+            RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            bool live = true;
+            Debugger.GetField("Live", AnyStatic).SetValue(null, (Func<bool>)(() => live));
+            var showState = Debugger.GetMethod("ShowState", AnyInstance);
+            yield return Frames();
+            using var laid = new LaidOut(window, 1280f, 720f);
+            yield return Frames();
+            Assume.That(laid.Root.panel, Is.Not.Null, "the window's content is in a panel");
+
+            foreach (var (width, narrow) in new[] { (1280f, false), (360f, true) })
+            {
+                Fit(window, laid, width);
+                yield return Frames();
+                foreach (var (toggle, split) in SplitViews)
+                {
+                    yield return Switch(window, laid, toggle);
+                    float size = FixedPane(laid, split, narrow);
+                    Assert.That(size, Is.GreaterThan(100f), $"{split}'s fixed pane is laid out at {width} px" + Described(laid, split));
+
+                    foreach (var (other, _) in SplitViews)
+                        if (other != toggle) yield return Switch(window, laid, other);
+                    yield return Switch(window, laid, toggle);
+                    Assert.That(FixedPane(laid, split, narrow), Is.EqualTo(size).Within(1f),
+                        $"{split} keeps its size through the other views at {width} px" + Described(laid, split));
+
+                    live = false;
+                    showState.Invoke(window, null);
+                    yield return Frames();
+                    live = true;
+                    showState.Invoke(window, null);
+                    yield return Frames();
+                    Assert.That(FixedPane(laid, split, narrow), Is.EqualTo(size).Within(1f),
+                        $"and through Play mode's end and start at {width} px" + Described(laid, split));
+                }
+            }
+
+            // A view hidden while the window changes width has its splitter where its panes meet once it shows again
+            Fit(window, laid, 1280f);
+            yield return Switch(window, laid, "ShowEntities");
+            Fit(window, laid, 1400f);
+            yield return Frames();
+            yield return Switch(window, laid, "ShowProcesses");
+            var processes = laid.Root.Q<TwoPaneSplitView>("ProcessSplit");
+            var anchor = processes.Q("unity-dragline-anchor");
+            Assert.IsNotNull(anchor, "the split has its splitter");
+            // The panel runs what's scheduled on it by real time, not by frames
+            var giveUp = EditorApplication.timeSinceStartup + 1.0;
+            while (Mathf.Abs(anchor.worldBound.xMin - processes.fixedPane.worldBound.xMin) > 4f && EditorApplication.timeSinceStartup < giveUp)
+                yield return null;
+            Assert.That(anchor.worldBound.xMin, Is.EqualTo(processes.fixedPane.worldBound.xMin).Within(4f),
+                "the Processes view's splitter sits where its list and detail meet, after the window widened while it was hidden");
+        }
+
+        // A column's width as its list lays it out
+        private static float Laid(Column column) => (float)typeof(Column).GetProperty("desiredWidth", AnyInstance).GetValue(column);
+
+        // Drags a column's right edge, as its header's handle does, once the header has laid its columns out
+        private static IEnumerator Drag(VisualElement list, Column column, float by)
+        {
+            var header = list.Q(className: "unity-multi-column-header");
+            Assert.IsNotNull(header, "the list has its header");
+            var layout = header.GetType().GetProperty("columnLayout", AnyInstance)?.GetValue(header);
+            Assert.IsNotNull(layout, "whose layout sizes the columns");
+            var type = layout.GetType();
+            // The header lays its columns out on its window's scheduler, which batch mode's window never runs
+            yield return null;
+            Assume.That(header.layout.width, Is.GreaterThan(100f), "the header is laid out");
+            if ((bool)type.GetProperty("isDirty", AnyInstance).GetValue(layout)) header.GetType().GetMethod("DoLayout", AnyInstance).Invoke(header, null);
+            type.GetMethod("BeginDragResize", AnyInstance).Invoke(layout, new object[] { column, 0f, false });
+            type.GetMethod("DragResize", AnyInstance).Invoke(layout, new object[] { column, by });
+            type.GetMethod("EndDragResize", AnyInstance).Invoke(layout, new object[] { column, false });
+        }
+
+        // The preference that keeps a table's column widths, which a test puts back as it was
+        private sealed class KeptPreference : IDisposable
+        {
+            private readonly string key;
+            private readonly bool had;
+            private readonly string was;
+
+            public KeptPreference(string key)
+            {
+                this.key = key;
+                had = EditorPrefs.HasKey(key);
+                was = EditorPrefs.GetString(key, "");
+                EditorPrefs.DeleteKey(key);
+            }
+
+            public void Dispose()
+            {
+                if (had) EditorPrefs.SetString(key, was);
+                else EditorPrefs.DeleteKey(key);
+            }
+        }
+
+        /// <summary>
+        /// A column's width wasn't remembered (ED-48, the user's report). A width dragged in a view's list stays through the
+        /// other views, and the window remembers it: closed and opened again, as a domain reload builds it again, the
+        /// column has the width it was dragged to.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_48_A_dragged_column_keeps_its_width() => Guarded(KeepsAColumnsWidth());
+
+        private IEnumerator KeepsAColumnsWidth()
+        {
+            using var kept = new KeptPreference("PlayForge_Columns_Debugger.Entities");
+            RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            float dragged;
+            using (var laid = new LaidOut(window, 1280f, 720f))
+            {
+                yield return Frames();
+                Fit(window, laid, 1280f);
+                yield return Switch(window, laid, "ShowEntities");
+                var list = laid.Root.Q<MultiColumnListView>("Entities");
+                var hub = list.columns["Hub"];
+                float before = Laid(hub);
+                yield return Drag(list, hub, 20f);
+                yield return Frames();
+                dragged = Laid(hub);
+                Assert.That(dragged, Is.GreaterThan(before + 5f), "the drag widens Hub");
+
+                foreach (var (toggle, _) in SplitViews.Skip(1)) yield return Switch(window, laid, toggle);
+                yield return Switch(window, laid, "ShowEntities");
+                Assert.That(Laid(hub), Is.EqualTo(dragged).Within(1f), "Hub keeps its width through the other views");
+            }
+
+            window.Close();
+            yield return Frames();
+            window = Open();
+            yield return Frames();
+            var again = EntityList(window).columns["Hub"];
+            Assert.That(again.width.value, Is.EqualTo(dragged).Within(1f), "and the window remembers it");
+        }
 
         // ═══════════════════════════════════════════════════════════════════════════
         // FEAT-12: the Timeline

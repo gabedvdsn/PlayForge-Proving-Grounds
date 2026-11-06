@@ -262,6 +262,152 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(ShortcutManager.instance.GetAvailableShortcutIds(), Has.Member("PlayForge/The Forge"));
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-48: column widths
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private const BindingFlags AnyInstance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        // The window's content, moved into a runtime panel of a set size, where it's laid out: batch mode gives an editor
+        // window no size on Windows, and a narrow one on Linux. It takes the window root's style sheets and classes, and
+        // Unity's own editor style sheet, which styles the split and the lists
+        private sealed class LaidOut : System.IDisposable
+        {
+            private readonly PanelSettings settings = ScriptableObject.CreateInstance<PanelSettings>();
+            private readonly GameObject owner = new("Laid Out") { hideFlags = HideFlags.HideAndDontSave };
+            private readonly EditorWindow window;
+            public VisualElement Root { get; } = new() { name = "LaidOut" };
+
+            public LaidOut(EditorWindow window, float width, float height)
+            {
+                this.window = window;
+                var document = owner.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                var theme = EditorGUIUtility.isProSkin ? "Dark" : "Light";
+                var unity = EditorGUIUtility.Load($"StyleSheets/Generated/DefaultCommon{theme}_inter.uss.asset") as StyleSheet;
+                Assert.IsNotNull(unity, "Unity's editor style sheet loads");
+                Root.styleSheets.Add(unity);
+                var from = window.rootVisualElement;
+                for (int i = 0; i < from.styleSheets.count; i++) Root.styleSheets.Add(from.styleSheets[i]);
+                foreach (var name in from.GetClasses()) Root.AddToClassList(name);
+                Root.style.width = width;
+                Root.style.height = height;
+                foreach (var child in from.Children().ToList()) Root.Add(child);
+                document.rootVisualElement.Add(Root);
+            }
+
+            // The content goes back to its window, which closes it as it closes
+            public void Dispose()
+            {
+                if (window != null)
+                    foreach (var child in Root.Children().ToList()) window.rootVisualElement.Add(child);
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(settings);
+            }
+        }
+
+        // The preference that keeps a table's column widths, which a test puts back as it was
+        private sealed class KeptPreference : System.IDisposable
+        {
+            private readonly string key;
+            private readonly bool had;
+            private readonly string was;
+
+            public KeptPreference(string key)
+            {
+                this.key = key;
+                had = EditorPrefs.HasKey(key);
+                was = EditorPrefs.GetString(key, "");
+                EditorPrefs.DeleteKey(key);
+            }
+
+            public void Dispose()
+            {
+                if (had) EditorPrefs.SetString(key, was);
+                else EditorPrefs.DeleteKey(key);
+            }
+        }
+
+        // A column's width as its list lays it out
+        private static float Laid(Column column) => (float)typeof(Column).GetProperty("desiredWidth", AnyInstance).GetValue(column);
+
+        // Drags a column's right edge, as its header's handle does, once the header has laid its columns out
+        private static IEnumerator Drag(VisualElement list, Column column, float by)
+        {
+            var header = list.Q(className: "unity-multi-column-header");
+            Assert.IsNotNull(header, "the list has its header");
+            var layout = header.GetType().GetProperty("columnLayout", AnyInstance)?.GetValue(header);
+            Assert.IsNotNull(layout, "whose layout sizes the columns");
+            var type = layout.GetType();
+            // The header lays its columns out on its window's scheduler, which batch mode's window never runs
+            yield return null;
+            Assume.That(header.layout.width, Is.GreaterThan(100f), "the header is laid out");
+            if ((bool)type.GetProperty("isDirty", AnyInstance).GetValue(layout)) header.GetType().GetMethod("DoLayout", AnyInstance).Invoke(header, null);
+            type.GetMethod("BeginDragResize", AnyInstance).Invoke(layout, new object[] { column, 0f, false });
+            type.GetMethod("DragResize", AnyInstance).Invoke(layout, new object[] { column, by });
+            type.GetMethod("EndDragResize", AnyInstance).Invoke(layout, new object[] { column, false });
+        }
+
+        private static IEnumerator Press(LaidOut laid, string toggleName)
+        {
+            var toggle = laid.Root.Q<ToolbarToggle>(toggleName);
+            Assert.IsNotNull(toggle, $"the toolbar has {toggleName}");
+            toggle.value = true;
+            yield return Frames();
+        }
+
+        /// <summary>
+        /// A column's width wasn't remembered: a width dragged in the asset list was lost through the tag view, and the
+        /// other way round (ED-48, the user's report). Each list's dragged width stays through the other list, and the
+        /// window remembers both: closed and opened again, as a domain reload builds it again, each column has the width
+        /// it was dragged to.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_48_A_dragged_column_keeps_its_width() => Guarded(ED_48_A_dragged_column_keeps_its_widthBody());
+
+        private IEnumerator ED_48_A_dragged_column_keeps_its_widthBody()
+        {
+            using var assets = new KeptPreference("PlayForge_Columns_Forge.Assets");
+            using var tags = new KeptPreference("PlayForge_Columns_Forge.Tags");
+            Save(Ability("Fireball"), "Fireball");
+            var forge = Open();
+            yield return Frames();
+            float typeWidth, forWidth;
+            using (var laid = new LaidOut(forge, 1280f, 720f))
+            {
+                yield return Press(laid, "Ability");
+                var assetList = laid.Root.Q<MultiColumnListView>("Assets");
+                var type = assetList.columns["Type"];
+                float before = Laid(type);
+                yield return Drag(assetList, type, 20f);
+                yield return Frames();
+                typeWidth = Laid(type);
+                Assert.That(typeWidth, Is.GreaterThan(before + 5f), "the drag widens Type");
+
+                yield return Press(laid, "Tags");
+                var tagList = laid.Root.Q<MultiColumnListView>("TagList");
+                var contexts = tagList.columns["Contexts"];
+                before = Laid(contexts);
+                yield return Drag(tagList, contexts, 20f);
+                yield return Frames();
+                forWidth = Laid(contexts);
+                Assert.That(forWidth, Is.GreaterThan(before + 5f), "the drag widens For");
+
+                yield return Press(laid, "Ability");
+                Assert.That(Laid(type), Is.EqualTo(typeWidth).Within(1f), "Type keeps its width through the tag view");
+                yield return Press(laid, "Tags");
+                Assert.That(Laid(contexts), Is.EqualTo(forWidth).Within(1f), "and For its width through the asset view");
+            }
+
+            forge.Close();
+            yield return Frames();
+            forge = Open();
+            yield return Frames();
+            Assert.That(ListOf(forge).columns["Type"].width.value, Is.EqualTo(typeWidth).Within(1f), "the window remembers Type's width");
+            Assert.That(forge.rootVisualElement.Q<MultiColumnListView>("TagList").columns["Contexts"].width.value, Is.EqualTo(forWidth).Within(1f),
+                "and For's");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {

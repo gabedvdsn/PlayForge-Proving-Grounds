@@ -35,6 +35,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             Prefix + "Path_Ability", Prefix + "Prefix_Ability", Prefix + "Postfix_Ability", Prefix + "TemplateRegistry",
             Prefix + "EffectTemplate_Cost", Prefix + "EffectTemplate_Cooldown", Prefix + "LastTypeFilter",
+            // The tables' column widths (ED-48), which Use Defaults forgets
+            Prefix + "Columns_Debugger.Entities", Prefix + "Columns_Debugger.Processes", Prefix + "Columns_Debugger.Tags",
+            Prefix + "Columns_Debugger.Timeline", Prefix + "Columns_Forge.Assets", Prefix + "Columns_Forge.Tags", Prefix + "Columns_Problems",
         };
         private static readonly string[] BoolKeys =
         {
@@ -247,6 +250,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 foreach (var key in BoolKeys) EditorPrefs.SetBool(key, !EditorPrefs.GetBool(key, true));
                 EditorPrefs.SetInt(Prefix + "RecentlyCreatedRows", 3);
                 EditorPrefs.SetString(Prefix + "LastTypeFilter", nameof(Ability));
+                EditorPrefs.SetString(Prefix + "Columns_Forge.Assets", "Type=120");
                 ForgeLogSettingsBridge.SetLevel(ForgeLog.ELevel.Error);
 
                 var useDefaults = root.Q<Button>("UseDefaults");
@@ -256,8 +260,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     useDefaults.SendEvent(submit);
                 }
 
-                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Where(EditorPrefs.HasKey), Is.Empty,
-                    "Use Defaults leaves no preference set");
+                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Append(Prefix + "Columns_Forge.Assets").Where(EditorPrefs.HasKey),
+                    Is.Empty, "Use Defaults leaves no preference set, a table's column widths among them");
                 Assert.IsTrue(fileNames.value, "and the page shows the defaults");
                 Assert.AreEqual(ForgeLog.ELevel.Info, ForgeLog.MinimumLevel, "the log level among them");
             }
