@@ -294,6 +294,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The file name sat under Show in Project, so that button stood two lines tall in the header's row, and the
+        /// problem count, Help and the menu sat level with its middle (ED-65, the user's report). The actions share one row,
+        /// and the file name has a row of its own under it, on the right.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_65_The_file_name_has_a_row_of_its_own_under_the_actions() =>
+            Guarded(ED_65_The_file_name_has_a_row_of_its_own_under_the_actionsBody());
+
+        private IEnumerator ED_65_The_file_name_has_a_row_of_its_own_under_the_actionsBody()
+        {
+            var fire = Save(Ability("Fireball"), "Fire File");
+            var forge = Open();
+            yield return Frames();
+            ListOf(forge).SetSelection(Listed(forge).IndexOf(fire));
+            yield return Frames();
+
+            var header = forge.rootVisualElement.Q("Detail").Q(className: "pf-asset-header");
+            Assert.IsNotNull(header, "the detail shows the asset's header");
+            var row = header.Q(name: "HeaderActionRow");
+            Assert.IsNotNull(row, "the actions share a row");
+            foreach (var action in new[] { "ProblemCount", "OpenInForge", "HeaderHelp", "HeaderMenu" })
+                Assert.AreSame(row, header.Q(name: action)?.parent, $"{action} is in it");
+            var file = header.Q<Label>("HeaderFile");
+            Assert.AreEqual(fire.name, file?.text, "the file name shows");
+            var lines = file.parent;
+            Assert.AreNotSame(row, lines, "in a row of its own");
+            Assert.AreSame(row.parent, lines.parent, "beside the actions' row");
+            Assert.Greater(lines.parent.IndexOf(lines), lines.parent.IndexOf(row), "and under it");
+            Assert.IsTrue(lines.ClassListContains("pf-asset-header__lines"), "on the right");
+        }
+
+        /// <summary>
         /// The Forge's tag view couldn't sort its columns (ED-59, the user's report). Its Tag, For and Uses columns sort,
         /// in either direction. And the asset list's sort, which the window keeps through a domain reload, shows in its
         /// header again as the window is built.
