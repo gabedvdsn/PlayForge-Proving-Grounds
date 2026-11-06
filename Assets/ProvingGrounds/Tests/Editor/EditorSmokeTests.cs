@@ -677,11 +677,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return new Window { Name = "Problems", Type = typeof(ForgeProblemsWindow), Open = _ => ForgeProblemsWindow.ShowWindow() };
             // One Debugger has the GAS, Process and Tag views (Q4)
             yield return new Window { Name = "Debugger", Type = typeof(RuntimeDebugger), Open = _ => RuntimeDebugger.ShowWindow() };
-            yield return new Window
-            {
-                Name = "Asset Browser", Type = typeof(AssetBrowserWindow),
-                Open = _ => AssetBrowserWindow.Show(AssetBrowserConfig.Create("Smoke").ForTypes(typeof(Ability))),
-            };
+            // The Asset Browser is gone: an asset's template is picked from Unity's searchable dropdown (ED-61)
             // The one Import window serves sections, whole assets, worker groups and requirement groups (ED-32)
             yield return new Window
             {
@@ -706,17 +702,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "Quick Fill Wizard", Type = typeof(QuickFillWizard),
                 Open = made => QuickFillWizard.Show(Property(EffectWithScaler(made), ScalerPath), () => { }),
             };
-            yield return new Window
-            {
-                Name = "Create Linked Effect", Type = typeof(CreateLinkedEffectDialog),
-                Open = made =>
-                {
-                    var ability = New<Ability>(made);
-                    var dialog = ScriptableObject.CreateInstance<CreateLinkedEffectDialog>();
-                    dialog.Initialize(ability, ability, _ => { }, null);
-                    dialog.ShowUtility();
-                },
-            };
+            // Create Linked Effect is gone: New Linked Effect... opens the New Asset window, listed below (ED-61)
             // The Level Provider Picker is gone: Unity's object picker lists the level providers (ED-66)
             foreach (var type in (Type[])typeof(TheForge).GetField("Types", AnyStatic).GetValue(null))
             {
@@ -726,13 +712,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Open = _ => ForgeNewAssetWindow.Show(type, _ => { }),
                 };
             }
-            var typePicker = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.TypePickerWindow");
-            yield return new Window
-            {
-                Name = "Type Picker", Type = typePicker,
-                Open = _ => typePicker.GetMethod("Open", AnyStatic).Invoke(null,
-                    new object[] { new Rect(0, 0, 240, 20), typeof(AbstractAbilityTask), (Action<Type>)(_ => { }), null }),
-            };
+            // The Type Picker is gone: a kind field opens Unity's searchable dropdown (ED-56, ED-61)
             // New Tag, from a tag field's picker (ED-55)
             var newTag = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewTagWindow");
             yield return new Window

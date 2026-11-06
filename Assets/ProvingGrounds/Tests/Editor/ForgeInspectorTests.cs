@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +9,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
@@ -970,6 +972,65 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 Object.DestroyImmediate(host);
+            }
+        }
+
+        /// <summary>
+        /// A Mono Process's inspector is a Process section of Unity's fields, each choice saying what it does in its
+        /// tooltip, with Priority Method only while the process steps and Priority under it only while the method is
+        /// Manual (ED-61). It drew a tinted box, gray hints in 10 px under each field, set 50 ms after it drew, and a rule.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_61_The_process_inspector_is_a_section_of_Unitys_fields()
+        {
+            // A scene's object, as a process is: Unity counts no change to one it doesn't save, so its bindings see none
+            var owner = new GameObject("ED-61");
+            var process = owner.AddComponent<CascadeProcess>();
+            var editor = UnityEditor.Editor.CreateEditor(process);
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            var host = new GameObject("ED-61 Panel") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var document = host.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = editor.CreateInspectorGUI();
+                document.rootVisualElement.Add(root);
+                root.Bind(editor.serializedObject);
+                for (int i = 0; i < 4; i++) yield return null;
+
+                Assert.IsNotNull(root.Q(name: "Process_CONTAINER"), "the process's fields are a section");
+                Assert.IsNull(root.Q<Label>("LifecycleHint"), "with no hints under them");
+                Assert.That(LookSetInCode("Process", process), Is.Empty, "and no look set in code");
+                StringAssert.StartsWith("Self Terminating: ", root.Q<PropertyField>(nameof(AbstractMonoProcess.ProcessLifecycle)).tooltip,
+                    "a choice says what it does");
+
+                var method = root.Q<PropertyField>(nameof(AbstractMonoProcess.PriorityMethod));
+                var priority = root.Q<PropertyField>(nameof(AbstractMonoProcess.ProcessStepPriority));
+                Assert.IsTrue(method.ClassListContains("pf-hidden"), "a process that doesn't step has no priority method");
+                // Changed from outside the inspector, as an Undo or another inspector changes it
+                var other = new SerializedObject(process);
+                other.FindProperty(nameof(AbstractMonoProcess.ProcessTiming)).intValue = (int)EProcessStepTiming.Update;
+                other.ApplyModifiedProperties();
+                // The bindings look for a change made outside them on a timer of their own
+                var until = EditorApplication.timeSinceStartup + 1.0;
+                while (method.ClassListContains("pf-hidden") && EditorApplication.timeSinceStartup < until) yield return null;
+                Assert.IsFalse(method.ClassListContains("pf-hidden"), "one that steps has");
+                Assert.IsTrue(priority.ClassListContains("pf-hidden"), "and Priority only for Manual");
+                other.Update();
+                other.FindProperty(nameof(AbstractMonoProcess.PriorityMethod)).intValue = (int)EProcessStepPriorityMethod.Manual;
+                other.ApplyModifiedProperties();
+                until = EditorApplication.timeSinceStartup + 1.0;
+                while (priority.ClassListContains("pf-hidden") && EditorApplication.timeSinceStartup < until) yield return null;
+                Assert.IsFalse(priority.ClassListContains("pf-hidden"), "which shows it");
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(settings);
+                Object.DestroyImmediate(owner);
             }
         }
 

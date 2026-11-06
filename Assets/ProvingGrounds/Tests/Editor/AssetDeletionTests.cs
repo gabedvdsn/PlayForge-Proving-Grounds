@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
-    /// <summary>Deleting a PlayForge asset from The Forge or the asset browser.</summary>
+    /// <summary>Deleting a PlayForge asset from The Forge. The asset browser deleted too, until ED-61 took it.</summary>
     public class AssetDeletionTests
     {
         private const string Folder = "Assets/ED-8";
@@ -44,7 +44,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }));
             try
             {
-                AssetAction.Delete().Action(cost);
+                deletion.GetMethod("MoveToTrash", BindingFlags.Static | BindingFlags.Public).Invoke(null, new object[] { cost });
             }
             finally
             {
