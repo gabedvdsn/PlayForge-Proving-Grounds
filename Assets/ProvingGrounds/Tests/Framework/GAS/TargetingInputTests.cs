@@ -112,6 +112,73 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         });
 
+        // Activates an ability whose targeting is a click task, handing it a target and a point in its data, as an AI does
+        private (Ability ability, AbilitySystemComponent abilities, TargetRecorder recorder) Handed(Hub hub, AbstractTargetingAbilityTask targeting,
+            ITarget target, Vector3 point)
+        {
+            var recorder = new TargetRecorder();
+            var ability = Make.Ability("Aimed", Make.Stage(recorder));
+            ability.Behaviour.Targeting = targeting;
+            var abilities = World.Entity(hub, name: "Caster").GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), "granted");
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(Tags.TARGET_REAL, target);
+            data.SetPrimary(Tags.POSITION, point);
+            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index, data)), "activated with its target in its data");
+            return (ability, abilities, recorder);
+        }
+
+        /// <summary>
+        /// Click targeting waited for a click whatever the activation's data held, so an AI, which hands its ability its
+        /// target, couldn't cast one (GAS-66). Each click task takes the target or the point the data holds, with no click.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_66_Click_targeting_takes_the_target_its_data_holds([Values] Hub hub,
+            [Values("Position", "Direction", "Entity", "Entity or position", "Entity in range")] string kind) => Live(async () =>
+        {
+            using var games = new GamesInput();
+            var target = World.MonoEntity(name: "Target");
+            target.transform.position = new Vector3(4f, 0f, 3f);
+            Physics.SyncTransforms();
+
+            var (_, _, recorder) = Handed(hub, Targeting(kind), target, new Vector3(4f, 0f, 3f));
+            await Frames.Until(() => recorder.Packet != null, 5, "it targets with no click");
+            Assert.That(recorder.Packet.position.x, Is.EqualTo(4f).Within(1e-3f), "at the target or point it was handed");
+            Assert.That(recorder.Packet.position.z, Is.EqualTo(3f).Within(1e-3f), "at the target or point it was handed");
+        });
+
+        /// <summary>A click task told not to take its data's target waits for its click, as they all did (GAS-66).</summary>
+        [UnityTest]
+        public IEnumerator GAS_66_A_click_task_can_still_wait_for_its_click() => Live(async () =>
+        {
+            using var games = new GamesInput();
+            var target = World.MonoEntity(name: "Target");
+            target.transform.position = new Vector3(4f, 0f, 3f);
+            Physics.SyncTransforms();
+
+            var (_, _, recorder) = Handed(Hub.Runtime, new SelectGasTargetTask { TakeTargetFromData = false }, target, Vector3.zero);
+            await Frames.Step(5);
+            Assert.IsNull(recorder.Packet, "it waits for the press");
+        });
+
+        /// <summary>
+        /// A target its data holds that's out of range fails the targeting at once: an AI can't click, so waiting for one
+        /// would hold the ability for good (GAS-66).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_66_A_handed_target_out_of_range_fails_at_once() => Live(async () =>
+        {
+            using var games = new GamesInput();
+            var target = World.MonoEntity(name: "Target");
+            target.transform.position = new Vector3(4f, 0f, 3f);
+            Physics.SyncTransforms();
+
+            var (ability, abilities, recorder) = Handed(Hub.Runtime, new SelectGasTargetInRangeTask { MaxTargetRange = 2f }, target, Vector3.zero);
+            await Frames.Until(() => abilities.TryGetAbilityContainer(ability, out var container) && !container.IsActive, 5,
+                "the ability ends, its target out of range");
+            Assert.IsNull(recorder.Packet, "having targeted nothing");
+        });
+
         /// <summary>
         /// The Input Manager's mouse, the default here, aims through the camera it's given, or else the main camera, and
         /// with neither it aims nowhere, where targeting threw at the click (FEAT-11).
