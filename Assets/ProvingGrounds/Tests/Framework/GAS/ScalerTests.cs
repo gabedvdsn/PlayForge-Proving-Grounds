@@ -132,5 +132,51 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Object.DestroyImmediate(twice);
             }
         });
+
+        /// <summary>
+        /// A Conditional scaler's Target Attribute Threshold read the attribute on the effect's source, as Source Attribute
+        /// Threshold does, so "more against a target below 50 Health" read the caster's Health. It reads the target's.
+        /// Found building the demo (GAS-69).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_69_A_target_threshold_reads_the_target([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var caster = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Caster");
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 30f, 100f)), "Target");
+            await Frames.Step();
+
+            var blow = Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1f });
+            var spec = target.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(caster), blow);
+            Assert.AreEqual(2f, Below50(EScalerCondition.TargetAttributeThreshold).Evaluate(spec), "the target, at 30 Health, is below 50");
+            Assert.AreEqual(1f, Below50(EScalerCondition.SourceAttributeThreshold).Evaluate(spec), "and the caster, at 100, isn't");
+
+            ConditionalScaler Below50(EScalerCondition condition) => new()
+            {
+                Condition = condition, CheckAttribute = health, Comparison = EComparisonOperator.LessThan, ThresholdValue = 50f,
+                TrueScaler = new ConstantScaler { Value = 2f }, FalseScaler = new ConstantScaler { Value = 1f },
+            };
+        });
+
+        /// <summary>
+        /// A Clamped scaler clamped its own table alone, so a value another scaler worked out, as damage by a target's
+        /// missing health, couldn't be capped. Given an inner scaler, it clamps that; with none, its table, as before.
+        /// Found building the demo, whose Eviscerate caps its damage (FEAT-27).
+        /// </summary>
+        [Test]
+        public void FEAT_27_A_clamped_scaler_clamps_an_inner_scaler()
+        {
+            var capped = new ClampedScaler
+            {
+                MinValue = 0f, MaxValue = 400f,
+                Inner = new SimpleScaler { LevelValues = new[] { 100f, 300f, 500f }, StretchOverLevels = false },
+            };
+            Assert.AreEqual(100f, At(Reading(capped), 1), "an inner value inside the bounds goes through");
+            Assert.AreEqual(400f, At(Reading(capped), 3), "and one past the most is capped");
+
+            var own = new ClampedScaler { MinValue = 0f, MaxValue = 25f, LevelValues = new[] { 10f, 30f }, StretchOverLevels = false };
+            Assert.AreEqual(10f, At(Reading(own), 1), "with none, it reads its own table");
+            Assert.AreEqual(25f, At(Reading(own), 2), "and clamps it, as before");
+        }
     }
 }
