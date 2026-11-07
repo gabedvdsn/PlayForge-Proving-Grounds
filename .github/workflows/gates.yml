@@ -82,6 +82,10 @@ jobs:
           repository: gabedvdsn/PlayForge
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
+      # The Demo sample, copied in as Package Manager imports it: its PlayMode tests play it, and the smoke suite sweeps
+      # its assets, which need its scripts
+      - name: Import the Demo sample
+        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
@@ -165,6 +169,10 @@ jobs:
           repository: gabedvdsn/PlayForge
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
+      # The Demo sample, copied in as Package Manager imports it: its PlayMode tests play it, and the smoke suite sweeps
+      # its assets, which need its scripts
+      - name: Import the Demo sample
+        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library

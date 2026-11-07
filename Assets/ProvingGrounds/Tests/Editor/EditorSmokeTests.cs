@@ -22,7 +22,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// <summary>
     /// Phase 4's gate, from the UI interview's Q36: in each editor theme, every PlayForge inspector and window opens
     /// without an exception, and an edit made in an inspector undoes. An inspector opens on new assets, on a multiple
-    /// selection and on every asset the Demos sample ships. It is built in a runtime panel that carries the theme's style
+    /// selection and on every asset the Demo sample ships. It is built in a runtime panel that carries the theme's style
     /// sheet, since that is where its bindings run in batch mode. A window opens the way the editor opens it.
     /// </summary>
     [TestFixture(EditorTheme.Dark)]
@@ -88,51 +88,63 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // The Demos' assets
+        // The Demo's assets
         // ═══════════════════════════════════════════════════════════════════════════
 
-        // A package's Samples~ folder isn't imported, so the suite copies the Demos' data in while it runs
-        private const string DemoCopies = "Assets/PlayForge Smoke Demos";
+        // A package's Samples~ folder isn't imported. Where the project imported the Demo, the suite opens its assets
+        // there; otherwise it copies in, while it runs, each asset that needs none of the sample's own scripts, as those
+        // compile only in a project that imported it. The Demos sample it swept before is gone (Decision 37)
+        private const string DemoCopies = "Assets/PlayForge Smoke Demo";
         private static readonly Dictionary<string, string> DemoPaths = new();
 
-        private static string DemosFolder
+        private static string DemoFolder
         {
             get
             {
                 var package = PackageInfo.FindForAssetPath("Packages/com.faremerald.playforge/package.json");
-                return package == null ? null : Path.Combine(package.resolvedPath, "Samples~", "Demos");
+                return package == null ? null : Path.Combine(package.resolvedPath, "Samples~", "Demo");
             }
         }
 
-        // Every asset in the Demos' Data folders, by its path in the sample
+        // Every asset the Demo ships, by its path in the sample
         public static IEnumerable<string> DemoAssets()
         {
-            var folder = DemosFolder;
+            var folder = DemoFolder;
             if (folder == null || !Directory.Exists(folder)) yield break;
             foreach (var file in Directory.GetFiles(folder, "*.asset", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal))
-            {
-                var inSample = file.Substring(folder.Length + 1).Replace('\\', '/');
-                if (("/" + inSample).Contains("/Data/")) yield return inSample;
-            }
+                yield return file.Substring(folder.Length + 1).Replace('\\', '/');
+        }
+
+        private static string GuidOf(string metaPath) => File.ReadLines(metaPath).Select(line => line.Trim())
+            .FirstOrDefault(line => line.StartsWith("guid: "))?.Substring(6);
+
+        // Whether an asset names one of the sample's own scripts, as its own script or a field's type
+        private static bool NeedsSampleScripts(string source, HashSet<string> scripts)
+        {
+            var text = File.ReadAllText(source);
+            return text.Contains("ns: FarEmerald.PlayForge.Samples.Demo") || scripts.Any(guid => text.Contains($"guid: {guid}"));
         }
 
         private static void CopyDemos()
         {
             DeleteDemoCopies();
             DemoPaths.Clear();
-            var folder = DemosFolder;
+            var folder = DemoFolder;
+            if (folder == null || !Directory.Exists(folder)) return;
+            var scripts = new HashSet<string>(Directory.GetFiles(folder, "*.cs.meta", SearchOption.AllDirectories).Select(GuidOf)
+                .Where(guid => !string.IsNullOrEmpty(guid)));
             foreach (var inSample in DemoAssets())
             {
                 var source = Path.Combine(folder, inSample);
                 // A project that imported the sample has the asset already, and a copy would clash with its GUID
-                var guid = File.ReadLines(source + ".meta").Select(line => line.Trim())
-                    .FirstOrDefault(line => line.StartsWith("guid: "))?.Substring(6);
+                var guid = GuidOf(source + ".meta");
                 var imported = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
                 if (!string.IsNullOrEmpty(imported) && AssetDatabase.LoadMainAssetAtPath(imported) != null)
                 {
                     DemoPaths[inSample] = imported;
                     continue;
                 }
+                if (NeedsSampleScripts(source, scripts)) continue;
                 var copy = $"{DemoCopies}/{inSample}";
                 Directory.CreateDirectory(Path.GetDirectoryName(copy));
                 File.Copy(source, copy, true);
@@ -190,7 +202,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
         }
 
-        // A new asset of each type, a MonoProcess, and the fullest Demo asset in each of the Demos' folders
+        // A new asset of each type, a MonoProcess, and the fullest Demo asset in each of the Demo's folders
         public static IEnumerable<Subject> EditSubjects()
         {
             foreach (var type in AssetTypes)
@@ -198,7 +210,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return new Subject { Name = "a MonoProcess", Make = made => new[] { NewProcess(made) } };
             yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
 
-            var folder = DemosFolder;
+            var folder = DemoFolder;
             foreach (var group in DemoAssets().GroupBy(inSample => Path.GetDirectoryName(inSample)))
             {
                 var fullest = group.OrderByDescending(inSample => new FileInfo(Path.Combine(folder, inSample)).Length).First();
@@ -207,7 +219,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Name = $"Demo {fullest}",
                     Make = _ =>
                     {
-                        Assume.That(DemoPaths.ContainsKey(fullest), "the Demos sample is in the package");
+                        Assume.That(DemoPaths.ContainsKey(fullest), "the Demo is imported, or the asset needs none of its scripts");
                         return new[] { AssetDatabase.LoadMainAssetAtPath(DemoPaths[fullest]) };
                     },
                 };
@@ -336,7 +348,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator Every_Demo_asset_opens([ValueSource(nameof(DemoAssets))] string demo)
         {
-            Assume.That(DemoPaths.ContainsKey(demo), "the Demos sample is in the package");
+            Assume.That(DemoPaths.ContainsKey(demo), "the Demo is imported, or the asset needs none of its scripts");
             var asset = AssetDatabase.LoadMainAssetAtPath(DemoPaths[demo]);
             Assert.IsNotNull(asset, $"{demo} loads");
             var host = new Host(theme);
@@ -347,6 +359,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var root = host.Inspect(asset);
                 yield return Frames();
                 yield return ExpandAll(root);
+                // A list the last pass opened lays its rows out over the next frames
+                yield return Frames();
 
                 // The suite's own check: every element of every list is drawn, so its drawer opens too. Squeezed into
                 // the panel, a list drew only some of its rows
