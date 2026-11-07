@@ -309,5 +309,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             return gas.TryGetEffectContainers(effect, out var containers) ? containers.Length : 0;
         }
+
+        /// <summary>
+        /// An effect's Stack Behaviours never saved: the stacking configs derive from a generic base, and without
+        /// [Serializable] Unity drops a [SerializeReference] list of them whole, so a bound set in the inspector, or by
+        /// code on an asset, was gone once the asset saved, and the inspector's field read nothing. Found building the
+        /// demo, whose Burning bursts at its sixth stack. A copy goes through the serializer, as a save does (GAS-70).
+        /// </summary>
+        [Test]
+        public void GAS_70_An_effects_stack_behaviours_survive_saving()
+        {
+            var effect = Make.Effect("Burn", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 4f });
+            effect.DurationSpecification.StackingConfigs = new List<AbstractStackingConfig>
+            {
+                new StackBoundsConfig { Min = 0, Max = 5, ClearStacksOnOverflow = true },
+                new StackAmountOperation { Operation = EMagnitudeOperation.UseMagnitude },
+                new InitializationOperation { InitializationStacks = 2 },
+            };
+            var copy = UnityEngine.Object.Instantiate(effect);
+            try
+            {
+                var configs = copy.DurationSpecification.StackingConfigs;
+                Assert.That(configs, Has.Count.EqualTo(3), "each stack behaviour survives the serializer");
+                Assert.That(configs[0], Is.TypeOf<StackBoundsConfig>(), "the bound");
+                Assert.That(((StackBoundsConfig)configs[0]).Max, Is.EqualTo(5), "with its max");
+                Assert.That(((StackBoundsConfig)configs[0]).ClearStacksOnOverflow, "and its overflow");
+                Assert.That(configs[2], Is.TypeOf<InitializationOperation>(), "and the others, by their kinds");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(copy);
+            }
+        }
     }
 }
