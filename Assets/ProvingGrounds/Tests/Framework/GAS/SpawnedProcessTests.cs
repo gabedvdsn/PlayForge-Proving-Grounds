@@ -155,6 +155,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value.CurrentValue, Is.EqualTo(70f).Within(1e-3f), "for the magnitude its caller set, not the default");
         });
 
+        /// <summary>
+        /// A process's own attributes reach the effects it applies, each under its role as a set-by-caller magnitude, so an
+        /// effect can scale by what the process carries, as a fire's burn by its heat. Its own value wins over the one its
+        /// caller set, as the nearer. Only its caller's reached them, so what it carried stopped at the process (FEAT-28).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_28_A_processs_attributes_reach_the_effects_it_applies() => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var caster = World.MonoEntity(name: "Caster");
+            var target = World.MonoEntity(Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            target.transform.position = new Vector3(0f, 0f, 3f);
+
+            var heat = Make.NewTag("Test.Heat");
+            var burn = Make.Effect("Burn", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health,
+                MagnitudeScaler = new SetByCallerScaler { Key = heat, Default = -1f }, MagnitudeOp = EMagnitudeOperation.UseScaler,
+            });
+            var arrow = World.Template<ProjectileMonoProcess>("Arrow");
+            arrow.ProcessTiming = EProcessStepTiming.None;
+            arrow.Effects = new List<GameplayEffect> { burn };
+            arrow.Attributes = new List<ProcessAttribute>
+            {
+                Speed(200f),
+                new() { Role = heat, StartsFrom = EProcessAttributeStart.Own, Value = new ScalerMagnitudeOperation { Magnitude = -25f, RealMagnitude = EMagnitudeOperation.UseMagnitude } },
+            };
+
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            data.SetPrimary(Tags.DERIVATION, IEffectOrigin.GenerateSourceDerivation(caster));
+            data.SetByCaller(heat, -5f);
+            World.Spawn(arrow, data);
+
+            await Frames.Until(() => target.TryGetAttributeValue(health, out var now) && now.CurrentValue < 100f, 20, "the arrow lands");
+            target.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(75f).Within(1e-3f), "for the heat it carries, over its caller's");
+        });
+
         // ═══════════════════════════════════════════════════════════════════════════
         // A projectile's own attributes (FEAT-24)
         // ═══════════════════════════════════════════════════════════════════════════
