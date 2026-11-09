@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 var set = Make.Set(Make.Element(health, 400f, 400f));
                 var blow = Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -12f });
                 var critical = Make.Effect("Critical", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -12f });
-                critical.ImpactSpecification.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+                critical.ImpactSpecification.ChanceToApply = new ScalableFloat { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
                 var bleed = Make.Effect("Bleed", new EffectConfig
                 {
                     Policy = EEffectDurationPolicy.Durational, Duration = 2f, Target = health, Magnitude = -2f, PeriodicTicks = true, Ticks = 8,
@@ -145,8 +145,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 for (int i = late; i < Ticks; i++) Tick(i);
                 Assert.AreEqual(corrected, Text(Save()), "and it ends there each time");
 
-                if (pair.Left.Relay is { ProcessActive: true }) pair.Left.Relay.TerminateImmediate();
-                if (pair.Right.Relay is { ProcessActive: true }) pair.Right.Relay.TerminateImmediate();
+                if (pair.Left.ProcessRelay is { ProcessActive: true }) pair.Left.ProcessRelay.TerminateImmediate();
+                if (pair.Right.ProcessRelay is { ProcessActive: true }) pair.Right.ProcessRelay.TerminateImmediate();
                 world.Step(Step);
             }
             finally

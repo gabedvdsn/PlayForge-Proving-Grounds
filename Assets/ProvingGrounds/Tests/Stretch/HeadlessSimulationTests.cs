@@ -56,7 +56,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             var hit = Make.Effect($"{name} Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -blow });
             var crit = Make.Effect($"{name} Critical", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -blow });
-            crit.ImpactSpecification.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = critical, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+            crit.ImpactSpecification.ChanceToApply = new ScalableFloat { Magnitude = critical, RealMagnitude = EMagnitudeOperation.UseMagnitude };
             var stage = Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { hit, crit } });
             stage.ApplyUsageEffects = true;
             var attack = Make.Ability($"{name} Attack", stage);
@@ -116,8 +116,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private static void Dismiss(Duel duel)
         {
-            if (duel.Left.Relay is { ProcessActive: true }) duel.Left.Relay.TerminateImmediate();
-            if (duel.Right.Relay is { ProcessActive: true }) duel.Right.Relay.TerminateImmediate();
+            if (duel.Left.ProcessRelay is { ProcessActive: true }) duel.Left.ProcessRelay.TerminateImmediate();
+            if (duel.Right.ProcessRelay is { ProcessActive: true }) duel.Right.ProcessRelay.TerminateImmediate();
             duel.World.Step(StepSeconds);
         }
 
