@@ -344,7 +344,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Magnitude = 0f, MagnitudeScaler = LevelScaler(4f, 6f, 8f, 10f), MagnitudeOp = EMagnitudeOperation.UseScaler,
                 Duration = 0f, PeriodicTicks = true, Ticks = 5,
             });
-            hot.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation
+            hot.DurationSpecification.DurationOperation = new ScalableFloat
             {
                 Magnitude = 0f,
                 Scaler = LevelScaler(3f, 4f, 5f, 6f),

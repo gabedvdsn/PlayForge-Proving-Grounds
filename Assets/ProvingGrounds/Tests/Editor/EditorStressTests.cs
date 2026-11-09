@@ -388,9 +388,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ContextTags = new List<Tag>(),
             Affiliation = new List<Tag>(),
             AttributeSet = set,
-            MaxAbilitiesOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-            MaxItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-            MaxEquippedItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
+            MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 },
+            MaxItemsOperation = new ScalableInt { Magnitude = 8 },
+            MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 },
         };
 
         // An effect that lasts and changes nothing
@@ -415,17 +415,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 ImpactOperation = ECalculationOperation.Add,
                 AffiliationPolicy = EAffiliationPolicy.AlwaysAllow,
                 ImpactTypes = new List<Tag>(),
-                MagnitudeOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                MagnitudeOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 Packets = Array.Empty<ContainedEffectPacket>(),
             };
             effect.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Infinite,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = 0f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
-                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 0 },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
-                AdditionalExecuteTicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 0 },
-                StackAmountOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 1 },
+                DurationOperation = new ScalableFloat { Magnitude = 0f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                TicksOperation = new ScalableInt { Magnitude = 0 },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                AdditionalExecuteTicksOperation = new ScalableInt { Magnitude = 0 },
+                StackAmountOperation = new ScalableInt { Magnitude = 1 },
                 StackingConfigs = new List<AbstractStackingConfig>(),
                 RealDeltaTime = EMagnitudeOperation.AddScaler,
             };

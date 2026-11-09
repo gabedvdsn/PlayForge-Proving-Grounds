@@ -114,9 +114,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             entity.GrantedTags = new List<Tag>();
             entity.ContextTags = new List<Tag>();
             entity.MaxLevel = 1;
-            entity.MaxAbilitiesOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
-            entity.MaxItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
-            entity.MaxEquippedItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
+            entity.MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 };
+            entity.MaxItemsOperation = new ScalableInt { Magnitude = 8 };
+            entity.MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 };
             entity.StartingAbilities = new List<Ability>();
             entity.StartingItems = new List<StartingItemContainer>();
             entity.AttributeSet = set;
@@ -134,9 +134,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds
                 ContextTags = new List<Tag>(),
                 Affiliation = new List<Tag>(),
                 AttributeSet = set,
-                MaxAbilitiesOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-                MaxItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-                MaxEquippedItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
+                MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 },
+                MaxItemsOperation = new ScalableInt { Magnitude = 8 },
+                MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 },
             };
         }
 
@@ -164,7 +164,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
                 AffiliationPolicy = EAffiliationPolicy.AlwaysAllow,
                 ImpactTypes = new List<Tag>(),
                 ReverseImpactOnRemoval = cfg.ReverseOnRemoval,
-                MagnitudeOperation = new ScalerMagnitudeOperation
+                MagnitudeOperation = new ScalableFloat
                 {
                     Magnitude = cfg.Magnitude,
                     Scaler = cfg.MagnitudeScaler,
@@ -176,13 +176,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             fx.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = cfg.Policy,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = cfg.Duration, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                DurationOperation = new ScalableFloat { Magnitude = cfg.Duration, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 EnablePeriodicTicks = cfg.PeriodicTicks,
                 TickOnApplication = cfg.TickOnApplication,
-                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = cfg.Ticks },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
-                AdditionalExecuteTicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 0 },
-                StackAmountOperation = new ScalerIntegerMagnitudeOperation { Magnitude = cfg.StackAmount },
+                TicksOperation = new ScalableInt { Magnitude = cfg.Ticks },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                AdditionalExecuteTicksOperation = new ScalableInt { Magnitude = 0 },
+                StackAmountOperation = new ScalableInt { Magnitude = cfg.StackAmount },
                 StackingConfigs = new List<AbstractStackingConfig>(),
                 ReApplicationPolicy = cfg.Reapply,
                 ReApplicationInteraction = cfg.Interaction,

@@ -96,7 +96,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 new()
                 {
                     AttributeTarget = lab.Armor, Delivery = EImpactDelivery.Continuous,
-                    Magnitude = new ScalerMagnitudeOperation { Magnitude = -10f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                    Magnitude = new ScalableFloat { Magnitude = -10f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 },
             };
             float before = lab.Value(lab.Health);

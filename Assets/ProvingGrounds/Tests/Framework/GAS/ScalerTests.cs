@@ -13,10 +13,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class ScalerTests : ProvingGroundsTest
     {
         // A magnitude read at a level of a 1 to 5 range, through the scaler pipeline the runtime uses
-        private static float At(ScalerMagnitudeOperation magnitude, int level) =>
+        private static float At(ScalableFloat magnitude, int level) =>
             AbilityInspector.EvaluateAtLevel(magnitude, level, 1, 5, out _);
 
-        private static ScalerMagnitudeOperation Reading(AbstractScaler scaler, float magnitude = 0f,
+        private static ScalableFloat Reading(AbstractScaler scaler, float magnitude = 0f,
             EMagnitudeOperation real = EMagnitudeOperation.UseScaler) =>
             new() { Magnitude = magnitude, RealMagnitude = real, Scaler = scaler };
 

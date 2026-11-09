@@ -66,7 +66,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var strike = Make.Ability("Strike", Make.Stage(new ApplyEffectsAbilityTask { Effects = new System.Collections.Generic.List<GameplayEffect> { hit } }));
             strike.Behaviour.Stages[0].ApplyUsageEffects = true;
             strike.Cooldown = Make.Effect("Strike Cooldown", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 1f, Target = null });
-            strike.Cooldown.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation
+            strike.Cooldown.DurationSpecification.DurationOperation = new ScalableFloat
             {
                 Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = SetByCaller(rest, 1f),
             };

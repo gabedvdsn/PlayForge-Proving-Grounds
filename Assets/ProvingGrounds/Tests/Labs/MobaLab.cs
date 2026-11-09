@@ -165,7 +165,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             if (mana > 0f)
                 ability.Cost = make.Effect($"{name} Cost", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Mana, Magnitude = -mana });
             ability.Cooldown = make.Effect($"{name} Cooldown", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = cooldown, Target = null });
-            ability.Cooldown.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation
+            ability.Cooldown.DurationSpecification.DurationOperation = new ScalableFloat
             {
                 Magnitude = cooldown,
                 RealMagnitude = EMagnitudeOperation.MultiplyWithScaler,

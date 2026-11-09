@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             effect.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Durational,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = duration, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                DurationOperation = new ScalableFloat { Magnitude = duration, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 TickOnApplication = tickOnApplication,
             };
             return effect;

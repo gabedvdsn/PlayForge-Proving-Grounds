@@ -29,7 +29,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.DurationSpecification ??= new GameplayEffectDuration();
-            effect.DurationSpecification.DurationOperation ??= new ScalerMagnitudeOperation();
+            effect.DurationSpecification.DurationOperation ??= new ScalableFloat();
             var scaler = new SimpleScaler();
             scaler.Behaviours.Add(null);
             effect.DurationSpecification.DurationOperation.Scaler = scaler;

@@ -91,7 +91,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Delivery = delivery,
             Operation = ECalculationOperation.Add,
             TargetSlot = EAttributeTarget.Current,
-            Magnitude = new ScalerMagnitudeOperation { Magnitude = magnitude, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            Magnitude = new ScalableFloat { Magnitude = magnitude, RealMagnitude = EMagnitudeOperation.UseMagnitude },
         };
 
         private static float Current(IGameplayAbilitySystem gas, ForgeAttribute attribute)

@@ -1497,16 +1497,16 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             effect.Definition.Name = "Burning";
             effect.ImpactSpecification = new GameplayEffectImpact
             {
-                MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                MagnitudeOperation = new ScalableFloat { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             };
             effect.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = policy,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                DurationOperation = new ScalableFloat { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 EnablePeriodicTicks = periodic,
                 TickOnApplication = tickOnApplication,
-                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = ticks },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                TicksOperation = new ScalableInt { Magnitude = ticks },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             };
             return effect;
         }
@@ -1572,7 +1572,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var smite = ScriptableObject.CreateInstance<Ability>();
             smite.Definition = new AbilityDefinition { Name = "Smite", Textures = new List<TextureItem>() };
             chance.SetValue(strike.ImpactSpecification,
-                new ScalerMagnitudeOperation { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude });
+                new ScalableFloat { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude });
             granted.SetValue(strike, new List<Ability> { smite });
             var host = new Host();
             try
@@ -1619,7 +1619,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             impact.AffiliationComparison = EAnyAllPolicy.All;
             impact.ImpactOperation = ECalculationOperation.Multiply;
             impact.Affiliations = new List<Tag> { Tag.Generate("ED42.Team") };
-            impact.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+            impact.ChanceToApply = new ScalableFloat { Magnitude = 0.3f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
             var host = new Host();
             try
             {
@@ -1820,7 +1820,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 AttributeTarget = mana,
                 Delivery = EImpactDelivery.Continuous,
-                Magnitude = new ScalerMagnitudeOperation { Magnitude = -10f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                Magnitude = new ScalableFloat { Magnitude = -10f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             });
             var host = new Host();
             try
@@ -1910,7 +1910,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             burning.ImpactSpecification.AdditionalImpacts.Add(new AttributeImpactEntry
             {
                 Delivery = EImpactDelivery.Periodic,
-                Magnitude = new ScalerMagnitudeOperation { Magnitude = -5f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                Magnitude = new ScalableFloat { Magnitude = -5f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             });
             var host = new Host();
             try

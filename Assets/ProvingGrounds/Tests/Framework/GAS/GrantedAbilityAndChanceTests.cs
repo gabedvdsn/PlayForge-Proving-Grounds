@@ -26,7 +26,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var field = typeof(GameplayEffectImpact).GetField("ChanceToApply");
             Assert.IsNotNull(field, "an effect's impact has a Chance to Apply");
             field.SetValue(effect.ImpactSpecification,
-                new ScalerMagnitudeOperation { Magnitude = chance, RealMagnitude = EMagnitudeOperation.UseMagnitude });
+                new ScalableFloat { Magnitude = chance, RealMagnitude = EMagnitudeOperation.UseMagnitude });
         }
 
         // An effect that lasts until it's removed, and changes nothing

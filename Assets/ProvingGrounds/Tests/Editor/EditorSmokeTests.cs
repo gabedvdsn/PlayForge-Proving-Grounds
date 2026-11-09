@@ -674,7 +674,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var effect = New<GameplayEffect>(made);
             effect.DurationSpecification ??= new GameplayEffectDuration();
-            effect.DurationSpecification.DurationOperation ??= new ScalerMagnitudeOperation();
+            effect.DurationSpecification.DurationOperation ??= new ScalableFloat();
             effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler();
             return effect;
         }

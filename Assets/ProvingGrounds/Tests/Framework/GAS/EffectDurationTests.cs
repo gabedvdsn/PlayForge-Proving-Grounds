@@ -36,7 +36,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 Policy = EEffectDurationPolicy.Durational, Target = health, Magnitude = -1f, Duration = 0.4f, PeriodicTicks = true
             });
-            drain.DurationSpecification.TicksOperation = new ScalerIntegerMagnitudeOperation
+            drain.DurationSpecification.TicksOperation = new ScalableInt
             {
                 RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = new ReadyScaler(4f), Rounding = ERoundingOperation.Floor
             };
@@ -67,9 +67,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value.CurrentValue, Is.EqualTo(95f).Within(1f), "a tick every tenth of a second");
         });
 
-        private static ScalerMagnitudeOperation Scaled(float value)
+        private static ScalableFloat Scaled(float value)
         {
-            return new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = new ReadyScaler(value) };
+            return new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = new ReadyScaler(value) };
         }
 
         /// <summary>A scaler that reads nothing until it's initialized, as one backed by an attribute does.</summary>

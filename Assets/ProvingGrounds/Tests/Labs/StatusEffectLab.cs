@@ -94,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Potion = make.Effect("Potion", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = 40f });
 
             Laceration = Status(make, "Laceration", Tag.Generate(Debuff.Name + ".Laceration"), Health, -1f, seconds: 3, EEffectStackPolicy.StacksShareOneDuration);
-            Laceration.ImpactSpecification.ChanceToApply = new ScalerMagnitudeOperation { Magnitude = 0.25f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+            Laceration.ImpactSpecification.ChanceToApply = new ScalableFloat { Magnitude = 0.25f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
             JaggedStrike = make.Effect("Jagged Strike", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = -10f });
             JaggedStrike.ImpactSpecification.Packets = new[] { new ContainedEffectPacket { Policy = EApplyTickRemove.OnApply, ContainedEffect = Laceration } };
 

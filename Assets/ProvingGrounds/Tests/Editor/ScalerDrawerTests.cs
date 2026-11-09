@@ -79,7 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.DurationSpecification ??= new GameplayEffectDuration();
-            effect.DurationSpecification.DurationOperation ??= new ScalerMagnitudeOperation();
+            effect.DurationSpecification.DurationOperation ??= new ScalableFloat();
             effect.DurationSpecification.DurationPolicy = EEffectDurationPolicy.Durational;
             effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
             {
@@ -167,7 +167,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public IEnumerator ED_33_A_new_scaler_maps_levels_exactly()
         {
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
-            effect.DurationSpecification = new GameplayEffectDuration { DurationOperation = new ScalerMagnitudeOperation() };
+            effect.DurationSpecification = new GameplayEffectDuration { DurationOperation = new ScalableFloat() };
             var host = new Host();
             try
             {
@@ -236,12 +236,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             effect.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Durational,
-                DurationOperation = new ScalerMagnitudeOperation
+                DurationOperation = new ScalableFloat
                 {
                     RealMagnitude = EMagnitudeOperation.UseScaler,
                     Scaler = new SimpleScaler { LevelValues = new[] { 6f, 6.5f, 7f, 7.5f, 8f }, StretchOverLevels = false },
                 },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             };
             return effect;
         }
@@ -362,7 +362,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var chilled = Burning();
             chilled.name = "Chilled";
             chilled.Definition.Name = "Chilled";
-            chilled.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation
+            chilled.DurationSpecification.DurationOperation = new ScalableFloat
             {
                 Magnitude = 3f,
                 RealMagnitude = EMagnitudeOperation.UseMagnitude,
@@ -566,7 +566,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // An effect whose Duration reads a scaler, drawn on its own in a panel
         private static IEnumerator DrawDuration(Host host, GameplayEffect effect, AbstractScaler scaler, System.Action<PropertyField> check)
         {
-            effect.DurationSpecification.DurationOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler };
+            effect.DurationSpecification.DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler };
             var serialized = new SerializedObject(effect);
             var field = Draw(host, serialized, DurationPath);
             yield return Frames();

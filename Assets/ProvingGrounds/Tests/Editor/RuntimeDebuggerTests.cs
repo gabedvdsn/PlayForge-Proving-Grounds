@@ -164,9 +164,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ContextTags = new List<Tag>(),
             Affiliation = new List<Tag>(),
             AttributeSet = set,
-            MaxAbilitiesOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-            MaxItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
-            MaxEquippedItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 },
+            MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 },
+            MaxItemsOperation = new ScalableInt { Magnitude = 8 },
+            MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 },
         };
 
         // A runtime hub, registered as a game registers one
@@ -189,9 +189,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             identity.GrantedTags = new List<Tag>();
             identity.ContextTags = new List<Tag>();
             identity.MaxLevel = 1;
-            identity.MaxAbilitiesOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
-            identity.MaxItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
-            identity.MaxEquippedItemsOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 8 };
+            identity.MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 };
+            identity.MaxItemsOperation = new ScalableInt { Magnitude = 8 };
+            identity.MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 };
             identity.StartingAbilities = new List<Ability>();
             identity.StartingItems = new List<StartingItemContainer>();
             identity.AttributeSet = set;
@@ -230,17 +230,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 AffiliationPolicy = EAffiliationPolicy.AlwaysAllow,
                 ImpactTypes = new List<Tag>(),
-                MagnitudeOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                MagnitudeOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 Packets = Array.Empty<ContainedEffectPacket>(),
             };
             effect.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Durational,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = seconds, RealMagnitude = EMagnitudeOperation.UseMagnitude },
-                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 0 },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
-                AdditionalExecuteTicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 0 },
-                StackAmountOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 1 },
+                DurationOperation = new ScalableFloat { Magnitude = seconds, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                TicksOperation = new ScalableInt { Magnitude = 0 },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                AdditionalExecuteTicksOperation = new ScalableInt { Magnitude = 0 },
+                StackAmountOperation = new ScalableInt { Magnitude = 1 },
                 StackingConfigs = new List<AbstractStackingConfig>(),
                 RealDeltaTime = EMagnitudeOperation.AddScaler,
             };

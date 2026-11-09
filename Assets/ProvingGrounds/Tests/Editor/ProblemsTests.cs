@@ -88,7 +88,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             missing.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Durational,
-                DurationOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler },
+                DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler },
             };
             var set = ScriptableObject.CreateInstance<AttributeSet>();
             set.Name = "Stats";
@@ -311,7 +311,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 var effect = Effect("Unscaled");
                 made.Add(effect);
-                effect.ImpactSpecification.MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = 5f, RealMagnitude = EMagnitudeOperation.UseScaler };
+                effect.ImpactSpecification.MagnitudeOperation = new ScalableFloat { Magnitude = 5f, RealMagnitude = EMagnitudeOperation.UseScaler };
                 Fix(ProblemOf(effect, "has none, so it reads 0"), "Make It Constant");
                 Assert.AreEqual(EMagnitudeOperation.UseMagnitude, effect.ImpactSpecification.MagnitudeOperation.RealMagnitude, "the field reads its number");
 
@@ -361,8 +361,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 shared.DurationSpecification = new GameplayEffectDuration
                 {
                     DurationPolicy = EEffectDurationPolicy.Durational,
-                    DurationOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
-                    TickIntervalOperation = new ScalerMagnitudeOperation { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
+                    DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
+                    TickIntervalOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = scaler },
                 };
                 Fix(ProblemOf(shared, "hold one scaler"), "Give It Its Own");
                 Assert.AreNotSame(shared.DurationSpecification.DurationOperation.Scaler, shared.DurationSpecification.TickIntervalOperation.Scaler,

@@ -773,16 +773,16 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             burning.ImpactSpecification = new GameplayEffectImpact
             {
                 AttributeTarget = health,
-                MagnitudeOperation = new ScalerMagnitudeOperation { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                MagnitudeOperation = new ScalableFloat { Magnitude = -8f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             };
             burning.DurationSpecification = new GameplayEffectDuration
             {
                 DurationPolicy = EEffectDurationPolicy.Durational,
-                DurationOperation = new ScalerMagnitudeOperation { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                DurationOperation = new ScalableFloat { Magnitude = 6f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 EnablePeriodicTicks = true,
                 TickOnApplication = true,
-                TicksOperation = new ScalerIntegerMagnitudeOperation { Magnitude = 6 },
-                TickIntervalOperation = new ScalerMagnitudeOperation { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                TicksOperation = new ScalableInt { Magnitude = 6 },
+                TickIntervalOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
             };
             return burning;
         }

@@ -180,7 +180,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             arrow.Attributes = new List<ProcessAttribute>
             {
                 Speed(200f),
-                new() { Role = heat, StartsFrom = EProcessAttributeStart.Own, Value = new ScalerMagnitudeOperation { Magnitude = -25f, RealMagnitude = EMagnitudeOperation.UseMagnitude } },
+                new() { Role = heat, StartsFrom = EProcessAttributeStart.Own, Value = new ScalableFloat { Magnitude = -25f, RealMagnitude = EMagnitudeOperation.UseMagnitude } },
             };
 
             var data = ProcessDataPacket.Default();
@@ -217,7 +217,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Attribute = attribute,
                 Role = Tags.PROJECTILE_SPEED,
                 StartsFrom = from,
-                Value = new ScalerMagnitudeOperation
+                Value = new ScalableFloat
                 {
                     Magnitude = value,
                     RealMagnitude = scaler == null ? EMagnitudeOperation.UseMagnitude : EMagnitudeOperation.UseScaler,
