@@ -914,6 +914,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// What ED-60 left (ED-67): an effect's Tags summary named the tag it removes or blocks, an item's Identity
+        /// summary its visibility tag, and the import window's list each asset's tag, by the tag's name, which a unique
+        /// tag pads. Each shows the tag's display name.
+        /// </summary>
+        [Test]
+        public void ED_67_A_summary_names_a_tag_by_its_display_name()
+        {
+            const string path = "Test.ED67.Debuff";
+            var tag = Tag.GenerateAsUnique(path);
+            Assume.That(tag.Name, Is.Not.EqualTo(path), "a unique tag's name is padded");
+            var cleanse = ScriptableObject.CreateInstance<GameplayEffect>();
+            cleanse.Tags.RemovesEffectsTagged = new List<Tag> { tag };
+            var ward = ScriptableObject.CreateInstance<GameplayEffect>();
+            ward.Tags.BlocksEffectsTagged = new List<Tag> { tag };
+            var torch = ScriptableObject.CreateInstance<Item>();
+            torch.Definition.Visibility = tag;
+            var fireball = ScriptableObject.CreateInstance<Ability>();
+            fireball.Tags.AssetTag = tag;
+            try
+            {
+                Inspect(cleanse, root => Assert.That(Summary(root, "Tags"), Is.EqualTo($"Removes {path}"), "the tag an effect removes"));
+                Inspect(ward, root => Assert.That(Summary(root, "Tags"), Is.EqualTo($"Blocks {path}"), "the tag an effect blocks"));
+                Inspect(torch, root => Assert.That(Summary(root, "Identity"), Is.EqualTo(path), "an item's visibility"));
+                var tagOf = typeof(ForgeImportWindow).GetMethod("TagOf", BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.That(tagOf.Invoke(null, new object[] { fireball }), Is.EqualTo(path), "the import window's list of assets");
+            }
+            finally
+            {
+                foreach (var made in new Object[] { cleanse, ward, torch, fireball }) Object.DestroyImmediate(made);
+            }
+        }
+
         // Builds an inspector as the Inspector does, and hands it to a check
         private static void Inspect(Object target, System.Action<VisualElement> check)
         {
@@ -1074,6 +1107,60 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             finally
             {
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
+        /// A Local Data row's key was a tag field under its label, "Key", in a column at most 170 wide: the label, as
+        /// wide as an inspector's label column, took the column, and left the tag's box no width to press (ED-68, the
+        /// user's report). The key is the row's first column, with no label, and a value that's a tag is drawn the same
+        /// way. The row is drawn in a runtime panel, which has no label column, so the label is given an inspector's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_68_A_Local_Data_rows_key_has_its_column_to_press()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            var host = new GameObject("ED-68 Panel") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                ability.LocalData.Add(new DataWrapper { Type = EDataWrapperType.Tag });
+                var document = host.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(ability);
+                // As wide as a narrow Inspector
+                var inspector = new VisualElement { style = { width = 380 } };
+                document.rootVisualElement.Add(inspector);
+                var row = new PropertyField(serialized.FindProperty(nameof(Ability.LocalData)).GetArrayElementAtIndex(0));
+                inspector.Add(row);
+                row.Bind(serialized);
+                for (int i = 0; i < 4; i++) yield return null;
+
+                var tags = row.Query(name: "TagField").ToList();
+                Assert.AreEqual(2, tags.Count, "the key and a tag's value are tag fields");
+                var key = tags[0];
+                var label = key.Q<Label>(className: BaseField<string>.labelUssClassName);
+                if (label != null)
+                {
+                    // An inspector's label column (Docs/EDITOR_STYLE.md), in a row as Unity's theme lays a field out
+                    key.style.flexDirection = FlexDirection.Row;
+                    label.style.width = 148;
+                    label.style.flexShrink = 0;
+                    for (int i = 0; i < 4; i++) yield return null;
+                }
+
+                var box = key.Q(className: "pf-tag-field__box");
+                Assert.That(box.layout.width, Is.GreaterThan(100f), $"the key's box has its column: {box.layout} in {key.layout}");
+                Assert.IsNull(label, "with no label");
+                Assert.IsNull(tags[1].Q<Label>(className: BaseField<string>.labelUssClassName), "and a tag's value has none");
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(settings);
                 Object.DestroyImmediate(ability);
             }
         }

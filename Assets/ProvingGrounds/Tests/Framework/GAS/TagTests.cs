@@ -199,6 +199,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(default(Tag), Is.EqualTo(new Tag()));
         });
 
+        /// <summary>
+        /// A tag made unique, as the tag picker makes each new one, pads its name with a generated suffix that only tells
+        /// tags apart; its display name is the path as written. What reads a tag out as text gave the padded name: a
+        /// tag's readable name, so an ability named by its asset tag and a group process named by its tag; a query; a
+        /// tag change; the tag cache's listing; a process attribute's role in a warning (ED-67, the user's rule: a tag
+        /// shows by its display name). Its name is still what it's told apart and saved by.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_67_A_tag_reads_by_its_display_name() => Live(async () =>
+        {
+            const string path = "Test.ED67.Burning";
+            var tag = Tag.GenerateAsUnique(path);
+            Assume.That(tag.Name, Is.Not.EqualTo(path), "a unique tag's name is padded");
+            await Frames.Step();
+
+            Assert.That(tag.GetName(), Is.EqualTo(path), "its readable name");
+            Assert.That(TagQuery.HasTag(tag).ToString(), Does.StartWith(path + " ").And.Not.Contain(tag.Name), "a query");
+            Assert.That(new TagChange(tag, 0, 1).ToString(), Is.EqualTo(path + ": 0 -> 1"), "a tag change");
+
+            var ability = Make.Ability("Burn");
+            ability.Tags.AssetTag = tag;
+            Assert.That(ability.ToString(), Is.EqualTo(path), "an ability, named by its asset tag");
+
+            var tags = World.Entity(Hub.Runtime, observed: false).GetTagCache();
+            tags.AddTag(tag);
+            Assert.That(tags.GetHierarchyDebugString(), Does.Contain(path + " (1)").And.Not.Contain(tag.Name), "the tag cache's listing");
+
+            var role = typeof(AbstractGameplayMonoProcess).GetMethod("RoleName",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.That(role.Invoke(null, new object[] { new ProcessAttribute { Role = tag } }), Is.EqualTo(path),
+                "a process attribute's role, in a warning");
+
+            Assert.That(tag.Name, Does.StartWith(path).And.Not.EqualTo(path), "its name is as it was");
+        });
+
         // The tag as an asset holding it loads: the asset made again from its serialized form, with a string of its own
         private Tag Loaded(Tag tag)
         {
