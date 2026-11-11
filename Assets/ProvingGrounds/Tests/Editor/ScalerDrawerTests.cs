@@ -1037,5 +1037,96 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(ability);
             }
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-80: the Group
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // A Group of fixed values, each with how it joins the others
+        private static ScalerGroup Group(params (float Value, ECalculationOperation Joins)[] members)
+        {
+            var group = new ScalerGroup();
+            foreach (var (value, joins) in members) group.AddMember(new ConstantScaler { Value = value }, joins);
+            return group;
+        }
+
+        private static System.Collections.Generic.List<string> Problems(Object asset) =>
+            ForgeValidator.Check(asset).Select(problem => problem.Message).ToList();
+
+        /// <summary>
+        /// A Group's members that multiply multiply the sum of those that add, so with none that adds they multiply 0. The
+        /// Group says so under its members, and the Problems view flags it; a member that adds clears both. A Group shows
+        /// no values per level (ED-80, the user's notes).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_80_A_group_that_multiplies_nothing_says_so()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var group = Group((2f, ECalculationOperation.Multiply), (1f, ECalculationOperation.FlatBonus));
+                effect.DurationSpecification.DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = group };
+                var serialized = new SerializedObject(effect);
+                var field = Draw(host, serialized, DurationPath);
+                yield return Frames();
+
+                Assert.IsTrue(Shown(field.Q<HelpBox>("MultipliesNothing")), "members that multiply, with none that adds, say so");
+                Assert.IsNull(field.Q("LevelTable"), "and the Group shows no values per level");
+                Assert.That(Problems(effect), Has.Some.Contains("multiply"), "the Problems view flags it");
+
+                var members = serialized.FindProperty($"{DurationPath}.{nameof(ScalableFloat.Scaler)}.{nameof(ScalerGroup.Calculations)}");
+                members.arraySize++;
+                var added = members.GetArrayElementAtIndex(members.arraySize - 1);
+                added.FindPropertyRelative(nameof(MagnitudeModifierGroupMember.Calculation)).managedReferenceValue = new ConstantScaler { Value = 4f };
+                added.FindPropertyRelative(nameof(MagnitudeModifierGroupMember.RelativeOperation)).intValue = (int)ECalculationOperation.Add;
+                serialized.ApplyModifiedProperties();
+                yield return Frames();
+
+                Assert.IsFalse(Shown(field.Q<HelpBox>("MultipliesNothing")), "a member that adds clears it");
+                Assert.That(Problems(effect), Has.None.Contains("multiply"), "in the Problems view too");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// A Group with no members reads as no kind, so its field reads its number (Decision 44). The field shows that
+        /// number, to edit, where it hid it for a Group read alone, and its summary reads it (ED-80).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_80_An_empty_groups_field_shows_the_number_it_reads()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                effect.DurationSpecification.DurationOperation = new ScalableFloat
+                {
+                    Magnitude = 5f, RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = new ScalerGroup(),
+                };
+                var serialized = new SerializedObject(effect);
+                var field = Draw(host, serialized, DurationPath);
+                yield return Frames();
+
+                var number = field.Q("CombineNumber");
+                Assert.IsNotNull(number, "the field has its number");
+                Assert.AreNotEqual(DisplayStyle.None, number.style.display.value, "and shows it, as it reads it");
+                StringAssert.StartsWith("5", field.Q<Label>("Summary")?.text, "its summary reads the number");
+                Assert.IsNull(field.Q("LevelTable"), "and the Group shows no values per level");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
     }
 }
