@@ -1166,5 +1166,93 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(ability);
             }
         }
+
+        // A size or layout an element took in code, which the style sheet gives
+        private static IEnumerable<string> SizeSetInCode(VisualElement element)
+        {
+            var style = element.style;
+            if (style.width.keyword != StyleKeyword.Null || style.minWidth.keyword != StyleKeyword.Null || style.maxWidth.keyword != StyleKeyword.Null)
+                yield return "width";
+            if (style.marginLeft.keyword != StyleKeyword.Null || style.marginRight.keyword != StyleKeyword.Null) yield return "margin";
+            if (style.flexDirection.keyword != StyleKeyword.Null || style.flexGrow.keyword != StyleKeyword.Null) yield return "layout";
+        }
+
+        /// <summary>
+        /// A Local Data row set its columns' widths in C#, and drew a separator in a dark gray of its own, in either theme
+        /// (ED-73, found fixing ED-68). It takes its look from the style sheet: its key, its type and its value are columns
+        /// of their own, and nothing in it sets a color, a border or a size in code.
+        /// </summary>
+        [Test]
+        public void ED_73_A_Local_Data_row_takes_its_look_from_the_style_sheet()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                ability.LocalData.Add(new DataWrapper { Type = EDataWrapperType.Int });
+                var row = new SerializedObject(ability).FindProperty(nameof(Ability.LocalData)).GetArrayElementAtIndex(0);
+                var root = new DataWrapperDrawer().CreatePropertyGUI(row);
+                var wrong = root.Query<VisualElement>().ToList()
+                    .SelectMany(element => LookSetInCode(element).Concat(SizeSetInCode(element))
+                        .Select(style => $"{element.GetType().Name} \"{element.name}\" sets {style}"))
+                    .ToList();
+                Assert.That(wrong, Is.Empty, "it sets no look or size in code");
+                Assert.IsTrue(root.Q("Key")?.ClassListContains("pf-data-wrapper__key"), "its key's column is the style sheet's");
+                Assert.IsTrue(root.Q("Type")?.ClassListContains("pf-data-wrapper__type"), "and its type's");
+            }
+            finally
+            {
+                Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
+        /// An asset with a texture showed its type's icon in its header (the user's request, ED-69). The header shows the
+        /// texture under the Primary tag, else the first item that has a texture, in the icon's place; an asset with none
+        /// shows its type's icon.
+        /// </summary>
+        [Test]
+        public void ED_69_An_assets_header_shows_its_texture()
+        {
+            var splash = new Texture2D(4, 4);
+            var primary = new Texture2D(4, 4);
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            var bare = ScriptableObject.CreateInstance<Ability>();
+            var editors = new List<UnityEditor.Editor>();
+            VisualElement Header(Object asset)
+            {
+                var editor = UnityEditor.Editor.CreateEditor(asset);
+                editors.Add(editor);
+                return editor.CreateInspectorGUI();
+            }
+            try
+            {
+                ability.Definition.Textures = new List<TextureItem>
+                {
+                    new() { Tag = Tag.Generate("Test.ED69.Empty"), Texture = null },
+                    new() { Tag = Tag.Generate("Test.ED69.Splash"), Texture = splash },
+                };
+                var root = Header(ability);
+                var picture = root.Q<Image>("HeaderPicture");
+                Assert.IsNotNull(picture, "the header has a place for the asset's texture");
+                Assert.AreSame(splash, picture.image, "the first item that has a texture, where none is under Primary");
+                Assert.IsFalse(picture.ClassListContains("pf-hidden"), "shown");
+                Assert.IsTrue(root.Q("HeaderIcon").ClassListContains("pf-hidden"), "in the type icon's place");
+
+                ability.Definition.Textures.Add(new TextureItem { Tag = Tags.PRIMARY, Texture = primary });
+                Assert.AreSame(primary, Header(ability).Q<Image>("HeaderPicture").image, "the one under Primary, where there's one");
+
+                var plain = Header(bare);
+                Assert.IsTrue(plain.Q<Image>("HeaderPicture").ClassListContains("pf-hidden"), "an asset with no texture shows none");
+                Assert.IsFalse(plain.Q("HeaderIcon").ClassListContains("pf-hidden"), "but its type's icon");
+            }
+            finally
+            {
+                foreach (var editor in editors) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(ability);
+                Object.DestroyImmediate(bare);
+                Object.DestroyImmediate(splash);
+                Object.DestroyImmediate(primary);
+            }
+        }
     }
 }

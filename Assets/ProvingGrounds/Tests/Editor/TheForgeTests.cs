@@ -831,5 +831,71 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 if (made.IsValid) Declare(made);
             }
         }
+
+        /// <summary>
+        /// The Forge opened its list 360 wide each time, however the user left it (ED-72, the user's request; its columns'
+        /// widths were kept already, ED-48). It opens as wide as it was left.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_72_The_forge_opens_its_list_as_wide_as_it_was_left() => Guarded(ED_72_The_forge_opens_its_list_as_wide_as_it_was_leftBody());
+
+        private IEnumerator ED_72_The_forge_opens_its_list_as_wide_as_it_was_leftBody()
+        {
+            using var kept = new KeptPreference("PlayForge_Forge.Split");
+            EditorPrefs.SetString("PlayForge_Forge.Split", "480");
+            var forge = Open();
+            yield return Frames();
+            var split = forge.rootVisualElement.Q<TwoPaneSplitView>("Split");
+            Assert.IsNotNull(split, "The Forge splits its list from its detail");
+            Assert.AreEqual(480f, split.fixedPaneInitialDimension, 0.5f, "and opens the list as wide as it was left");
+        }
+
+        // The items of Unity's own menu, by their text
+        private static List<string> ItemsOf(GenericMenu menu)
+        {
+            var items = (IEnumerable)typeof(GenericMenu).GetField("m_MenuItems", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(menu);
+            Assume.That(items, Is.Not.Null, "Unity's menu keeps its items where the test reads them");
+            return items.Cast<object>()
+                .Select(item => (item.GetType().GetField("content")?.GetValue(item) as GUIContent)?.text ?? "")
+                .Where(text => text.Length > 0).ToList();
+        }
+
+        /// <summary>
+        /// An asset header's three dots offered the header's own actions alone, and a right-click on the asset's row in
+        /// The Forge's list others (the user's request, ED-71). One builder serves both: the header offers Show in Project,
+        /// Open in a Window, Duplicate and Move to Trash after its own, as the row does.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_71_An_assets_header_menu_offers_what_its_row_does() => Guarded(ED_71_An_assets_header_menu_offers_what_its_row_doesBody());
+
+        private IEnumerator ED_71_An_assets_header_menu_offers_what_its_row_doesBody()
+        {
+            var fire = Save(Ability("ED71 Fireball"), "ED71 Fireball");
+            var forge = Open();
+            yield return Frames();
+            TheForge.OpenToAsset(fire);
+            yield return Frames();
+
+            var row = new DropdownMenu();
+            typeof(TheForge).GetMethod("FillAssetMenu", AnyInstance).Invoke(forge, new object[] { row });
+            var rowItems = row.MenuItems().OfType<DropdownMenuAction>().Select(action => action.name).ToList();
+
+            var editor = UnityEditor.Editor.CreateEditor(fire);
+            try
+            {
+                var header = (GenericMenu)typeof(BasePlayForgeEditor).GetMethod("AssetMenu", AnyInstance)
+                    .Invoke(editor, new object[] { new VisualElement() });
+                var headerItems = ItemsOf(header);
+                foreach (var action in new[] { "Show in Project", "Open in a Window", "Duplicate", "Move to Trash" })
+                {
+                    Assert.That(rowItems, Has.Member(action), $"a row offers {action}");
+                    Assert.That(headerItems, Has.Member(action), $"and so does the header: {string.Join(", ", headerItems)}");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
     }
 }

@@ -208,5 +208,67 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(ability);
             }
         }
+
+        /// <summary>
+        /// Renaming an asset in its inspector left its file as it was, so the two drifted apart (the user's request, ED-70).
+        /// The file follows the name, with its type's prefix and suffix: a character a file can't have is left out, a name
+        /// another file in its folder has takes a number, and an Undo of the rename brings the file back with the name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_70_Renaming_an_asset_renames_its_file()
+        {
+            const string folder = "Assets/ED70Temp";
+            var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+            var host = new GameObject("ED-70") { hideFlags = HideFlags.HideAndDontSave };
+            UnityEditor.Editor editor = null;
+            string Expected(string file) => $"{PlayForgeSettings.PrefixFor(typeof(Ability))}{file}{PlayForgeSettings.SuffixFor(typeof(Ability))}";
+            try
+            {
+                if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED70Temp");
+                var taken = ScriptableObject.CreateInstance<Ability>();
+                taken.Definition.Name = "ED70 Taken";
+                AssetDatabase.CreateAsset(taken, $"{folder}/{Expected("ED70Taken")}.asset");
+                var ability = ScriptableObject.CreateInstance<Ability>();
+                ability.Definition.Name = "ED70 Fire";
+                AssetDatabase.CreateAsset(ability, $"{folder}/{Expected("ED70Fire")}.asset");
+                string FileOf() => System.IO.Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(ability));
+
+                var document = host.AddComponent<UIDocument>();
+                document.panelSettings = panelSettings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                VisualElement root;
+                (editor, root) = Inspect(ability);
+                var nameField = root.Q<TextField>("Name");
+                document.rootVisualElement.Add(nameField);
+                void Rename(string name)
+                {
+                    Undo.IncrementCurrentGroup();
+                    nameField.value = name;
+                    using var focusOut = FocusOutEvent.GetPooled(nameField, null, FocusChangeDirection.unspecified,
+                        document.rootVisualElement.panel.focusController);
+                    nameField.SendEvent(focusOut);
+                }
+
+                Rename("ED70 Blaze");
+                Assert.AreEqual(Expected("ED70Blaze"), FileOf(), "the file follows the name");
+                Rename("ED70: Ash?");
+                Assert.AreEqual(Expected("ED70Ash"), FileOf(), "leaving out what a file name can't have");
+                Rename("ED70 Taken");
+                Assert.AreEqual($"{Expected("ED70Taken")} 1", FileOf(), "a name another file has takes a number");
+
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.AreEqual("ED70: Ash?", ability.Definition.Name, "an Undo takes back the name");
+                Assert.AreEqual(Expected("ED70Ash"), FileOf(), "and the file follows it back");
+            }
+            finally
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(panelSettings);
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
     }
 }
