@@ -154,6 +154,168 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsFalse(arena.TryGetId(inner, out _), "and not a project's inside it");
         }
 
+        /// <summary>
+        /// Assets move or copy into another project, each into its type's folder there, from The Forge's asset menu, which
+        /// acts on the selection (FEAT-34, the user's request): one moved leaves the active project's list, and one copied
+        /// stays, with its copy in the other.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_34_Assets_move_or_copy_into_another_project()
+        {
+            var log = new LogGuard();
+            try
+            {
+                var arena = Project("Assets/FEAT34 Arena");
+                Project("Assets/FEAT34 Dungeon");
+                var fire = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Fireball");
+                var frost = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Frost");
+                var bolt = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Bolt");
+                Active = arena;
+                var forge = (TheForge)typeof(TheForge).GetMethod("Open", AnyStatic).Invoke(null, null);
+                yield return Frames();
+
+                var list = forge.rootVisualElement.Q<MultiColumnListView>("Assets");
+                var listed = Listed(forge);
+                list.SetSelection(new[] { listed.IndexOf(fire), listed.IndexOf(frost) });
+                yield return Frames();
+                DropdownMenuAction Item(string name)
+                {
+                    var menu = new DropdownMenu();
+                    typeof(TheForge).GetMethod("FillAssetMenu", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(forge, new object[] { menu });
+                    return menu.MenuItems().OfType<DropdownMenuAction>().FirstOrDefault(action => action.name == name);
+                }
+
+                var move = Item("Move to Project/FEAT34 Dungeon");
+                Assert.IsNotNull(move, "the asset menu moves the selection into each other project");
+                move.Execute();
+                yield return Frames(8);
+                StringAssert.StartsWith("Assets/FEAT34 Dungeon/", AssetDatabase.GetAssetPath(fire), "each selected asset moves there");
+                StringAssert.StartsWith("Assets/FEAT34 Dungeon/", AssetDatabase.GetAssetPath(frost));
+                Assert.That(Listed(forge), Has.No.Member(fire).And.No.Member(frost), "and leaves the active project's list");
+
+                listed = Listed(forge);
+                list.SetSelection(listed.IndexOf(bolt));
+                yield return Frames();
+                var copy = Item("Copy to Project/FEAT34 Dungeon");
+                Assert.IsNotNull(copy, "and copies it");
+                copy.Execute();
+                yield return Frames(8);
+                StringAssert.StartsWith("Assets/FEAT34 Arena/", AssetDatabase.GetAssetPath(bolt), "a copied asset stays");
+                Assert.That(AssetDatabase.FindAssets("FEAT34 Bolt t:Ability", new[] { "Assets/FEAT34 Dungeon" }), Is.Not.Empty,
+                    "with its copy in the other project");
+            }
+            finally
+            {
+                foreach (var window in Resources.FindObjectsOfTypeAll<TheForge>().ToList()) window.Close();
+                log.Dispose();
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while The Forge was open");
+        }
+
+        private static ScalerAsset ScalerIn(string folder, string name)
+        {
+            var asset = ScriptableObject.CreateInstance<ScalerAsset>();
+            asset.Scaler = new SimpleScaler { Name = name, LevelValues = new[] { 1f, 2f }, StretchOverLevels = false };
+            AssetDatabase.CreateAsset(asset, $"{folder}/{name}.asset");
+            return asset;
+        }
+
+        /// <summary>
+        /// Every asset picker offered every asset of its type in the Unity project, whatever its Forge Project (the user's
+        /// point, FEAT-34). Each offers the active project's alone: a number field's Scaler Assets, the template picker,
+        /// an object field's picker, and the tag picker, which offers the tags the project's assets use and not those only
+        /// another's do.
+        /// </summary>
+        [Test]
+        public void FEAT_34_Pickers_offer_the_active_projects_assets_alone()
+        {
+            var arena = Project("Assets/FEAT34 Arena");
+            Project("Assets/FEAT34 Dungeon");
+            var near = ScalerIn("Assets/FEAT34 Arena", "FEAT34 Arena Damage");
+            ScalerIn("Assets/FEAT34 Dungeon", "FEAT34 Dungeon Damage");
+            var fire = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Fireball");
+            var frost = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Frost");
+            var torch = AbilityIn("Assets/FEAT34 Dungeon", "FEAT34 Torchlight");
+            var arenaTag = Tag.Generate("Test.FEAT34.Arena");
+            var dungeonTag = Tag.Generate("Test.FEAT34.Dungeon");
+            fire.Tags.ContextTags = new List<Tag> { arenaTag };
+            torch.Tags.ContextTags = new List<Tag> { dungeonTag };
+            EditorUtility.SetDirty(fire);
+            EditorUtility.SetDirty(torch);
+            AssetDatabase.SaveAssets();
+            Active = arena;
+
+            // A number field's Scaler Assets
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            try
+            {
+                effect.DurationSpecification = new GameplayEffectDuration
+                {
+                    DurationPolicy = EEffectDurationPolicy.Durational,
+                    DurationOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+                };
+                var operation = new SerializedObject(effect).FindProperty("DurationSpecification.DurationOperation");
+                var menu = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.MagnitudeField")
+                    .GetMethod("MenuFor", AnyStatic).Invoke(null, new object[] { operation, "Duration", null });
+                var paths = ((IEnumerable)menu.GetType().GetProperty("Items").GetValue(menu)).Cast<object>()
+                    .Select(item => (string)item.GetType().GetField("Item1").GetValue(item)).ToList();
+                Assert.That(paths, Has.Member($"Scaler Assets/{near.DisplayName}"), "a number field offers the project's Scaler assets");
+                Assert.That(paths, Has.None.Contains("FEAT34 Dungeon Damage"), "and not another's");
+            }
+            finally
+            {
+                Object.DestroyImmediate(effect);
+            }
+
+            // The template picker
+            var templates = BasePlayForgeEditor.TemplatesFor(fire).Select(each => each.Asset).ToList();
+            Assert.That(templates, Has.Member(frost), "the template picker offers the project's abilities");
+            Assert.That(templates, Has.No.Member(torch), "and not another's");
+
+            // An object field's picker
+            var picked = ((IEnumerable)typeof(AbilityDrawer).BaseType.GetMethod("ProjectAssets", AnyStatic).Invoke(null, null)).Cast<Object>().ToList();
+            Assert.That(picked, Has.Member(fire).And.Member(frost), "an ability field's picker offers the project's abilities");
+            Assert.That(picked, Has.No.Member(torch), "and not another's");
+
+            // The tag picker
+            ForgeTagRegistry.RefreshCache();
+            var offers = (System.Func<Tag, bool>)Projects.GetMethod("OffersTag", AnyStatic).Invoke(null, null);
+            Assert.IsTrue(offers(arenaTag), "the tag picker offers a tag the project's assets use");
+            Assert.IsFalse(offers(dungeonTag), "and not one only another's do");
+        }
+
+        /// <summary>
+        /// With projects, and none chosen, the active project is the one at the Unity project's root, which holds what no
+        /// other does, or none, when The Forge shows the assets in no project. It was the first by name, so a project
+        /// whose only Forge Project was the Demo's showed the Demo's assets alone (FEAT-34).
+        /// </summary>
+        [Test]
+        public void FEAT_34_With_none_chosen_the_active_project_is_the_roots_or_none()
+        {
+            var arena = Project("Assets/FEAT34 Arena");
+            var dungeon = Project("Assets/FEAT34 Dungeon");
+            Active = null;
+            var active = Active as ForgeProject;
+            Assert.That(active, Is.Not.SameAs(arena).And.Not.SameAs(dungeon), "a project not chosen isn't the active one");
+            Assert.That(active == null || active.Folder == "Assets", Is.True, "it's the project at the root, or none");
+        }
+
+        /// <summary>The Demo's assets make one Forge Project, its own, at the sample's root (FEAT-34).</summary>
+        [Test]
+        public void FEAT_34_The_demos_assets_make_a_project()
+        {
+            // The Demo, found by its roster, which no other asset is named
+            var roster = AssetDatabase.FindAssets("Demo Roster").Select(AssetDatabase.GUIDToAssetPath).FirstOrDefault(path => path.EndsWith("/Demo Roster.asset"));
+            Assume.That(roster, Is.Not.Null, "the Demo is imported");
+            var folder = roster.Substring(0, roster.LastIndexOf('/'));
+            var folders = ForgeProject.Folders();
+            var demo = folders.FirstOrDefault(each => each.Folder == folder).Project;
+            Assert.IsNotNull(demo, "the Demo has a Forge Project at its root");
+            var ability = AssetDatabase.FindAssets("t:Ability", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).FirstOrDefault();
+            Assert.IsNotNull(ability, "the Demo has abilities");
+            Assert.AreSame(demo, ForgeProject.Owner(ability, folders), "each of them in the Demo's project");
+        }
+
         // Batch mode has no graphics device to show a window, and logs an error saying so as each one opens
         private sealed class LogGuard : System.IDisposable
         {
