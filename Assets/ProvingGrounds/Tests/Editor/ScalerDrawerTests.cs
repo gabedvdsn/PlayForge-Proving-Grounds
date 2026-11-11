@@ -1128,5 +1128,231 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(effect);
             }
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-81, ED-77 and ED-82: a scaler field's menus, and Quick Fill on a spread scaler
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private const string FirstMember = DurationPath + ".Scaler.Calculations.Array.data[0].Calculation";
+        private const string TempFolder = "Assets/ED77Temp";
+
+        // Burning, whose Duration is a Group of one member, a By Level of 7 then 9
+        private static GameplayEffect WithAMember()
+        {
+            var effect = Burning();
+            var group = new ScalerGroup();
+            group.AddMember(new SimpleScaler { LevelValues = new[] { 7f, 9f }, StretchOverLevels = false }, ECalculationOperation.Add);
+            effect.DurationSpecification.DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = group };
+            return effect;
+        }
+
+        private static AbstractScaler MemberOf(GameplayEffect effect) =>
+            ((ScalerGroup)effect.DurationSpecification.DurationOperation.Scaler).Calculations[0].Calculation;
+
+        // A Scaler asset saved in a folder the test deletes, a By Level of 3 then 4
+        private static ScalerAsset SavedScalerAsset(string name)
+        {
+            if (!AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.CreateFolder("Assets", "ED77Temp");
+            var asset = ScriptableObject.CreateInstance<ScalerAsset>();
+            asset.Scaler = new SimpleScaler { Name = name, LevelValues = new[] { 3f, 4f }, StretchOverLevels = false };
+            AssetDatabase.CreateAsset(asset, $"{TempFolder}/{name}.asset");
+            return asset;
+        }
+
+        // Opens a field's menu, as a press of its button does, and gives its items' text, each with whether it's on. In a
+        // runtime panel it's UI Toolkit's dropdown, whose items show their paths
+        private static IEnumerator OpenMenu(Host host, VisualElement field, System.Collections.Generic.List<(string Text, bool On)> items)
+        {
+            var button = field.Q<Button>("FieldMenu");
+            Assert.IsNotNull(button, "the field has its menu");
+            using (var submit = NavigationSubmitEvent.GetPooled())
+            {
+                submit.target = button;
+                button.SendEvent(submit);
+            }
+            yield return Frames();
+            var opened = host.Document.rootVisualElement.panel.visualTree
+                .Query(className: GenericDropdownMenu.containerOuterUssClassName).ToList().LastOrDefault();
+            Assert.IsNotNull(opened, "the menu opens");
+            items.AddRange(opened.Query(className: GenericDropdownMenu.itemUssClassName).ToList()
+                .Select(item => (item.Q<Label>()?.text ?? "", item.enabledSelf)));
+        }
+
+        /// <summary>
+        /// A scaler field's kind menu listed its kinds flat, where a number field's files them by category (the user's
+        /// note, ED-81). A Group member's scaler takes the number field's menu: the kinds at its top, then each category's,
+        /// as "Scaler/Clamped"; and none of an attribute set's cached kinds, which it offered beside them, each name twice.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_81_A_scaler_fields_kinds_file_by_category()
+        {
+            var effect = WithAMember();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, new SerializedObject(effect), FirstMember);
+                yield return Frames();
+
+                var kind = field.Q<PopupField<string>>("Kind");
+                Assert.IsNotNull(kind, "the member's scaler has its kind");
+                Assert.AreEqual("By Level", kind.value, "a By Level");
+                Assert.AreEqual("Scaler/Clamped", kind.formatListItemCallback?.Invoke("Clamped"), "Clamped files under Scaler");
+                Assert.AreEqual("Effect/Effect Stacks", kind.formatListItemCallback?.Invoke("Effect Stacks"), "Effect Stacks under Effect");
+                Assert.AreEqual("By Level", kind.formatListItemCallback?.Invoke("By Level"), "By Level sits at the top");
+                Assert.AreEqual("Clamped", kind.formatSelectedValueCallback?.Invoke("Clamped"), "and the box shows a kind's name alone");
+                Assert.That(kind.choices.IndexOf("By Level"), Is.LessThan(kind.choices.IndexOf("Clamped")), "the top's kinds come first");
+                // The cached By Level and Shared share their names with a number's
+                var twice = kind.choices.GroupBy(choice => choice).Where(each => each.Count() > 1).Select(each => each.Key).ToList();
+                Assert.That(twice, Has.No.Member("By Level").And.No.Member("Shared"), "a member takes none of the cached kinds, which share names with its own");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// A number field's menu listed every Scaler asset at its top (the user's report, ED-77): UI Toolkit's dropdown has
+        /// no submenus in this Unity. They file under Scaler Assets, which Unity's own menu, in the inspector, shows as a
+        /// submenu: Save as Scaler Asset, then the assets, Import Values, Quick Fill and Make Constant.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_77_The_field_menu_files_scaler_assets_under_a_submenu()
+        {
+            var effect = Burning();
+            var host = new Host();
+            try
+            {
+                SavedScalerAsset("ED-77 Damage");
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, new SerializedObject(effect), DurationPath);
+                yield return Frames();
+
+                var items = new System.Collections.Generic.List<(string Text, bool On)>();
+                yield return OpenMenu(host, field, items);
+                var texts = items.Select(item => item.Text).ToList();
+                Assert.That(texts, Has.Member("Scaler Assets/ED-77 Damage"), "each Scaler asset files under Scaler Assets: " + string.Join(", ", texts));
+                Assert.That(texts, Has.None.StartsWith("Use a Scaler Asset"), "where they sat under the menu's own items");
+                Assert.That(texts, Is.SupersetOf(new[] { "Save as Scaler Asset…", "Import Values…", "Quick Fill…", "Make Constant" }),
+                    "beside the menu's other items");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                AssetDatabase.DeleteAsset(TempFolder);
+            }
+        }
+
+        /// <summary>
+        /// Wherever a scaler is chosen, its field offers the number field's menu (the user's request, ED-77): a Group
+        /// member's scaler saves as a Scaler asset and shares it, shares another, and Make Constant makes it a Fixed Value
+        /// of what it read at level 1, as it has no number of its own to read.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_77_A_group_members_scaler_has_the_field_menu()
+        {
+            var effect = WithAMember();
+            var host = new Host();
+            try
+            {
+                var bonus = SavedScalerAsset("ED-77 Bonus");
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(effect);
+                var field = Draw(host, serialized, FirstMember);
+                yield return Frames();
+
+                var items = new System.Collections.Generic.List<(string Text, bool On)>();
+                yield return OpenMenu(host, field, items);
+                var on = items.Where(item => item.On).Select(item => item.Text).ToList();
+                Assert.That(on, Is.SupersetOf(new[] { "Save as Scaler Asset…", "Scaler Assets/ED-77 Bonus", "Import Values…", "Quick Fill…", "Make Constant" }),
+                    "a member's scaler offers the number field's menu: " + string.Join(", ", items.Select(item => item.Text)));
+
+                var saved = ScalerActions.SaveAsScalerAsset(serialized.FindProperty(FirstMember), "ED-77 Saved", TempFolder);
+                Assert.IsNotNull(saved, "Save as Scaler Asset saves the member's scaler");
+                Assert.AreEqual(new[] { 7f, 9f }, saved.Scaler.LevelValues, "with its values");
+                Assert.AreSame(saved, (MemberOf(effect) as SharedScaler)?.Asset, "and the member shares it");
+
+                serialized.Update();
+                ScalerActions.UseScalerAsset(serialized.FindProperty(FirstMember), bonus);
+                Assert.AreSame(bonus, (MemberOf(effect) as SharedScaler)?.Asset, "a Scaler asset chosen from the menu, the member shares");
+
+                serialized.Update();
+                Assert.IsTrue(ScalerActions.CanMakeConstant(serialized.FindProperty(FirstMember)), "it can be made a constant");
+                ScalerActions.MakeConstant(serialized.FindProperty(FirstMember));
+                Assert.AreEqual(3f, (MemberOf(effect) as ConstantScaler)?.Value, "a Fixed Value of what it read at level 1, the asset's 3");
+                serialized.Update();
+                Assert.IsFalse(ScalerActions.CanMakeConstant(serialized.FindProperty(FirstMember)), "after which it's a constant already");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+                AssetDatabase.DeleteAsset(TempFolder);
+            }
+        }
+
+        /// <summary>
+        /// Quick Fill on a scaler spread over levels fills its points, as many as it has, not a value for each level (the
+        /// user's note, ED-82), and shows what each level reads between them, as the scaler's table does. Apply writes the
+        /// points, and the curve the scaler reads through them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_82_Quick_fill_fills_a_spread_scalers_points()
+        {
+            var (effect, ability) = Linked(5);
+            effect.DurationSpecification.DurationOperation.Scaler = new SimpleScaler
+            {
+                LevelValues = new[] { 10f, 30f }, StretchOverLevels = true, Configuration = ELevelConfig.LockToLevelProvider,
+                Interpolation = EScalerInterpolation.Linear,
+            };
+            var serialized = new SerializedObject(effect);
+            // Batch mode has no graphics device to give the window a view, which it says; anything else it logs fails
+            var log = new WindowLog();
+            try
+            {
+                QuickFillWizard.Show(serialized.FindProperty($"{DurationPath}.Scaler"), null);
+                var wizard = Resources.FindObjectsOfTypeAll<QuickFillWizard>().FirstOrDefault();
+                Assert.IsNotNull(wizard, "Quick Fill opens");
+                yield return Frames();
+                var root = wizard.rootVisualElement;
+                Assert.AreEqual("2 points", root.Q<TextField>("Fills")?.value, "it fills the scaler's two points");
+                var count = root.Q<IntegerField>("Count");
+                Assert.AreEqual("Points", count?.label, "and takes a count of points");
+
+                count.value = 3;
+                root.Q<EnumField>("Pattern").value = QuickFillWizard.EFillPattern.Linear;
+                yield return Frames();
+                root.Q<FloatField>("From").value = 0f;
+                root.Q<FloatField>("To").value = 40f;
+                yield return Frames();
+                Assert.That(Enumerable.Range(1, 3).Select(point => root.Q<Label>($"Preview{point}")?.text), Is.EqualTo(new[] { "0", "20", "40" }),
+                    "three points from 0 to 40");
+                Assert.IsNull(root.Q<Label>("Preview4"), "and no more");
+                Assert.That(Enumerable.Range(1, 5).Select(level => root.Q<Label>($"Reads{level}")?.text), Is.EqualTo(new[] { "0", "10", "20", "30", "40" }),
+                    "each of Fireball's five levels reads between them");
+
+                typeof(QuickFillWizard).GetMethod("Apply", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(wizard, null);
+                yield return Frames();
+                var scaler = effect.DurationSpecification.DurationOperation.Scaler;
+                Assert.AreEqual(new[] { 0f, 20f, 40f }, scaler.LevelValues, "Apply writes the points");
+                Assert.IsTrue(scaler.StretchOverLevels, "which the scaler still spreads over its levels");
+                Assert.AreEqual(20f, scaler.Scaling.Evaluate(0.5f), 0.01f, "through the curve it reads");
+            }
+            finally
+            {
+                foreach (var window in Resources.FindObjectsOfTypeAll<QuickFillWizard>().ToList()) window.Close();
+                log.Dispose();
+                Object.DestroyImmediate(effect);
+                Object.DestroyImmediate(ability);
+            }
+            Assert.That(log.Errors, Is.Empty, "errors while the wizard was open");
+        }
     }
 }
