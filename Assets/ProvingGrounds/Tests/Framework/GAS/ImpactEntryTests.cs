@@ -99,5 +99,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(gas.TryGetAttributeValue(attribute, out var value), $"the entity has {attribute.Name}");
             return value.CurrentValue;
         }
+
+        /// <summary>
+        /// An additional impact authored to land as a ticking effect does was dropped: Tick On Application was the only
+        /// durational path that committed OnApply entries, so an effect that didn't tick on application dealt its ticks
+        /// alone (GAS-71, found building the Dota lab's Ice Blast). Its OnApply impact lands once, as it does, and its
+        /// ticks follow.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_71_An_impact_lands_as_a_ticking_effect_does([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 1000f, 1000f)));
+            var blast = Make.Effect("Blast", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 2f, PeriodicTicks = true, Ticks = 2,
+                Target = health, Op = ECalculationOperation.Add, Magnitude = -10f,
+            });
+            blast.ImpactSpecification.AdditionalImpacts.Add(Impact(health, -325f, EImpactDelivery.OnApply));
+
+            World.Apply(gas, gas, blast);
+            await Frames.Step(2);
+            Assert.That(Current(gas, health), Is.EqualTo(675f), "325 lands as the effect does, before any tick");
+
+            await Frames.Seconds(2.5f);
+            Assert.That(Current(gas, health), Is.EqualTo(655f), "and its two ticks of 10 follow");
+        });
+
+        /// <summary>
+        /// An effect that ticks on application commits its OnApply impacts with that tick, once, as it did before GAS-71:
+        /// the commit as an effect lands isn't made a second time.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_71_An_effect_that_ticks_on_application_lands_its_impact_once([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 1000f, 1000f)));
+            var pulse = Make.Effect("Pulse", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 2f, TickOnApplication = true,
+                Target = health, Op = ECalculationOperation.Add, Magnitude = -10f,
+            });
+            pulse.ImpactSpecification.AdditionalImpacts.Add(Impact(health, -325f, EImpactDelivery.OnApply));
+
+            World.Apply(gas, gas, pulse);
+            await Frames.Step(2);
+            Assert.That(Current(gas, health), Is.EqualTo(665f), "its pulse of 10 and the 325, each once");
+        });
     }
 }

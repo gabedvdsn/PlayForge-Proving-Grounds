@@ -97,5 +97,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             return found;
         }
+
+        /// <summary>
+        /// Interfaces nothing takes, which a project could still name, are gone (Decision 44, FEAT-36): IValidationReady
+        /// and the generic IValidationRule, IAttributeHandler, IGameplayConfigUser and ILockedTagProvider, and the
+        /// commented-out RuntimeProxy's file. IAbilityValidationRule, which an ability's activation rules take, declares
+        /// its own Validate.
+        /// </summary>
+        [Test]
+        public void FEAT_36_Interfaces_nothing_takes_are_gone()
+        {
+            var runtime = typeof(Ability).Assembly;
+            foreach (var name in new[] { "IValidationReady", "IValidationRule`1", "IAttributeHandler", "IGameplayConfigUser", "ILockedTagProvider" })
+                Assert.IsNull(runtime.GetType($"FarEmerald.PlayForge.{name}"), $"{name} is gone");
+            Assert.IsNotNull(typeof(IAbilityValidationRule).GetMethod("Validate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.DeclaredOnly),
+                "an ability's activation rule declares its own Validate");
+            var proxy = Path.GetFullPath("Packages/com.faremerald.playforge/Runtime/PlayForge/Utils/RuntimeProxy.cs");
+            Assert.IsFalse(File.Exists(proxy), "RuntimeProxy's commented-out file is gone");
+        }
     }
 }
