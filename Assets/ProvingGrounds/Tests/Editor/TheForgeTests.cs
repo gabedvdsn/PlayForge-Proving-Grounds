@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using FarEmerald.PlayForge.Extended;
 using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
 using UnityEditor;
@@ -651,6 +652,184 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             summary = SummaryOf(forge);
             Assert.That(summary, Has.Member("Only while wet"), "a Requirement Template's summary says its description: " + string.Join(" | ", summary));
             Assert.That(summary, Has.Some.Contains("Wet"), "and what it requires");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-76: back and forward
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static Object ShownIn(TheForge forge) => (Object)typeof(TheForge).GetProperty("Selected", AnyInstance).GetValue(forge);
+
+        // Presses a button, as a click does
+        private static void Press(Button button)
+        {
+            Assert.IsNotNull(button, "the button is there");
+            using var submit = NavigationSubmitEvent.GetPooled();
+            submit.target = button;
+            button.SendEvent(submit);
+        }
+
+        /// <summary>
+        /// The Forge went to an asset and had no way back to the one before (the user's request, ED-76). It goes back and
+        /// forward over the assets it has shown, as a browser does, and a new asset after going back drops the way forward.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_76_The_forge_goes_back_and_forward() => Guarded(ED_76_The_forge_goes_back_and_forwardBody());
+
+        private IEnumerator ED_76_The_forge_goes_back_and_forwardBody()
+        {
+            var fire = Save(Ability("ED76 Fireball"), "ED76 Fireball");
+            var frost = Save(Ability("ED76 Frost"), "ED76 Frost");
+            var ice = Save(Ability("ED76 Ice"), "ED76 Ice");
+            var forge = Open();
+            yield return Frames();
+            var back = forge.rootVisualElement.Q<ToolbarButton>("Back");
+            var forward = forge.rootVisualElement.Q<ToolbarButton>("Forward");
+            Assert.IsNotNull(back, "the toolbar has Back");
+            Assert.IsNotNull(forward, "and Forward");
+
+            TheForge.OpenToAsset(fire);
+            yield return Frames();
+            ListOf(forge).SetSelection(Listed(forge).IndexOf(frost));
+            yield return Frames();
+            Assert.AreSame(frost, ShownIn(forge), "a click shows Frost");
+
+            Press(back);
+            yield return Frames();
+            Assert.AreSame(fire, ShownIn(forge), "Back shows the asset before it");
+            Assert.IsTrue(forward.enabledSelf, "and Forward is on");
+            Press(forward);
+            yield return Frames();
+            Assert.AreSame(frost, ShownIn(forge), "Forward the one gone back from");
+
+            Press(back);
+            yield return Frames();
+            TheForge.OpenToAsset(ice);
+            yield return Frames();
+            Assert.IsFalse(forward.enabledSelf, "a new asset after going back drops the way forward");
+            Press(back);
+            yield return Frames();
+            Assert.AreSame(fire, ShownIn(forge), "and Back goes to the one it came from");
+        }
+
+        /// <summary>
+        /// A row of an asset's Used By selected its asset in the Project window (the user's request, ED-76): it opens the
+        /// asset in The Forge, and Back returns to the asset it was in.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_76_Used_by_opens_its_asset_in_the_forge() => Guarded(ED_76_Used_by_opens_its_asset_in_the_forgeBody());
+
+        private IEnumerator ED_76_Used_by_opens_its_asset_in_the_forgeBody()
+        {
+            var cost = ScriptableObject.CreateInstance<GameplayEffect>();
+            cost.Definition.Name = "ED76 Cost";
+            Save(cost, "ED76 Cost");
+            var fire = Ability("ED76 Burning Hands");
+            fire.Cost = cost;
+            Save(fire, "ED76 Burning Hands");
+            AssetDatabase.SaveAssets();
+            var forge = Open();
+            yield return Frames();
+
+            TheForge.OpenToAsset(cost);
+            yield return Frames(8);
+            var row = forge.rootVisualElement.Q("Detail").Query<Button>(className: "pf-used-by__row").ToList()
+                .FirstOrDefault(each => each.name == "ED76 Burning Hands");
+            Assert.IsNotNull(row, "the cost's Used By lists the ability");
+            Press(row);
+            yield return Frames();
+            Assert.AreSame(fire, ShownIn(forge), "a click opens it in The Forge");
+            Press(forge.rootVisualElement.Q<ToolbarButton>("Back"));
+            yield return Frames();
+            Assert.AreSame(cost, ShownIn(forge), "and Back returns to the cost");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ED-83: a tag's contexts
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static System.Type EditorType(string name) => typeof(TheForge).Assembly.GetType($"FarEmerald.PlayForge.Extended.Editor.{name}");
+
+        // Declares a tag for contexts, as The Forge does; none takes its declaration away
+        private static void Declare(Tag tag, params string[] contexts) =>
+            EditorType("ForgeTagContexts").GetMethod("Declare", AnyStatic).Invoke(null, new object[] { tag, contexts });
+
+        // Whether a field of a context offers a tag, Universal ones set aside
+        private static bool Offers(string context, Tag tag)
+        {
+            ForgeTagRegistry.RefreshCache();
+            return ForgeTagRegistry.GetTagsForContext(new[] { context }, false).Any(each => each.Name == tag.Name);
+        }
+
+        private static void Toggle(VisualElement contexts, string context) =>
+            contexts.GetType().GetMethod("Toggle", AnyInstance).Invoke(contexts, new object[] { context });
+
+        /// <summary>
+        /// A tag's contexts came only from the fields that used it, so they couldn't be changed, in The Forge or as a tag
+        /// was made (the user's report, ED-83). The Forge's tag detail declares a tag for contexts, in the project's Tag
+        /// Library, so their fields offer it, and taking them away takes the declaration away. New Tag's contexts start as
+        /// its field's, and another chosen declares the new tag for it too.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_83_A_tags_contexts_can_be_changed() => Guarded(ED_83_A_tags_contexts_can_be_changedBody());
+
+        private IEnumerator ED_83_A_tags_contexts_can_be_changedBody()
+        {
+            var tag = Tag.Generate("Test.ED83.Soaked");
+            var fire = Ability("ED83 Fireball");
+            fire.Tags.ContextTags = new List<Tag> { tag };
+            Save(fire, "ED83 Fireball");
+            Tag made = default;
+            var forge = Open();
+            yield return Frames();
+            try
+            {
+                Assume.That(Offers(ForgeContext.Granted, tag), Is.False, "no Granted field offers it yet");
+                forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+                forge.rootVisualElement.Q<ToolbarSearchField>("Search").value = "ED83";
+                yield return Frames();
+                var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+                var records = tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().ToList();
+                int at = records.FindIndex(record => record.Tag == tag);
+                Assume.That(at, Is.GreaterThanOrEqualTo(0), "The Forge lists the tag");
+                tags.SetSelection(at);
+                yield return Frames();
+
+                var field = forge.rootVisualElement.Q("Detail").Q("TagContexts");
+                Assert.IsNotNull(field, "the tag's detail has the contexts it's declared for");
+                Toggle(field, ForgeContext.Granted);
+                yield return Frames(8);
+                Assert.IsTrue(Offers(ForgeContext.Granted, tag), "declared for Granted, a Granted field offers it");
+                Assert.IsTrue(Offers(ForgeContext.ContextIdentifier, tag), "as its use's context still does");
+
+                field = forge.rootVisualElement.Q("Detail").Q("TagContexts");
+                Assert.IsNotNull(field, "the detail, built again, still has them");
+                Toggle(field, ForgeContext.Granted);
+                yield return Frames(8);
+                Assert.IsFalse(Offers(ForgeContext.Granted, tag), "and Granted taken away, it doesn't");
+
+                // New Tag, from a field of the Context Identifier context, with Granted chosen as well
+                var newTag = EditorType("ForgeNewTagWindow");
+                var window = (EditorWindow)newTag.GetMethod("ShowFor", AnyStatic)
+                    .Invoke(null, new object[] { "Test.ED83.", new[] { ForgeContext.ContextIdentifier }, (System.Action<Tag>)(each => made = each) });
+                yield return Frames();
+                // Batch mode may build a window's view only as it's shown
+                if (window.rootVisualElement.Q("TagPath") == null) newTag.GetMethod("CreateGUI", AnyInstance).Invoke(window, null);
+                var contexts = window.rootVisualElement.Q("TagContexts");
+                Assert.IsNotNull(contexts, "New Tag has the tag's contexts");
+                Assert.AreEqual(ForgeContext.ContextIdentifier, (contexts as BaseField<string>)?.value, "starting as its field's");
+                Toggle(contexts, ForgeContext.Granted);
+                window.rootVisualElement.Q<TextField>("TagPath").value = "Test.ED83.Drenched";
+                newTag.GetMethod("Create", AnyInstance).Invoke(window, null);
+                yield return Frames();
+                Assert.IsTrue(made.IsValid, "it makes the tag");
+                Assert.IsTrue(Offers(ForgeContext.Granted, made), "declared for Granted, chosen beside its field's context");
+            }
+            finally
+            {
+                Declare(tag);
+                if (made.IsValid) Declare(made);
+            }
         }
     }
 }
