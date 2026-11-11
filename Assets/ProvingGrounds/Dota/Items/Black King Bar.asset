@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6948d58850a1a944915a8061c5229e8, type: 3}
+  m_Name: Black King Bar
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Black King Bar
+    Description: '24 Attack Damage, and Avatar: 9 seconds immune to magic, every
+      95 seconds.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    MaxStackSize: 1
+  Tags:
+    AssetTag:
+      Name: Item.Dota.BlackKingBar
+      DisplayName: Item.Dota.BlackKingBar
+    ContextTags: []
+    PassiveGrantedTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  GrantedEffects:
+  - {fileID: 11400000, guid: bfa7647abb8ce444e8de9b3a377ce8a7, type: 2}
+  ActiveAbility: {fileID: 11400000, guid: ab4dac80388ec06498960bdca3c5972f, type: 2}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  references:
+    version: 2
+    RefIds: []

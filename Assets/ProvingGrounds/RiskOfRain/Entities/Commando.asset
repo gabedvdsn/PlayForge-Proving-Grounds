@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dac855327e524f0f9473752d46a88179, type: 3}
+  m_Name: Commando
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Name: Commando
+  Description: 'Commando: a survivor with Double Tap.'
+  Textures: []
+  Affiliation:
+  - Name: Team.RoR.Survivors
+    DisplayName: Team.RoR.Survivors
+  AssetTag:
+    Name: Entity.RoR.Commando
+    DisplayName: Entity.RoR.Commando
+  GrantedTags: []
+  ContextTags: []
+  StartingLevel: 1
+  MaxLevel: 99
+  ActivationPolicy: 2
+  MaxAbilitiesOperation:
+    Magnitude: 8
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  StartingAbilities:
+  - {fileID: 11400000, guid: 025290520fcdb1b4182c829478a856cd, type: 2}
+  AllowDuplicateAbilities: 0
+  MaxItemsOperation:
+    Magnitude: 16
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  MaxEquippedItemsOperation:
+    Magnitude: 16
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  StartingItems: []
+  AllowDuplicateItems: 0
+  AllowDuplicateEquippedItems: 0
+  AttributeSet: {fileID: 11400000, guid: 199b3ef0d38def14a9a1c77a950e6ee4, type: 2}
+  TimeScaleAttribute: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }

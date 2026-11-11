@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6948d58850a1a944915a8061c5229e8, type: 3}
+  m_Name: Heartbreak Strike
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Heartbreak Strike
+    Description: 'Aphrodite''s Attack boon: 50% more Attack damage, and each Attack
+      hit makes the foe Weak.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    MaxStackSize: 1
+  Tags:
+    AssetTag:
+      Name: Item.Hades.HeartbreakStrike
+      DisplayName: Item.Hades.HeartbreakStrike
+    ContextTags: []
+    PassiveGrantedTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  GrantedEffects:
+  - {fileID: 11400000, guid: e39839b6ed6389c4a9ff66794989ca2e, type: 2}
+  ActiveAbility: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers:
+    - rid: 2403794372806049877
+    TagWorkers: []
+    AnalysisWorkers: []
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049877
+      type: {class: OnHitApplyEffectsImpactWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        AcceptUnworkableImpact: 0
+        ImpactedAttribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+        AnyImpactType: 0
+        ImpactType:
+        - Name: Damage.Hades.Attack
+          DisplayName: Damage.Hades.Attack
+        ImpactTarget: 0
+        ImpactTargetExclusive: 0
+        ImpactSign: 1
+        AllowSelfImpact: 0
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ImpactAbilityContextTags: []
+        WorkAttribute: {fileID: 0}
+        WorkImpactType: []
+        WorkSignPolicy: 0
+        Effects:
+        - {fileID: 11400000, guid: 4e3a6efc8adbf714795af30170c9013b, type: 2}
+        To: 0
+        OnlyOnKill: 0
+        When:
+          rid: -2

@@ -1,0 +1,134 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a42dbe2415465689d11a1e8ae1fdbc, type: 3}
+  m_Name: Storm Hammer
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Storm Hammer
+    Description: 'Sven throws his hammer at an enemy: 80, 160, 240 or 320 magical
+      damage by its level, and a 2 second stun.'
+    ActivationPolicy: 0
+    BufferWindow: 0.3
+    BufferPriority: 0
+    ActivateImmediately: 0
+    Triggers: []
+    Textures: []
+  Tags:
+    AssetTag:
+      Name: Ability.Dota.StormHammer
+      DisplayName: Ability.Dota.StormHammer
+    ContextTags: []
+    PassiveGrantedTags: []
+    ActiveGrantedTags: []
+    TagRequirements:
+      Name: 
+      SourceRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags:
+        - Tag:
+            Name: State.Dota.Stunned
+            DisplayName: State.Dota.Stunned
+          Operator: 5
+          Magnitude: 0
+          MatchMode: 0
+        RequireTags: []
+      WhileActiveRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+      TargetRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+  Behaviour:
+    Targeting:
+      rid: -2
+    UseImplicitTargeting: 1
+    ImplicitTag:
+      Name: TargetzfvEmaa5gNtqhQ0_dE2_NOOAGh1QLRP8zfvEmaa5gNtqhQ0_dE2_NOOAGh
+      DisplayName: Target
+    AssetLoaders: []
+    Stages:
+    - StagePolicy:
+        rid: 2403794372806049870
+      Tasks:
+      - rid: 2403794372806049871
+      ApplyUsageEffects: 1
+      ApplyUsageAtStageStart: 1
+      Condition:
+        On: 0
+        Tag:
+          Name: 
+          DisplayName: 
+        WhenMissing: 0
+      CancelledBy: []
+      Blocks: []
+    CancelledBy: []
+    Blocks: []
+  SourceActivationRules:
+  - rid: 2403794372806049872
+  - rid: 2403794372806049873
+  - rid: 2403794372806049874
+  TargetActivationRules:
+  - rid: 2403794372806049875
+  StartingLevel: 1
+  MaxLevel: 4
+  IgnoreWhenLevelZero: 1
+  Cost: {fileID: 11400000, guid: ff25fbf7a9bb5ab4597c469f6958a6c3, type: 2}
+  Cooldown: {fileID: 11400000, guid: 1165536ed09b76a4b926b92808d843d8, type: 2}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049870
+      type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049871
+      type: {class: ApplyEffectsAbilityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Effects:
+        - {fileID: 11400000, guid: c5ed72935affc8244af01acb6715827b, type: 2}
+        DelayBetweenApplicationMs: 0
+        RecordLandedAs:
+          Name: 
+          DisplayName: 
+    - rid: 2403794372806049872
+      type: {class: CooldownValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049873
+      type: {class: CostValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049874
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049875
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 

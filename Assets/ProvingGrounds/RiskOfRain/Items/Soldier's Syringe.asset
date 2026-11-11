@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6948d58850a1a944915a8061c5229e8, type: 3}
+  m_Name: Soldier's Syringe
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Soldier's Syringe
+    Description: 15% attack speed a stack.
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    MaxStackSize: 99
+  Tags:
+    AssetTag:
+      Name: Item.RoR.SoldiersSyringe
+      DisplayName: Item.RoR.SoldiersSyringe
+    ContextTags: []
+    PassiveGrantedTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  GrantedEffects:
+  - {fileID: 11400000, guid: 25f39725a4099f04fbffb55ade3d53c5, type: 2}
+  ActiveAbility: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  references:
+    version: 2
+    RefIds: []

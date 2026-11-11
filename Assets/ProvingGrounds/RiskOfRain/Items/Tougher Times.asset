@@ -1,0 +1,159 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6948d58850a1a944915a8061c5229e8, type: 3}
+  m_Name: Tougher Times
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Tougher Times
+    Description: 'A 15% chance a stack to block a hit outright, hyperbolically: 13%
+      with one, 60% with ten.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    MaxStackSize: 99
+  Tags:
+    AssetTag:
+      Name: Item.RoR.TougherTimes
+      DisplayName: Item.RoR.TougherTimes
+    ContextTags: []
+    PassiveGrantedTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  GrantedEffects: []
+  ActiveAbility: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers:
+    - rid: 2403794372806049908
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 2403794372806049908
+      type: {class: BlockChanceAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        TimingConfig: 0
+        TargetAttribute: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
+        AllowSelfModification: 1
+        TargetModification: 0
+        ExclusivelyTargetModification: 0
+        SignPolicy: 2
+        AnyImpactType: 1
+        ImpactTypes: []
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ValidContextTags: []
+        Chance:
+          Magnitude: 1
+          RealMagnitude: 3
+          Scaler:
+            rid: 2403794372806049909
+    - rid: 2403794372806049909
+      type: {class: StackingCurveKind, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        Count:
+          Magnitude: 1
+          RealMagnitude: 3
+          Scaler:
+            rid: 2403794372806049910
+        Curve: 1
+        Coefficient: 0.15
+        Plus: 0
+    - rid: 2403794372806049910
+      type: {class: AssetPartKind, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        What: 2
+        Tagged:
+          Name: Item.RoR.TougherTimes
+          DisplayName: Item.RoR.TougherTimes
+        On: 1
+        EffectPart: 1
+        WorkerKey:
+          Name: 
+          DisplayName: 
+        AbilityPart: 1
+        ItemPart: 1
+        Among: 0
+        Default: 0

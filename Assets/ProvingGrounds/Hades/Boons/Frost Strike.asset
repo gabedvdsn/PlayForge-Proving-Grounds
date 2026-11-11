@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6948d58850a1a944915a8061c5229e8, type: 3}
+  m_Name: Frost Strike
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Frost Strike
+    Description: 'Demeter''s Attack boon: 40% more Attack damage, and each Attack
+      hit Chills the foe.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    MaxStackSize: 1
+  Tags:
+    AssetTag:
+      Name: Item.Hades.FrostStrike
+      DisplayName: Item.Hades.FrostStrike
+    ContextTags: []
+    PassiveGrantedTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  GrantedEffects:
+  - {fileID: 11400000, guid: 0af85b0fbf7c28b4fb5f2122d0dde77a, type: 2}
+  ActiveAbility: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers:
+    - rid: 2403794372806049828
+    TagWorkers: []
+    AnalysisWorkers: []
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049828
+      type: {class: OnHitApplyEffectsImpactWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        AcceptUnworkableImpact: 0
+        ImpactedAttribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+        AnyImpactType: 0
+        ImpactType:
+        - Name: Damage.Hades.Attack
+          DisplayName: Damage.Hades.Attack
+        ImpactTarget: 0
+        ImpactTargetExclusive: 0
+        ImpactSign: 1
+        AllowSelfImpact: 0
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ImpactAbilityContextTags: []
+        WorkAttribute: {fileID: 0}
+        WorkImpactType: []
+        WorkSignPolicy: 0
+        Effects:
+        - {fileID: 11400000, guid: df42165f9f3201d4088b188af14e613a, type: 2}
+        To: 0
+        OnlyOnKill: 0
+        When:
+          rid: -2

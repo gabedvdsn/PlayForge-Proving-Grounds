@@ -1,0 +1,193 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d34fc1f98f8a0b4c9b37da3e706e0e1, type: 3}
+  m_Name: God's Strength (Cooldown)
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: God's Strength (Cooldown)
+    Description: 'God''s Strength cooling down: 110, 100 or 90 seconds by its level.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    RetentionGroup:
+      Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
+      DisplayName: Ignore
+  Tags:
+    AssetTag:
+      Name: Effect.Dota.GodsStrength.Cooldown
+      DisplayName: Effect.Dota.GodsStrength.Cooldown
+    ContextTags: []
+    GrantedTags: []
+    RemovesEffectsTagged: []
+    BlocksEffectsTagged: []
+  GrantedAbilities: []
+  ImpactSpecification:
+    AttributeTarget: {fileID: 0}
+    TargetImpact: 0
+    ImpactOperation: 0
+    MultiplyBehaviour: 0
+    AffiliationPolicy: 3
+    AffiliationComparison: 0
+    Affiliations: []
+    ChanceToApply:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    ImpactTypes: []
+    ReverseImpactOnRemoval: 0
+    MagnitudeOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    AdditionalImpacts: []
+    Packets: []
+  DurationSpecification:
+    DurationPolicy: 1
+    DurationOperation:
+      Magnitude: 1
+      RealMagnitude: 0
+      Scaler:
+        rid: 2403794372806049847
+    RealDeltaTime: 1
+    DeltaTimeScaler:
+      rid: -2
+    EnablePeriodicTicks: 0
+    TickOnApplication: 0
+    TicksOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    TickIntervalOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    AdditionalExecuteTicksOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    ReApplicationPolicy: 2
+    ReApplicationInteraction: 0
+    StackPolicy: 0
+    StackingConfigs: []
+    StackAmountOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+  Workers: []
+  Cues: []
+  SourceRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  TargetRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049847
+      type: {class: SimpleScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 1
+        MaxLevel: 3
+        LevelValues:
+        - 110
+        - 100
+        - 90
+        Interpolation: 1
+        StretchOverLevels: 0
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 110
+            inSlope: 0
+            outSlope: -20
+            tangentMode: 69
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 0.5
+            value: 100
+            inSlope: -20
+            outSlope: -20
+            tangentMode: 69
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 90
+            inSlope: -20
+            outSlope: 0
+            tangentMode: 69
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []

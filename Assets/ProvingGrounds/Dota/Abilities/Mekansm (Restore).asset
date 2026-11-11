@@ -1,0 +1,145 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a42dbe2415465689d11a1e8ae1fdbc, type: 3}
+  m_Name: Mekansm (Restore)
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Mekansm (Restore)
+    Description: 'Mekansm''s Restore: heals each ally 275, but none healed by a Mekansm
+      in the last 21 seconds.'
+    ActivationPolicy: 0
+    BufferWindow: 0.3
+    BufferPriority: 0
+    ActivateImmediately: 0
+    Triggers: []
+    Textures: []
+  Tags:
+    AssetTag:
+      Name: Ability.Dota.Mekansm.Restore
+      DisplayName: Ability.Dota.Mekansm.Restore
+    ContextTags: []
+    PassiveGrantedTags: []
+    ActiveGrantedTags: []
+    TagRequirements:
+      Name: 
+      SourceRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+      WhileActiveRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+      TargetRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+  Behaviour:
+    Targeting:
+      rid: 2403794372806049886
+    UseImplicitTargeting: 1
+    ImplicitTag:
+      Name: TargetzfvEmaa5gNtqhQ0_dE2_NOOAGh1QLRP8zfvEmaa5gNtqhQ0_dE2_NOOAGh
+      DisplayName: Target
+    AssetLoaders: []
+    Stages:
+    - StagePolicy:
+        rid: 2403794372806049887
+      Tasks:
+      - rid: 2403794372806049888
+      ApplyUsageEffects: 1
+      ApplyUsageAtStageStart: 1
+      Condition:
+        On: 0
+        Tag:
+          Name: 
+          DisplayName: 
+        WhenMissing: 0
+      CancelledBy: []
+      Blocks: []
+    CancelledBy: []
+    Blocks: []
+  SourceActivationRules:
+  - rid: 2403794372806049889
+  - rid: 2403794372806049890
+  - rid: 2403794372806049891
+  TargetActivationRules:
+  - rid: 2403794372806049892
+  StartingLevel: 1
+  MaxLevel: 1
+  IgnoreWhenLevelZero: 1
+  Cost: {fileID: 0}
+  Cooldown: {fileID: 11400000, guid: f398a2ff618c8f2448bfae7bde1db568, type: 2}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 2403794372806049886
+      type: {class: AutoTargetByAffinityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        BreakRuntimeOnInvalid: 1
+        Requirements:
+          Name: 
+          SourceTemplate: {fileID: 0}
+          SyncWithTemplate: 0
+          AvoidTags: []
+          RequireTags: []
+        AffinityFilter: 0
+        Mode: 0
+        MaxTargets: 0
+        Range: 0
+        DetectionLayers:
+          serializedVersion: 2
+          m_Bits: 4294967295
+        ExcludeDead: 1
+    - rid: 2403794372806049887
+      type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049888
+      type: {class: ApplyEffectsAbilityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Effects:
+        - {fileID: 11400000, guid: eeeefd14467ff3f40afc8c0d85668c8b, type: 2}
+        - {fileID: 11400000, guid: 19ca94588f7582c4597cc152a2d36b81, type: 2}
+        DelayBetweenApplicationMs: 0
+        RecordLandedAs:
+          Name: 
+          DisplayName: 
+    - rid: 2403794372806049889
+      type: {class: CooldownValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049890
+      type: {class: CostValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049891
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049892
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 

@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dac855327e524f0f9473752d46a88179, type: 3}
+  m_Name: Zagreus
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Name: Zagreus
+  Description: Zagreus, Prince of the Underworld, with the Stygian Blade's Strike.
+  Textures: []
+  Affiliation:
+  - Name: Team.Hades.Zagreus
+    DisplayName: Team.Hades.Zagreus
+  AssetTag:
+    Name: Entity.Hades.Zagreus
+    DisplayName: Entity.Hades.Zagreus
+  GrantedTags: []
+  ContextTags: []
+  StartingLevel: 1
+  MaxLevel: 1
+  ActivationPolicy: 2
+  MaxAbilitiesOperation:
+    Magnitude: 8
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  StartingAbilities:
+  - {fileID: 11400000, guid: e5706a6e3d6b3114eb2dbda0a56e48b3, type: 2}
+  AllowDuplicateAbilities: 0
+  MaxItemsOperation:
+    Magnitude: 16
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  MaxEquippedItemsOperation:
+    Magnitude: 16
+    RealMagnitude: 1
+    Scaler:
+      rid: -2
+    Rounding: 0
+  StartingItems: []
+  AllowDuplicateItems: 0
+  AllowDuplicateEquippedItems: 0
+  AttributeSet: {fileID: 11400000, guid: 1bb40f70a0a088b48a9b05416f11bedb, type: 2}
+  TimeScaleAttribute: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }

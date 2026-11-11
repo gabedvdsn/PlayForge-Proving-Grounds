@@ -1,0 +1,150 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f540c3b03f1458d459ad17cf8a6b5c71, type: 3}
+  m_Name: Megaera Set
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Name: Megaera Set
+  Description: 
+  Textures: []
+  AssetTag:
+    Name: Set.Hades.Megaera
+    DisplayName: Set.Hades.Megaera
+  Attributes:
+  - Attribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+    Current:
+      Magnitude: 4400
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    Base:
+      Magnitude: 4400
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    LinkCurrentToBase: 0
+    Overflow:
+      Policy: 0
+      Floor:
+        CurrentValue: 0
+        BaseValue: 0
+      Ceil:
+        CurrentValue: 0
+        BaseValue: 0
+    RetentionGroup:
+      Name: DefaultHZrocVrnTyCe46yj0U4URw7eigNeYI7THZrocVrnTyCe46yj0U4URw7ei
+      DisplayName: Default
+    CollisionPolicy: 0
+    Constraints:
+      AutoClamp: 1
+      AutoScaleWithBase: 0
+      RoundingMode: 0
+      SnapInterval: 0
+  - Attribute: {fileID: 11400000, guid: 28d29c980135a654091d6f7537397f7e, type: 2}
+    Current:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    Base:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    LinkCurrentToBase: 0
+    Overflow:
+      Policy: 4
+      Floor:
+        CurrentValue: 0
+        BaseValue: 0
+      Ceil:
+        CurrentValue: 0
+        BaseValue: 0
+    RetentionGroup:
+      Name: DefaultHZrocVrnTyCe46yj0U4URw7eigNeYI7THZrocVrnTyCe46yj0U4URw7ei
+      DisplayName: Default
+    CollisionPolicy: 0
+    Constraints:
+      AutoClamp: 1
+      AutoScaleWithBase: 0
+      RoundingMode: 0
+      SnapInterval: 0
+  - Attribute: {fileID: 11400000, guid: 04da6623b61d0a344bc2df75f5081430, type: 2}
+    Current:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    Base:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    LinkCurrentToBase: 0
+    Overflow:
+      Policy: 4
+      Floor:
+        CurrentValue: 0
+        BaseValue: 0
+      Ceil:
+        CurrentValue: 0
+        BaseValue: 0
+    RetentionGroup:
+      Name: DefaultHZrocVrnTyCe46yj0U4URw7eigNeYI7THZrocVrnTyCe46yj0U4URw7ei
+      DisplayName: Default
+    CollisionPolicy: 0
+    Constraints:
+      AutoClamp: 1
+      AutoScaleWithBase: 0
+      RoundingMode: 0
+      SnapInterval: 0
+  SubSets: []
+  CollisionResolutionPolicy: 0
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers:
+    - rid: 2403794372806049846
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  StartingLevel: 1
+  MaxLevel: 4
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049846
+      type: {class: ThresholdCrossingAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        TimingConfig: 0
+        TargetAttribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+        AllowSelfModification: 1
+        TargetModification: 0
+        ExclusivelyTargetModification: 0
+        SignPolicy: 2
+        AnyImpactType: 1
+        ImpactTypes: []
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ValidContextTags: []
+        ShareOfBase: 0.5
+        ApplyToSelf:
+        - {fileID: 11400000, guid: 440511b7cbb92154d9c6a66eed32a989, type: 2}
+        SendEvent:
+          Name: Event.Hades.Phase
+          DisplayName: Event.Hades.Phase

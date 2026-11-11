@@ -1,0 +1,175 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a42dbe2415465689d11a1e8ae1fdbc, type: 3}
+  m_Name: Counter Helix
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Counter Helix
+    Description: 'Axe''s passive: as he''s attacked, a 20% chance to spin, dealing
+      60, 100, 140 or 180 pure damage by its level to each enemy around him.'
+    ActivationPolicy: 0
+    BufferWindow: 0.3
+    BufferPriority: 0
+    ActivateImmediately: 0
+    Triggers:
+    - Source: 0
+      Tag:
+        Name: Event.Dota.Attacked
+        DisplayName: Event.Dota.Attacked
+    Textures: []
+  Tags:
+    AssetTag:
+      Name: Ability.Dota.CounterHelix
+      DisplayName: Ability.Dota.CounterHelix
+    ContextTags: []
+    PassiveGrantedTags: []
+    ActiveGrantedTags: []
+    TagRequirements:
+      Name: 
+      SourceRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+      WhileActiveRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+      TargetRequirements:
+        Name: 
+        SourceTemplate: {fileID: 0}
+        SyncWithTemplate: 0
+        AvoidTags: []
+        RequireTags: []
+  Behaviour:
+    Targeting:
+      rid: 2403794372806049878
+    UseImplicitTargeting: 1
+    ImplicitTag:
+      Name: TargetzfvEmaa5gNtqhQ0_dE2_NOOAGh1QLRP8zfvEmaa5gNtqhQ0_dE2_NOOAGh
+      DisplayName: Target
+    AssetLoaders: []
+    Stages:
+    - StagePolicy:
+        rid: 2403794372806049879
+      Tasks:
+      - rid: 2403794372806049880
+      ApplyUsageEffects: 0
+      ApplyUsageAtStageStart: 1
+      Condition:
+        On: 0
+        Tag:
+          Name: 
+          DisplayName: 
+        WhenMissing: 0
+      CancelledBy: []
+      Blocks: []
+    CancelledBy: []
+    Blocks: []
+  SourceActivationRules:
+  - rid: 2403794372806049881
+  - rid: 2403794372806049882
+  - rid: 2403794372806049883
+  TargetActivationRules:
+  - rid: 2403794372806049884
+  StartingLevel: 1
+  MaxLevel: 4
+  IgnoreWhenLevelZero: 1
+  Cost: {fileID: 0}
+  Cooldown: {fileID: 0}
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers:
+    - rid: 2403794372806049885
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794372806049878
+      type: {class: AutoTargetByAffinityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        BreakRuntimeOnInvalid: 1
+        Requirements:
+          Name: 
+          SourceTemplate: {fileID: 0}
+          SyncWithTemplate: 0
+          AvoidTags: []
+          RequireTags: []
+        AffinityFilter: 1
+        Mode: 0
+        MaxTargets: 0
+        Range: 0
+        DetectionLayers:
+          serializedVersion: 2
+          m_Bits: 4294967295
+        ExcludeDead: 1
+    - rid: 2403794372806049879
+      type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049880
+      type: {class: ApplyEffectsAbilityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Effects:
+        - {fileID: 11400000, guid: ee7b48d8060f9574a8cb136baab122f0, type: 2}
+        DelayBetweenApplicationMs: 0
+        RecordLandedAs:
+          Name: 
+          DisplayName: 
+    - rid: 2403794372806049881
+      type: {class: CooldownValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049882
+      type: {class: CostValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049883
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049884
+      type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data: 
+    - rid: 2403794372806049885
+      type: {class: HitTakenEventAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+      data:
+        TimingConfig: 1
+        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+        AllowSelfModification: 1
+        TargetModification: 0
+        ExclusivelyTargetModification: 0
+        SignPolicy: 2
+        AnyImpactType: 0
+        ImpactTypes:
+        - Name: Damage.Dota.Attack
+          DisplayName: Damage.Dota.Attack
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ValidContextTags: []
+        Event:
+          Name: Event.Dota.Attacked
+          DisplayName: Event.Dota.Attacked
+        Chance:
+          Magnitude: 0.2
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
