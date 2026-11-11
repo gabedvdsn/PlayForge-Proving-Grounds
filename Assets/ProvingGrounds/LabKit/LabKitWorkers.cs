@@ -24,8 +24,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.LabKit
     /// any impact worker takes, by attribute, sign and impact type, so a bleed's ticks, typed apart from attacks, don't set
     /// it off again. An effect's own Chance to Apply rolls as it lands. Wishlist: on-hit and on-kill effects.
     /// <para>
-    /// Its holder is the hit's dealer: an impact worker runs for the dealer, but its context's System is the one hit
-    /// (<c>ImpactWorkerCache.RunImpactData</c>), so a worker that took System for its holder applied to the target.
+    /// Its holder is the hit's dealer, its context's System: an impact worker runs for the dealer. Its System was the one
+    /// hit until GAS-72, so the lab found its holder through the hit's carrier.
     /// </para>
     /// </summary>
     [Serializable]
@@ -55,7 +55,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.LabKit
             if (Effects == null || Effects.Count == 0) return actions;
             if (When != null && !When.Holds(NumberContext.Of(in ctx))) return actions;
 
-            var holder = ctx.ImpactData.SourcedModifier.Carrier?.GetOrigin()?.GetSource();
+            var holder = ctx.System;
             if (holder == null) return actions;
             var onto = To == EOnHitWho.Self ? holder as ITarget : ctx.ImpactData.Target;
             if (onto == null) return actions;
