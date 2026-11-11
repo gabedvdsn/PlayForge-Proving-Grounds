@@ -600,5 +600,57 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 LogAssert.ignoreFailingMessages = false;
             }
         }
+
+        // The summary's text, label by label
+        private static List<string> SummaryOf(TheForge forge) =>
+            forge.rootVisualElement.Q("Detail").Q("Summary").Query<Label>().ToList().Select(label => label.text).ToList();
+
+        /// <summary>
+        /// A Scaler asset in The Forge had an empty summary and couldn't be renamed there (the user's notes, ED-74), and a
+        /// Scaler asset's and a Requirement Template's descriptions could only be read in the boxes that edit them (ED-78).
+        /// The summary says each's description, as text, and a line for each of its parts; a Scaler asset's inspector
+        /// names it, and The Forge lists it by the name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_74_A_scaler_asset_has_a_summary_and_a_name_to_change() => Guarded(ED_74_A_scaler_asset_has_a_summary_and_a_name_to_changeBody());
+
+        private IEnumerator ED_74_A_scaler_asset_has_a_summary_and_a_name_to_changeBody()
+        {
+            var scaler = ScriptableObject.CreateInstance<ScalerAsset>();
+            scaler.Description = "Fire's damage, level by level";
+            scaler.Scaler = new SimpleScaler { Name = "Fire Damage", LevelValues = new[] { 10f, 20f, 30f }, StretchOverLevels = false };
+            Save(scaler, "Fire Damage");
+            var template = ScriptableObject.CreateInstance<RequirementTemplate>();
+            template.Description = "Only while wet";
+            template.Requirements = new AvoidRequireTagGroup
+            {
+                RequireTags = new List<TagQuery> { new() { Tag = Tag.Generate("Status.Wet") } },
+                AvoidTags = new List<TagQuery>(),
+            };
+            Save(template, "Wet Only");
+            var forge = Open();
+            yield return Frames();
+
+            TheForge.OpenToAsset(scaler);
+            yield return Frames();
+            var summary = SummaryOf(forge);
+            Assert.That(summary, Has.Member("Fire's damage, level by level"), "a Scaler asset's summary says its description: " + string.Join(" | ", summary));
+            Assert.That(summary, Has.Some.Contains("10/20/30"), "and what it reads");
+            Assert.That(summary, Has.Member("Used By"), "and what uses it");
+
+            var rename = forge.rootVisualElement.Q("Detail").Q<TextField>("ScalerName");
+            Assert.IsNotNull(rename, "its inspector names it, to change");
+            rename.value = "Blaze Damage";
+            yield return Frames(8);
+            Assert.AreEqual("Blaze Damage", scaler.DisplayName, "a new name renames it");
+            Assert.AreEqual("Blaze Damage", typeof(TheForge).GetMethod("NameOf", AnyStatic).Invoke(null, new object[] { scaler }),
+                "and The Forge lists it by the name");
+
+            TheForge.OpenToAsset(template);
+            yield return Frames();
+            summary = SummaryOf(forge);
+            Assert.That(summary, Has.Member("Only while wet"), "a Requirement Template's summary says its description: " + string.Join(" | ", summary));
+            Assert.That(summary, Has.Some.Contains("Wet"), "and what it requires");
+        }
     }
 }
