@@ -734,6 +734,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "New Tag", Type = newTag,
                 Open = _ => newTag.GetMethod("Show", AnyStatic).Invoke(null, new object[] { "Status.", (Action<Tag>)(_ => { }) }),
             };
+            // New Project, from The Forge's project menu (FEAT-34)
+            var newProject = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewProjectWindow");
+            yield return new Window
+            {
+                Name = "New Project", Type = newProject,
+                Open = _ => newProject.GetMethod("Open", AnyStatic).Invoke(null, null),
+            };
         }
 
         private static void CloseWindows()
