@@ -185,7 +185,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var level = field.Q<IntegerField>("Level");
                 Assert.IsNotNull(level, "its level");
                 Assert.AreEqual(2, level.value);
-                Assert.AreEqual(5f, field.Q<FloatField>("Value")?.value, "its value");
+                Assert.AreEqual(5f, field.Q<PropertyField>("Value")?.Q<FloatField>()?.value, "its value, a number field (FEAT-29)");
                 Assert.AreEqual("Silver", field.Q<TextField>("Tier")?.value, "and its tier");
 
                 Undo.IncrementCurrentGroup();

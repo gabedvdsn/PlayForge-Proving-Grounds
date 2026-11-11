@@ -783,5 +783,278 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 AssetDatabase.DeleteAsset(Folder);
             }
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // NUM-23: scalers saved before their parameters were numbers
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static string TypeOf(string name) => $"{{class: {name}, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}}";
+
+        private static string Reads(int rid) => $"    Magnitude: 1\n    RealMagnitude: 3\n    Scaler:\n      rid: {rid}\n";
+
+        // Six scalers as phase 2 saved them: the user's Culling Blade's Conditional, a Conditional with a scaler in each
+        // branch, a Clamped with nothing to clamp, a Randomized, a Set By Caller and a Threshold
+        private static readonly string OldScalers =
+            "  Range:\n" + Reads(101) + "  Share:\n" + Reads(102) + "  Low:\n" + Reads(103) +
+            "  High:\n" + Reads(104) + "  Floor:\n" + Reads(105) + "  Ceiling:\n" + Reads(106) +
+            "  references:\n    version: 2\n    RefIds:\n" +
+            "    - rid: -2\n      type: {class: , ns: , asm: }\n" +
+            $"    - rid: 101\n      type: {TypeOf("ConditionalScaler")}\n      data:\n" +
+            "        Name: \n        Configuration: 0\n        MaxLevel: 20\n        LevelValues:\n        - 300\n" +
+            "        Interpolation: 1\n        StretchOverLevels: 0\n        Behaviours: []\n        Condition: 3\n" +
+            "        TagCondition:\n          Tag:\n            Name: \n            DisplayName: \n" +
+            "          Operator: 5\n          Magnitude: 0\n          MatchMode: 0\n" +
+            "        CheckAttribute: {fileID: 0}\n        ThresholdValue: 300\n        Comparison: 1\n" +
+            "        TrueScaler:\n          rid: -2\n        FalseScaler:\n          rid: -2\n" +
+            $"    - rid: 102\n      type: {TypeOf("ConditionalScaler")}\n      data:\n" +
+            "        Condition: 0\n        TagCondition:\n          Tag:\n            Name: NUM23.Marked\n            DisplayName: \n" +
+            "          Operator: 5\n          Magnitude: 0\n          MatchMode: 0\n" +
+            "        CheckAttribute: {fileID: 0}\n        ThresholdValue: 50\n        Comparison: 5\n" +
+            "        TrueScaler:\n          rid: 107\n        FalseScaler:\n          rid: 108\n" +
+            $"    - rid: 103\n      type: {TypeOf("ClampedScaler")}\n      data:\n" +
+            "        LevelValues:\n        - 5\n        - 30\n        - 80\n        StretchOverLevels: 0\n" +
+            "        MinValue: 10\n        MaxValue: 50\n        Inner:\n          rid: -2\n" +
+            $"    - rid: 104\n      type: {TypeOf("RandomizedScaler")}\n      data:\n" +
+            "        LevelValues:\n        - 100\n        StretchOverLevels: 0\n        VarianceMode: 2\n" +
+            "        Variance: 0.25\n        MinMultiplier: 0.5\n        MaxMultiplier: 2\n        RollOncePerSpec: 1\n" +
+            $"    - rid: 105\n      type: {TypeOf("SetByCallerScaler")}\n      data:\n" +
+            "        Key:\n          Name: NUM23.Power\n          DisplayName: \n        Default: 7\n" +
+            $"    - rid: 106\n      type: {TypeOf("ThresholdScaler")}\n      data:\n" +
+            "        Thresholds:\n        - Level: 1\n          Value: 4\n          TierName: Bronze\n" +
+            "        - Level: 5\n          Value: 9\n          TierName: Silver\n        DefaultValue: 2\n" +
+            $"    - rid: 107\n      type: {TypeOf("ConstantScaler")}\n      data:\n        Value: 1.2\n" +
+            $"    - rid: 108\n      type: {TypeOf("SimpleScaler")}\n      data:\n        LevelValues:\n        - 5\n        StretchOverLevels: 0\n";
+
+        private static float At(AbstractScaler scaler, int level, int top = 5) =>
+            new ScalableFloat(scaler, 1f, EMagnitudeOperation.UseScaler).Evaluate(NumberContext.For(null, null, level, top));
+
+        // What each old scaler read, read from the asset as it loaded
+        private static void AssertReadsAsItWas(NumberFieldFixture loaded, string when)
+        {
+            var culling = loaded.Range.Scaler as ConditionalScaler;
+            Assert.IsNotNull(culling, $"{when}: a Conditional loads as one");
+            var below = culling.When as AttributeCondition;
+            Assert.IsNotNull(below, $"{when}: Target Attribute Threshold is an Attribute condition");
+            Assert.AreEqual(NumberSide.Target, below.On, $"{when}: on the target");
+            Assert.AreEqual(EComparisonOperator.LessOrEqual, below.Comparison, $"{when}: with its comparison");
+            Assert.AreEqual(300f, below.Value.Constant, $"{when}: against its threshold");
+            var own = culling.TrueValue.Scaler as SimpleScaler;
+            Assert.IsNotNull(own, $"{when}: with no True scaler, True reads the scaler's own values, by level");
+            Assert.AreEqual(new[] { 300f }, own.LevelValues, $"{when}: its values");
+            Assert.AreEqual(20, own.MaxLevel, $"{when}: over its levels");
+            Assert.AreEqual(EMagnitudeOperation.UseScaler, culling.TrueValue.RealMagnitude, $"{when}: as they are");
+            Assert.IsTrue(culling.FalseValue.IsConstant, $"{when}: with no False scaler, False reads 0");
+            Assert.AreEqual(0f, culling.FalseValue.Constant, $"{when}: 0");
+
+            var tagged = loaded.Share.Scaler as ConditionalScaler;
+            var tag = tagged?.When as TagCondition;
+            Assert.IsNotNull(tag, $"{when}: Source Tag is a Tag condition");
+            Assert.AreEqual(NumberSide.Caster, tag.On, $"{when}: on the caster");
+            Assert.AreEqual("NUM23.Marked", tag.Query.Tag.Name, $"{when}: of its tag");
+            Assert.AreEqual(1.2f, At(tagged.TrueValue.Scaler, 1), 0.0001f, $"{when}: a True scaler is the True number's kind");
+            Assert.AreEqual(5f, At(tagged.FalseValue.Scaler, 1), $"{when}: and a False one the False number's");
+
+            var clamped = loaded.Low.Scaler as ClampedScaler;
+            Assert.IsNotNull(clamped, $"{when}: a Clamped loads as one");
+            Assert.AreEqual(10f, clamped.MinValue.Constant, $"{when}: its floor");
+            Assert.AreEqual(50f, clamped.MaxValue.Constant, $"{when}: and its ceiling");
+            Assert.AreEqual(10f, At(clamped, 1, 3), $"{when}: with nothing to clamp, it clamps its own values: 5 raised to 10");
+            Assert.AreEqual(30f, At(clamped, 2, 3), $"{when}: 30 as it is");
+            Assert.AreEqual(50f, At(clamped, 3, 3), $"{when}: and 80 capped at 50");
+
+            var randomized = loaded.High.Scaler as RandomizedScaler;
+            Assert.IsNotNull(randomized, $"{when}: a Randomized loads as one");
+            Assert.AreEqual(0.25f, randomized.Variance.Constant, 0.0001f, $"{when}: its variance");
+            Assert.AreEqual(0.5f, randomized.MinMultiplier.Constant, 0.0001f, $"{when}: its least multiplier");
+            Assert.AreEqual(2f, randomized.MaxMultiplier.Constant, 0.0001f, $"{when}: and its most");
+
+            var caller = loaded.Floor.Scaler as SetByCallerScaler;
+            Assert.IsNotNull(caller, $"{when}: a Set By Caller loads as one");
+            Assert.AreEqual("NUM23.Power", caller.Key.Name, $"{when}: its key");
+            Assert.AreEqual(7f, caller.Default.Constant, $"{when}: and its default");
+
+            var threshold = loaded.Ceiling.Scaler as ThresholdScaler;
+            Assert.IsNotNull(threshold, $"{when}: a Threshold loads as one");
+            Assert.AreEqual(2, threshold.Thresholds.Length, $"{when}: with its tiers");
+            Assert.AreEqual(4f, threshold.Thresholds[0].Value.Constant, $"{when}: each tier's value");
+            Assert.AreEqual(9f, threshold.Thresholds[1].Value.Constant, $"{when}: the second's");
+            Assert.AreEqual("Silver", threshold.Thresholds[1].TierName, $"{when}: with its name");
+            Assert.AreEqual(2f, threshold.DefaultValue.Constant, $"{when}: and its default");
+            Assert.AreEqual(4f, At(threshold, 3), $"{when}: it reads the tier it's in");
+            Assert.AreEqual(9f, At(threshold, 5), $"{when}: and the next from its level");
+        }
+
+        /// <summary>
+        /// Scalers saved before their parameters were numbers load as they read (NUM-23): a Conditional's numbered
+        /// condition becomes a condition of the class it named, with its tag, attribute, comparison and threshold, and
+        /// each branch scaler becomes its number's kind, or, with no True scaler, a number of its own values by level, as
+        /// the user's Culling Blade has; a Clamped's bounds and what it clamped; a Randomized's variance and multipliers;
+        /// Set By Caller's default; and a Threshold's tiers and default. The upgrade command re-saves them in the new
+        /// form, which loads the same.
+        /// </summary>
+        [Test]
+        public void NUM_23_Scalers_saved_before_their_numbers_load_as_they_read()
+        {
+            var path = $"{Folder}/OldScalers.asset";
+            try
+            {
+                Directory.CreateDirectory(Folder);
+                File.WriteAllText(path, Yaml(ScriptGuid(), "OldScalers", OldScalers));
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+
+                var loaded = AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path);
+                Assert.IsNotNull(loaded, "the old asset loads");
+                AssertReadsAsItWas(loaded, "loaded");
+
+                Assert.AreEqual(1, ForgeUpgrade.Resave(new[] { path }), "the upgrade command re-saves it");
+                var text = File.ReadAllText(path);
+                StringAssert.DoesNotContain("ThresholdValue:", text, "the Conditional's threshold is gone");
+                StringAssert.DoesNotContain("Condition: 3", text, "and its numbered condition");
+                StringAssert.Contains("class: AttributeCondition", text, "for a condition of its own");
+
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                AssertReadsAsItWas(AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path), "re-saved");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(Folder);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // NUM-24: the inspector for scalers' numbers
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A Conditional's condition picks its kind from a menu of the conditions there are, the logic under Logic,
+        /// shows its one line, and draws its numbers as number fields; picking a kind gives it a condition of that kind.
+        /// A Conditional picked in a number's kind menu reads as it is, not times the number (NUM-24).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NUM_24_A_condition_picks_its_kind_from_a_menu()
+        {
+            var fixture = ScriptableObject.CreateInstance<NumberFieldFixture>();
+            fixture.Threshold = new ScalableFloat(new ConditionalScaler
+            {
+                When = new LevelCondition { Comparison = EComparisonOperator.GreaterThan, Value = 4f }, TrueValue = 2f, FalseValue = 1f,
+            }, 1f, EMagnitudeOperation.UseScaler);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                yield return Drawn(host, fixture, nameof(NumberFieldFixture.Threshold), (field, serialized) =>
+                {
+                    Assert.AreEqual("2 if level > 4, else 1", field.Q<Label>("Summary")?.text, "the number's line says its condition between its branches");
+                    var when = field.Q<PropertyField>("When");
+                    Assert.IsNotNull(when, "a Conditional shows its condition");
+                    var kind = when.Q<PopupField<string>>("Kind");
+                    Assert.IsNotNull(kind, "which picks its kind from a menu");
+                    Assert.That(kind.choices, Is.SupersetOf(new[] { "None", "Tag", "Attribute", "Level", "Compare Numbers", "Always", "Never", "All Of", "Any Of", "Not" }));
+                    Assert.AreEqual("Tag", kind.formatListItemCallback("Tag"), "the conditions at its top");
+                    Assert.AreEqual("Logic/All Of", kind.formatListItemCallback("All Of"), "and the logic under Logic");
+                    Assert.AreEqual("Level", kind.value, "it shows its kind by its name");
+                    Assert.AreEqual("level > 4", when.Q<Label>("Summary")?.text, "and its one line");
+                    Assert.IsNotNull(when.Q<PropertyField>("Value")?.Q<PopupField<string>>("Kind"), "its value is a number field, with a kind of its own");
+                    Assert.IsNotNull(field.Q<PropertyField>("TrueValue"), "and so is each branch");
+
+                    kind.value = "Attribute";
+                    serialized.Update();
+                    Assert.IsInstanceOf<AttributeCondition>(((ConditionalScaler)fixture.Threshold.Scaler).When, "picking a kind gives it a condition of that kind");
+                });
+
+                yield return Drawn(host, fixture, nameof(NumberFieldFixture.Low), (field, serialized) =>
+                {
+                    field.Q<PopupField<string>>("Kind").value = "Conditional";
+                    serialized.Update();
+                    Assert.IsInstanceOf<ConditionalScaler>(fixture.Low.Scaler, "a Conditional picked as a number's kind");
+                    Assert.AreEqual(EMagnitudeOperation.UseScaler, fixture.Low.RealMagnitude, "reads as it is, not times the number");
+                });
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(fixture);
+            }
+        }
+
+        /// <summary>
+        /// A scaler's own numbers read the scaler as their owner, so in a field whose code gives none, a Clamped's
+        /// ceiling can still be relative to its floor: its kind menu offers Relative to a Field, and the picker offers
+        /// the scaler's other numbers, not the outer object's. Each offers only the kinds the outer field resolves (NUM-24).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NUM_24_A_scalers_numbers_read_the_scaler_as_their_owner()
+        {
+            var fixture = ScriptableObject.CreateInstance<NumberFieldFixture>();
+            fixture.Range = new ScalableFloat(new ClampedScaler
+            {
+                MinValue = 10f, MaxValue = new ScalableFloat(new RelativeToFieldKind(), 2f), Value = 5f,
+            }, 1f, EMagnitudeOperation.UseScaler);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                yield return Drawn(host, fixture, nameof(NumberFieldFixture.Range), (field, _) =>
+                {
+                    Assert.That(field.Q<PopupField<string>>("Kind").choices, Has.No.Member("Relative to a Field"), "the outer field gives no owner");
+                    var max = field.Q<PropertyField>("MaxValue");
+                    Assert.IsNotNull(max, "a Clamped shows its bounds as number fields");
+                    Assert.That(max.Q<PopupField<string>>("Kind").choices, Has.Member("Relative to a Field"), "and a bound can be relative to the scaler's fields");
+                    var picker = max.Q<PopupField<string>>("Field");
+                    Assert.IsNotNull(picker, "it picks the field from a menu");
+                    Assert.That(picker.choices, Is.SupersetOf(new[] { "MinValue", "Value" }), "the scaler's other numbers");
+                    Assert.That(picker.choices, Has.No.Member("MaxValue"), "not itself");
+                    Assert.That(picker.choices, Has.No.Member("Share"), "nor the outer object's fields");
+                    Assert.That(picker.choices, Has.No.Member("MaxLevel"), "nor those every scaler has");
+                    Assert.That(picker.choices, Has.No.Member("legacyMinValue"), "nor a hidden one");
+                    Assert.That(field.Q<PropertyField>("MinValue").Q<PopupField<string>>("Kind").choices, Has.No.Member("Reach"),
+                        "a bound offers only the kinds the outer field resolves, which has no target");
+                });
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(fixture);
+            }
+        }
+
+        /// <summary>
+        /// The Problems window reads a scaler's own numbers with the scaler as their owner: a Clamped's ceiling relative
+        /// to its floor is fine where the outer field gives no owner, and one relative to a field the scaler hasn't got is
+        /// flagged; a Group's member reads the outer field's owner, so it's flagged where there's none (NUM-24).
+        /// </summary>
+        [Test]
+        public void NUM_24_Problems_reads_a_scalers_numbers_with_the_scaler_as_their_owner()
+        {
+            var fixture = ScriptableObject.CreateInstance<NumberFieldFixture>();
+            ClampedScaler RelativeTo(string name) => new()
+            {
+                MinValue = 1f, MaxValue = new ScalableFloat(new RelativeToFieldKind { Field = name }, 2f), Value = 5f,
+            };
+            try
+            {
+                fixture.Range = new ScalableFloat(RelativeTo(nameof(ClampedScaler.MinValue)), 1f, EMagnitudeOperation.UseScaler);
+                Assert.That(NumberProblems(fixture), Is.Empty, "a ceiling relative to its floor");
+
+                fixture.Range = new ScalableFloat(RelativeTo("Gone"), 1f, EMagnitudeOperation.UseScaler);
+                var gone = NumberProblems(fixture);
+                Assert.AreEqual(1, gone.Count, string.Join("\n", gone));
+                StringAssert.Contains("Gone", gone[0], "it names the field it can't find");
+                StringAssert.Contains("Clamped", gone[0], "on the scaler");
+
+                var group = new ScalerGroup();
+                group.AddMember(new RelativeToFieldKind { Field = nameof(NumberFieldFixture.Low) }, ECalculationOperation.Add);
+                fixture.Range = new ScalableFloat(group, 1f);
+                var ownerless = NumberProblems(fixture);
+                Assert.AreEqual(1, ownerless.Count, string.Join("\n", ownerless));
+                StringAssert.Contains("owner", ownerless[0], "a Group's member reads the outer field's owner");
+            }
+            finally
+            {
+                Object.DestroyImmediate(fixture);
+            }
+        }
     }
 }

@@ -62,8 +62,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 MagnitudeOp = EMagnitudeOperation.MultiplyWithScaler,
                 MagnitudeScaler = new ConditionalScaler
                 {
-                    Condition = EScalerCondition.SourceTagCondition, TagCondition = new TagQuery { Tag = Studious },
-                    TrueScaler = new ConstantScaler { Value = 2f }, FalseScaler = new ConstantScaler { Value = 1f },
+                    When = new TagCondition { On = NumberSide.Caster, Query = new TagQuery { Tag = Studious } },
+                    TrueValue = 2f, FalseValue = 1f,
                 },
             });
             Tome = make.Item("Tome of Strength");

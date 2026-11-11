@@ -632,17 +632,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.IsTrue(Shown(field.Q<PropertyField>("MaxMultiplier")));
                 });
 
-                var conditional = new ConditionalScaler { Condition = EScalerCondition.LevelAbove };
+                // Its condition is a class with a drawer of its own, and its branches are numbers (FEAT-29)
+                var conditional = new ConditionalScaler { When = new LevelCondition { Comparison = EComparisonOperator.GreaterThan, Value = 4f } };
                 yield return DrawDuration(host, effect, conditional, field =>
                 {
-                    Assert.IsTrue(Shown(field.Q<PropertyField>("ThresholdValue")), "a level condition shows its threshold");
-                    Assert.IsFalse(Shown(field.Q<PropertyField>("TagCondition")), "and not a tag's");
-                    Assert.IsFalse(Shown(field.Q<PropertyField>("CheckAttribute")), "nor an attribute's");
-                    Assert.IsNotNull(field.Q("LevelTable"), "with no True scaler, it reads its own values, so shows them");
+                    Assert.IsNotNull(field.Q<PropertyField>("When"), "a Conditional shows its condition");
+                    Assert.IsNotNull(field.Q<PropertyField>("TrueValue"), "and its two branches");
+                    Assert.IsNotNull(field.Q<PropertyField>("FalseValue"));
+                    Assert.IsNull(field.Q("LevelTable"), "and no table, as each branch is a number of its own");
                 });
-                conditional.TrueScaler = new ConstantScaler { Value = 2f };
-                yield return DrawDuration(host, effect, conditional, field =>
-                    Assert.IsNull(field.Q("LevelTable"), "with one, it doesn't"));
 
                 yield return DrawDuration(host, effect, new SimpleScaler { LevelValues = new[] { 1f, 2f }, StretchOverLevels = false }, field =>
                 {

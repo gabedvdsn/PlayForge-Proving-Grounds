@@ -90,6 +90,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     }
 
     /// <summary>
+    /// A scaler that isn't a kind and holds another, as a project's own scaler written before kinds can: it reads its
+    /// inner scaler against the carrier it's given (NUM-16).
+    /// </summary>
+    [System.Serializable]
+    public class HoldingScaler : AbstractScaler
+    {
+        [SerializeReference] public AbstractScaler Inner;
+
+        public override void Initialize(IAttributeImpactCarrier deriv) => Inner?.Initialize(deriv);
+        public override float Evaluate(IAttributeImpactCarrier deriv) => Inner?.Evaluate(deriv) ?? 0f;
+        public override EScalerParts Parts => EScalerParts.None;
+    }
+
+    /// <summary>
     /// FEAT-29 phase 2: the new kinds of number, each written on the public base a project's own kinds use: Local Data,
     /// Relative to a field, Tracked Impact, Group Impact, Worker and Asset Part; and the Group, a kind like them.
     /// </summary>
@@ -204,6 +218,33 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(6f, owner.Gone.Evaluate(context, owner), "with a field that's gone, its number");
             float loop = owner.LoopA.Evaluate(context, owner);
             Assert.AreEqual(1f, loop, "a loop stops, and reads a number");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // NUM-16: a kind inside a plain scaler
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A kind inside a scaler that isn't one reads the context its number was read in, its owner among it, where the
+        /// context has an effect's carrier as where it has none. The scaler was read through the carrier, so the kind
+        /// built its context from the carrier alone, which has no owner, and couldn't be worked out (NUM-16).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NUM_16_A_kind_inside_a_plain_scaler_keeps_its_context([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
+            var spec = gas.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(gas), Make.Effect("Hit", new EffectConfig { Target = health, Magnitude = -1f }));
+            await Frames.Step();
+            var owner = new RelativeOwner();
+            var held = new ScalableFloat(new HoldingScaler { Inner = new RelativeToFieldKind { Field = nameof(RelativeOwner.Plain) } }, 2f);
+
+            Assert.AreEqual(14f, held.Evaluate(NumberContext.For(gas, null, 1), owner), "2 × its owner's Plain, 7, with no carrier");
+            Assert.AreEqual(14f, held.Evaluate(NumberContext.Of(spec), owner), "and with an effect's");
+
+            // What is read apart from that number, for the same effect, reads the effect's context alone
+            var apart = new ScalableFloat(new RelativeToFieldKind { Field = nameof(RelativeOwner.Plain) }, 2f);
+            Assert.AreEqual(2f, apart.Evaluate(NumberContext.Of(spec)), "a number read with no owner has none");
         });
 
         // ═══════════════════════════════════════════════════════════════════════════
