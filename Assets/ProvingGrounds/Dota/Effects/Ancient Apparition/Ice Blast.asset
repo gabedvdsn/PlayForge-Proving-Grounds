@@ -1,0 +1,189 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d34fc1f98f8a0b4c9b37da3e706e0e1, type: 3}
+  m_Name: Ice Blast
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Ice Blast
+    Description: '325 damage as it lands, then frostbite for 10 seconds: 20 damage
+      a second, no healing, and a blow that leaves the target below 13% of its maximum
+      health shatters it.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    RetentionGroup:
+      Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
+      DisplayName: Ignore
+  Tags:
+    AssetTag:
+      Name: Effect.Dota.IceBlast
+      DisplayName: Effect.Dota.IceBlast
+    ContextTags: []
+    GrantedTags:
+    - Name: State.Dota.Frostbitten
+      DisplayName: State.Dota.Frostbitten
+    RemovesEffectsTagged: []
+    BlocksEffectsTagged: []
+  GrantedAbilities: []
+  ImpactSpecification:
+    AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+    TargetImpact: 0
+    ImpactOperation: 0
+    MultiplyBehaviour: 0
+    AffiliationPolicy: 3
+    AffiliationComparison: 0
+    Affiliations: []
+    ChanceToApply:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    ImpactTypes: []
+    ReverseImpactOnRemoval: 0
+    MagnitudeOperation:
+      Magnitude: -20
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    AdditionalImpacts: []
+    Packets:
+    - Policy: 0
+      ContainedEffect: {fileID: 11400000, guid: 9e9a3d057a6d18f45a4b8c6374692e6c, type: 2}
+  DurationSpecification:
+    DurationPolicy: 1
+    DurationOperation:
+      Magnitude: 10
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    RealDeltaTime: 1
+    DeltaTimeScaler:
+      rid: -2
+    EnablePeriodicTicks: 1
+    TickOnApplication: 0
+    TicksOperation:
+      Magnitude: 10
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    TickIntervalOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    AdditionalExecuteTicksOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    ReApplicationPolicy: 3
+    ReApplicationInteraction: 1
+    StackPolicy: 0
+    StackingConfigs: []
+    StackAmountOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+  Workers:
+  - rid: 2403794368834043943
+  Cues: []
+  SourceRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  TargetRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794368834043943
+      type: {class: GrantAttributeWorkersEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+      data:
+        Workers:
+        - rid: 2403794368834043944
+        - rid: 2403794368834043945
+    - rid: 2403794368834043944
+      type: {class: HealBlockAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+      data:
+        TimingConfig: 0
+        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+        AllowSelfModification: 1
+        TargetModification: 0
+        ExclusivelyTargetModification: 0
+        SignPolicy: 1
+        AnyImpactType: 1
+        ImpactTypes: []
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ValidContextTags: []
+    - rid: 2403794368834043945
+      type: {class: ShatterAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+      data:
+        TimingConfig: 0
+        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+        AllowSelfModification: 1
+        TargetModification: 0
+        ExclusivelyTargetModification: 0
+        SignPolicy: 2
+        AnyImpactType: 1
+        ImpactTypes: []
+        AnyContextTag: 1
+        ContextMatchingPolicy: 0
+        ValidContextTags: []
+        BelowShareOfBase: 0.13

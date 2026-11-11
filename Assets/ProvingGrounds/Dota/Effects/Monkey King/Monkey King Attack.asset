@@ -1,0 +1,352 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d34fc1f98f8a0b4c9b37da3e706e0e1, type: 3}
+  m_Name: Monkey King Attack
+  m_EditorClassIdentifier: 
+  LocalData: []
+  _template: {fileID: 0}
+  _templateOverrides: []
+  _templateListSnapshots: []
+  Definition:
+    Name: Monkey King Attack
+    Description: 'Monkey King''s attack: his Attack Damage, and 80 more while he
+      has charged hits, each healing him 30% of what it deals and spending a charge.
+      An uncharged hit adds a Jingu Mastery counter.'
+    Visibility:
+      Name: 
+      DisplayName: 
+    Textures: []
+    RetentionGroup:
+      Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
+      DisplayName: Ignore
+  Tags:
+    AssetTag:
+      Name: Effect.Dota.MonkeyKingAttack
+      DisplayName: Effect.Dota.MonkeyKingAttack
+    ContextTags: []
+    GrantedTags: []
+    RemovesEffectsTagged: []
+    BlocksEffectsTagged: []
+  GrantedAbilities: []
+  ImpactSpecification:
+    AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+    TargetImpact: 0
+    ImpactOperation: 0
+    MultiplyBehaviour: 0
+    AffiliationPolicy: 3
+    AffiliationComparison: 0
+    Affiliations: []
+    ChanceToApply:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    ImpactTypes: []
+    ReverseImpactOnRemoval: 0
+    MagnitudeOperation:
+      Magnitude: -1
+      RealMagnitude: 0
+      Scaler:
+        rid: 2403794368834043929
+    AdditionalImpacts: []
+    Packets:
+    - Policy: 0
+      ContainedEffect: {fileID: 11400000, guid: d7f4a60b002270b4f86270f73b40562c, type: 2}
+  DurationSpecification:
+    DurationPolicy: 0
+    DurationOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    RealDeltaTime: 1
+    DeltaTimeScaler:
+      rid: -2
+    EnablePeriodicTicks: 0
+    TickOnApplication: 0
+    TicksOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    TickIntervalOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    AdditionalExecuteTicksOperation:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    ReApplicationPolicy: 2
+    ReApplicationInteraction: 0
+    StackPolicy: 0
+    StackingConfigs: []
+    StackAmountOperation:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+  Workers:
+  - rid: 2403794368834043930
+  - rid: 2403794368834043931
+  Cues: []
+  SourceRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  TargetRequirements:
+    Name: 
+    ApplicationRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    OngoingRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+    RemovalRequirements:
+      Name: 
+      SourceTemplate: {fileID: 0}
+      SyncWithTemplate: 0
+      AvoidTags: []
+      RequireTags: []
+  LinkMode: 0
+  _linkedSource: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2403794368834043929
+      type: {class: ScalerGroup, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        Calculations:
+        - Calculation:
+            rid: 2403794368834043932
+          RelativeOperation: 0
+        - Calculation:
+            rid: 2403794368834043933
+          RelativeOperation: 0
+        OverrideMemberCollisionPolicy: 0
+    - rid: 2403794368834043930
+      type: {class: LifestealEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+      data:
+        Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+        Share:
+          Magnitude: 0.3
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+        When:
+          rid: 2403794368834043934
+    - rid: 2403794368834043931
+      type: {class: ApplyToSourceEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+      data:
+        Moment: 1
+        When:
+          rid: 2403794368834043935
+        Effects:
+        - {fileID: 11400000, guid: 411ce66e69ac97d499ae04eef4f27e55, type: 2}
+    - rid: 2403794368834043932
+      type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        CaptureAttribute: {fileID: 11400000, guid: eaa7f2fa7d8da6b41a74d94dd44ff37a, type: 2}
+        CaptureFrom: 1
+        CaptureWhen: 1
+        CaptureWhat: 0
+    - rid: 2403794368834043933
+      type: {class: ConditionalScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        When:
+          rid: 2403794368834043936
+        TrueValue:
+          Magnitude: 80
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+        FalseValue:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+        legacyCondition: -1
+        legacyTagQuery:
+          Tag:
+            Name: 
+            DisplayName: 
+          Operator: 5
+          Magnitude: 0
+          MatchMode: 0
+        legacyAttribute: {fileID: 0}
+        legacyThreshold: NaN
+        legacyComparison: 0
+        TrueScaler:
+          rid: -2
+        FalseScaler:
+          rid: -2
+    - rid: 2403794368834043934
+      type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        On: 0
+        Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
+        What: 0
+        Comparison: 5
+        Value:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+    - rid: 2403794368834043935
+      type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        On: 0
+        Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
+        What: 0
+        Comparison: 5
+        Value:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+    - rid: 2403794368834043936
+      type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        On: 0
+        Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
+        What: 0
+        Comparison: 5
+        Value:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
