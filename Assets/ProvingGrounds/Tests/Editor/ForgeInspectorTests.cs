@@ -985,6 +985,44 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// TW-7: an item's and an entity's Workers section holds Modifiers, after On Hit, and its line counts them; an Effect
+        /// Modifier's inspector says its rule in a line.
+        /// </summary>
+        [Test]
+        public void TW_7_The_Workers_section_holds_Modifiers_and_counts_them()
+        {
+            var dagger = ScriptableObject.CreateInstance<Item>();
+            var mage = ScriptableObject.CreateInstance<EntityIdentity>();
+            var shared = ScriptableObject.CreateInstance<EffectModifier>();
+            try
+            {
+                dagger.OnHit.Add(new OnHitEntry());
+                dagger.Modifiers.Add(new EffectModifierEntry());
+                dagger.Modifiers.Add(new EffectModifierEntry());
+                mage.Modifiers.Add(new EffectModifierEntry());
+                Inspect(dagger, root =>
+                {
+                    var names = root.Q(name: "Workers_CONTAINER").Query<PropertyField>().ToList().Select(field => field.name).ToList();
+                    Assert.That(names.IndexOf("Modifiers"), Is.EqualTo(names.IndexOf("OnHit") + 1), $"Modifiers after On Hit: {string.Join(", ", names)}");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 on hit, 2 modifiers"), "the line counts them");
+                });
+                Inspect(mage, root =>
+                {
+                    Assert.IsNotNull(root.Q(name: "Workers_CONTAINER").Q<PropertyField>("Modifiers"), "an entity's own");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 modifier"));
+                });
+                Inspect(shared, root => Assert.That(root.Q<Label>(name: "ModifierLine").text, Does.StartWith("Outgoing, every effect"),
+                    "a shared modifier says its rule"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(dagger);
+                Object.DestroyImmediate(mage);
+                Object.DestroyImmediate(shared);
+            }
+        }
+
         private static void Inspect(Object target, System.Action<VisualElement> check)
         {
             var editor = UnityEditor.Editor.CreateEditor(target);

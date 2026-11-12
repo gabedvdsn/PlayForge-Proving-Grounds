@@ -202,6 +202,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
             // A Value Pipeline's too, a stage list and no asset header (TW-2)
             yield return new Subject { Name = "a new Value Pipeline", Make = made => new[] { NewAsset(made, typeof(ValuePipeline)) } };
+            // And an Effect Modifier's, a rule and no asset header (TW-7)
+            yield return new Subject { Name = "a new Effect Modifier", Make = made => new[] { NewAsset(made, typeof(EffectModifier)) } };
         }
 
         // A new asset of each type, a MonoProcess, and the fullest Demo asset in each of the Demo's folders
@@ -213,6 +215,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
             // A Value Pipeline's too, a stage list and no asset header (TW-2)
             yield return new Subject { Name = "a new Value Pipeline", Make = made => new[] { NewAsset(made, typeof(ValuePipeline)) } };
+            yield return new Subject { Name = "a new Effect Modifier", Make = made => new[] { NewAsset(made, typeof(EffectModifier)) } };
 
             var folder = DemoFolder;
             foreach (var group in DemoAssets().GroupBy(inSample => Path.GetDirectoryName(inSample)))
@@ -385,7 +388,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var inspected = typeof(CustomEditor).GetField("m_InspectedType", Private);
             Assume.That(inspected, Is.Not.Null, "an inspector names the type it draws");
-            var opened = AssetTypes.Append(typeof(SmokeProcess)).Append(typeof(ScalerAsset)).Append(typeof(ValuePipeline)).ToList();
+            var opened = AssetTypes.Append(typeof(SmokeProcess)).Append(typeof(ScalerAsset)).Append(typeof(ValuePipeline))
+                .Append(typeof(EffectModifier)).ToList();
             var missing = typeof(TheForge).Assembly.GetTypes()
                 .SelectMany(type => type.GetCustomAttributes<CustomEditor>(false))
                 .Select(attribute => (Type)inspected.GetValue(attribute))
