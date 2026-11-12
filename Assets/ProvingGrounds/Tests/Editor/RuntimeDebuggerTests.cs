@@ -1624,5 +1624,47 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("None", Fact(detail, "Process Queued").text, "with no state queued");
             Assert.IsTrue(Fact(detail, "Process Queued").ClassListContains("pf-debugger__fact-value--none"), "which shows as none");
         }
+
+        /// <summary>
+        /// The Debugger shows the selected entity's combat log as a section of its own, newest first, a hit's row saying
+        /// what it took and from whom (TW-22).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TW_22_The_debugger_shows_an_entitys_combat_log() => Guarded(ShowsTheCombatLog());
+
+        private IEnumerator ShowsTheCombatLog()
+        {
+            var project = Own(ScriptableObject.CreateInstance<ForgeProject>());
+            var was = ForgeProject.Use(project);
+            try
+            {
+                var health = Attribute("Health");
+                var foe = RuntimeHub("Logged Foe", Set((health, 100f, 100f)), out _);
+                var attacker = RuntimeHub("Attacker", Set((health, 100f, 100f)), out _);
+                var blow = Lasting("Blow", 0f);
+                blow.DurationSpecification.DurationPolicy = EEffectDurationPolicy.Instant;
+                blow.ImpactSpecification.AttributeTarget = health;
+                blow.ImpactSpecification.MagnitudeOperation = new ScalableFloat { Magnitude = -20f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+                Assert.IsTrue(foe.ApplyGameplayEffect(foe.GenerateEffectSpec(attacker, blow)), "the attacker's blow lands");
+                Assert.IsTrue(foe.ApplyGameplayEffect(foe.GenerateEffectSpec(attacker, blow)), "twice");
+
+                var window = Open();
+                yield return Frames();
+                Sample(window);
+                yield return Select(window, foe);
+
+                var section = Detail(window).Q("CombatLog_CONTAINER");
+                Assert.IsNotNull(section, "the detail has a Combat Log section");
+                var rows = section.Q("CombatLogRows").Children().ToList();
+                Assert.AreEqual(2, rows.Count, "a row for each hit");
+                var texts = rows[0].Query<Label>().ToList().Select(label => label.text).ToList();
+                Assert.That(texts, Has.Some.Contains("-20 Health"), "what it took");
+                Assert.That(texts, Has.Some.Contains("Attacker"), "and from whom");
+            }
+            finally
+            {
+                ForgeProject.Use(was);
+            }
+        }
     }
 }
