@@ -20,7 +20,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         // A Group whose one member holds no kind yet, as the members list's "+" leaves it
         private static ScalerGroup WithAnEmptyMember() => new()
         {
-            Calculations = new[] { new MagnitudeModifierGroupMember { RelativeOperation = ECalculationOperation.Add } },
+            Calculations = new[] { new MagnitudeModifierGroupMember { RelativeOperation = EGroupOperation.Add } },
         };
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator ED_80_A_cached_group_that_ignores_overrides_joins_the_others([Values] Hub hub) => Live(async () =>
         {
-            CachedMagnitudeModifierGroupMember Member(float value, ECalculationOperation joins) => new()
+            CachedMagnitudeModifierGroupMember Member(float value, EGroupOperation joins) => new()
             {
                 Calculation = new CachedSimpleScaler { LevelValues = new[] { value }, StretchOverLevels = false },
                 RelativeOperation = joins,
@@ -86,7 +86,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ignoring = new CachedScalerGroup
             {
                 OverrideMemberCollisionPolicy = EValueCollisionPolicy.Ignore,
-                Calculations = new[] { Member(30f, ECalculationOperation.Add), Member(70f, ECalculationOperation.Override) },
+                Calculations = new[] { Member(30f, EGroupOperation.Add), Member(70f, EGroupOperation.Override) },
             };
             var stamina = Make.Attribute("Stamina");
             var startsAt = new AttributeMagnitudeSpec { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseScaler, Scaling = ignoring };
