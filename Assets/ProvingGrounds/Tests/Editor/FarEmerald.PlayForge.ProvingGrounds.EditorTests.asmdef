@@ -3,6 +3,8 @@
     "rootNamespace": "FarEmerald.PlayForge.ProvingGrounds.EditorTests",
     "references": [
         "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.Lab.Editor",
+        "FarEmerald.PlayForge.Lab",
         "FarEmerald.PlayForge.Editor",
         "UniTask",
         "UnityEngine.TestRunner",

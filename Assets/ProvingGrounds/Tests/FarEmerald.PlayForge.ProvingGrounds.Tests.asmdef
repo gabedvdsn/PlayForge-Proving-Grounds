@@ -3,6 +3,7 @@
     "rootNamespace": "FarEmerald.PlayForge.ProvingGrounds.Tests",
     "references": [
         "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.Lab",
         "FarEmerald.PlayForge.ProvingGrounds.Harness",
         "UniTask",
         "UnityEngine.TestRunner",
