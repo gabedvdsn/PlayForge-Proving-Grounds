@@ -355,5 +355,112 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 ForgeTime.Use(previous);
             }
         });
+
+        private EntityIdentity Mortal(string name, float hp, params Ability[] abilities)
+        {
+            var entity = Fighter(name, hp, 5f, abilities);
+            entity.WorkerGroup.AnalysisWorkers.Add(new DeathWatcherAnalysisWorker { Target = health, Threshold = 0f });
+            return entity;
+        }
+
+        // The battle's bots fight; the lab's time is stepped here, not by Unity's
+        private void Fight()
+        {
+            lab.Play();
+            lab.Paused = true;
+        }
+
+        /// <summary>A bot casts what's ready at the nearest foe it can target, its target in the data, and otherwise attacks.</summary>
+        [UnityTest]
+        public IEnumerator LAB_10_A_bot_casts_at_the_nearest_foe() => Live(async () =>
+        {
+            var bolt = Make.Ability("Bolt", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { Hit("Bolt Hit", 20f) } }));
+            bolt.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
+            var caster = Fighter("Caster", abilities: new[] { Strike(Hit("Blow", 1f)), bolt });
+            var target = Fighter("Target", hp: 1000f);
+            Lab(false, caster, target);
+            lab.SetMode(LabMode.Battle);
+            var bot = lab.AddBot(caster, LabSides.Blue, Vector3.zero);
+            var near = lab.AddBot(target, LabSides.Red, new Vector3(4f, 0f, 0f)).Unit;
+            var far = lab.AddBot(target, LabSides.Red, new Vector3(-20f, 0f, 0f)).Unit;
+            near.GetComponent<LabBot>().Fighting = false;
+            far.GetComponent<LabBot>().Fighting = false;
+            await Frames.Step();
+            lab.Step(0.01f);
+            Assert.AreSame(near, LabBot.Nearest(bot.Unit), "the nearest foe");
+
+            lab.Play();
+            lab.Paused = true;
+            near.GetComponent<LabBot>().Fighting = false;
+            far.GetComponent<LabBot>().Fighting = false;
+            Run(0.6f);
+            Assert.Less(near.Value(health), 1000f, "the bot cast at the nearest foe");
+            Assert.AreEqual(1000f, far.Value(health), 0.01f, "and not at the far one");
+        });
+
+        /// <summary>A quick battle of two sides plays until one stands, and a reset puts every bot back, at full.</summary>
+        [UnityTest]
+        public IEnumerator LAB_9_A_quick_battle_plays_until_one_side_stands() => Live(async () =>
+        {
+            var soldier = Mortal("Soldier", 30f, Strike(Hit("Blow", 10f)));
+            var veteran = Mortal("Veteran", 90f, Strike(Hit("Heavy Blow", 15f)));
+            Lab(false, soldier, veteran);
+            lab.QuickBattle(2, soldier);
+            Assert.AreEqual(LabMode.Battle, lab.Mode, "it's a battle");
+            Assert.AreEqual(4, lab.Seats.Count, "of two a side");
+            Assert.AreEqual(2, lab.Seats.Count(seat => seat.Side.Name == "Blue"), "Blue");
+            Assert.AreEqual(2, lab.Seats.Count(seat => seat.Side.Name == "Red"), "and Red");
+            Assert.That(lab.Seats.All(seat => seat.Entity == soldier), Is.True, "of the entity given");
+
+            // Blue's veterans against Red's soldiers, so the battle has a winner
+            lab.Clear();
+            lab.AddBot(veteran, LabSides.Blue);
+            lab.AddBot(veteran, LabSides.Blue);
+            lab.AddBot(soldier, LabSides.Red);
+            lab.AddBot(soldier, LabSides.Red);
+            await Frames.Step();
+            lab.Step(0.01f);
+
+            Fight();
+            for (int i = 0; i < 1200 && !lab.Ended; i++) lab.Step(0.05f);
+            Assert.IsTrue(lab.Ended, "the battle ends");
+            Assert.IsFalse(lab.Fighting, "and its bots stop");
+            Assert.AreEqual("Blue", lab.Winner?.Name, "with the stronger side standing");
+            var standing = lab.Seats.Where(seat => seat.Unit && seat.Unit.Alive).Select(seat => seat.Side.Name).Distinct().ToList();
+            Assert.That(standing, Is.EqualTo(new[] { "Blue" }), "its bots alone");
+
+            var homes = lab.Seats.Select(seat => seat.Home).ToList();
+            lab.ResetBattle();
+            lab.Step(0.01f);
+            Assert.IsFalse(lab.Ended, "a reset starts it again");
+            Assert.That(lab.Seats.All(seat => seat.Unit && seat.Unit.Alive), Is.True, "every bot standing");
+            Assert.That(lab.Seats.All(seat => Mathf.Approximately(seat.Unit.Value(health), seat.Entity == veteran ? 90f : 30f)), Is.True, "at full");
+            Assert.That(lab.Seats.Select(seat => seat.Unit.transform.position), Is.EqualTo(homes), "where it started");
+        });
+
+        /// <summary>A bot made anew by a reset keeps what the author gave it: its items, the abilities taught and their levels.</summary>
+        [UnityTest]
+        public IEnumerator LAB_9_A_reset_bot_keeps_what_it_was_given() => Live(async () =>
+        {
+            var bolt = Make.Ability("Bolt", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { Hit("Bolt Hit", 20f) } }));
+            var trinket = Make.Item("Trinket");
+            var soldier = Fighter("Soldier");
+            Lab(false, soldier, bolt, trinket);
+            lab.SetMode(LabMode.Battle);
+            var bot = lab.AddBot(soldier, LabSides.Blue, Vector3.zero);
+            await Frames.Step();
+            lab.Step(0.01f);
+
+            Assert.IsTrue(lab.GiveItem(trinket, bot.Unit), "an item given");
+            Assert.IsTrue(lab.Teach(bolt, bot.Unit), "an ability taught");
+            lab.SetAbilityLevel(bolt, bot.Unit, 3);
+            lab.ResetBattle();
+            lab.Step(0.01f);
+            var again = lab.Seats[0].Unit;
+            Assert.AreNotSame(bot.Unit, again, "the reset made the bot anew");
+            Assert.That(again.Items(), Has.Member(trinket), "with the item");
+            Assert.That(again.Known(), Has.Member(bolt), "and the ability");
+            Assert.AreEqual(3, again.LevelOf(bolt), "at its level");
+        });
     }
 }
