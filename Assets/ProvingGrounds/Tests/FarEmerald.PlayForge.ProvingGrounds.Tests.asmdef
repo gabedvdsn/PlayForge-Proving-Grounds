@@ -5,6 +5,7 @@
         "FarEmerald.PlayForge",
         "FarEmerald.PlayForge.Lab",
         "FarEmerald.PlayForge.ProvingGrounds.Harness",
+        "FarEmerald.PlayForge.ProvingGrounds.Recipes",
         "UniTask",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

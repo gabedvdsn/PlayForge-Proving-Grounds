@@ -8,7 +8,9 @@
         "FarEmerald.PlayForge.Editor",
         "UniTask",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "FarEmerald.PlayForge.ProvingGrounds.Recipes",
+        "FarEmerald.PlayForge.ProvingGrounds.Recipes.Editor"
     ],
     "includePlatforms": [
         "Editor"

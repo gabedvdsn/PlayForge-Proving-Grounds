@@ -1,0 +1,19 @@
+{
+    "name": "FarEmerald.PlayForge.ProvingGrounds.Recipes.Editor",
+    "rootNamespace": "FarEmerald.PlayForge.ProvingGrounds.Recipes.Building",
+    "references": [
+        "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.ProvingGrounds.Recipes"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
