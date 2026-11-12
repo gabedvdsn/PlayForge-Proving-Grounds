@@ -40,37 +40,22 @@ MonoBehaviour:
   WorkerGroup:
     Name: Workers
     AttributeWorkers: []
-    ImpactWorkers:
-    - rid: 2403794372806049859
+    ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit:
+  - Attribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+    Effects:
+    - {fileID: 11400000, guid: 325eeb6a8b324d242b90da32cbe646cb, type: 2}
+    To: 0
+    OnlyOnKill: 0
+    ImpactTypes:
+    - Name: Damage.Hades.Attack
+      DisplayName: Damage.Hades.Attack
+    When:
+      rid: -2
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049859
-      type: {class: OnHitApplyEffectsImpactWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        AcceptUnworkableImpact: 0
-        ImpactedAttribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
-        AnyImpactType: 0
-        ImpactType:
-        - Name: Damage.Hades.Attack
-          DisplayName: Damage.Hades.Attack
-        ImpactTarget: 0
-        ImpactTargetExclusive: 0
-        ImpactSign: 1
-        AllowSelfImpact: 0
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ImpactAbilityContextTags: []
-        WorkAttribute: {fileID: 0}
-        WorkImpactType: []
-        WorkSignPolicy: 0
-        Effects:
-        - {fileID: 11400000, guid: 325eeb6a8b324d242b90da32cbe646cb, type: 2}
-        To: 0
-        OnlyOnKill: 0
-        When:
-          rid: -2

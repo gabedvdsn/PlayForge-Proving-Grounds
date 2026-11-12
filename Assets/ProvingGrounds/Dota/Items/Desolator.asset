@@ -41,37 +41,22 @@ MonoBehaviour:
   WorkerGroup:
     Name: Workers
     AttributeWorkers: []
-    ImpactWorkers:
-    - rid: 2403794372806049903
+    ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit:
+  - Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+    Effects:
+    - {fileID: 11400000, guid: ddff6e9ebbd9e3f47a92bbb9e6817c69, type: 2}
+    To: 0
+    OnlyOnKill: 0
+    ImpactTypes:
+    - Name: Damage.Dota.Attack
+      DisplayName: Damage.Dota.Attack
+    When:
+      rid: -2
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049903
-      type: {class: OnHitApplyEffectsImpactWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        AcceptUnworkableImpact: 0
-        ImpactedAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-        AnyImpactType: 0
-        ImpactType:
-        - Name: Damage.Dota.Attack
-          DisplayName: Damage.Dota.Attack
-        ImpactTarget: 0
-        ImpactTargetExclusive: 0
-        ImpactSign: 1
-        AllowSelfImpact: 0
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ImpactAbilityContextTags: []
-        WorkAttribute: {fileID: 0}
-        WorkImpactType: []
-        WorkSignPolicy: 0
-        Effects:
-        - {fileID: 11400000, guid: ddff6e9ebbd9e3f47a92bbb9e6817c69, type: 2}
-        To: 0
-        OnlyOnKill: 0
-        When:
-          rid: -2

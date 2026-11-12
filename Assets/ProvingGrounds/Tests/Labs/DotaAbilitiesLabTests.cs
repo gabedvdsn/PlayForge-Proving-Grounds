@@ -253,10 +253,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Counter Helix: as Axe is attacked, a 20% chance to spin, 60 pure damage to each enemy at its first level. The
-        /// ability carries a Lab Kit worker that sends Axe an event as he's hit, which sets the ability off, and a Lab Kit
-        /// rule rolls its chance: PlayForge sends no event of its own as an entity is hit (see the wishlist). Mono, as the
-        /// area search finds MonoBehaviour entities alone.
+        /// Counter Helix: as Axe is attacked, a 20% chance to spin, 60 pure damage to each enemy at its first level. Its
+        /// trigger takes the Impact Taken the core sends, Health's losses to attacks, and rolls its chance once for each
+        /// (TW-5); a Lab Kit worker sent the event until AC-6. Mono, as the lab first played it.
         /// </summary>
         [UnityTest]
         public IEnumerator Counter_Helix_spins_on_a_fifth_of_the_hits_Axe_takes() => Live(async () =>

@@ -27,8 +27,19 @@ MonoBehaviour:
     Triggers:
     - Source: 0
       Tag:
-        Name: Event.Dota.Attacked
-        DisplayName: Event.Dota.Attacked
+        Name: Impact TakenCxbKO7Cc9k6c8dHrg_t58gAhmogDGfsFCxbKO7Cc9k6c8dHrg_t5
+        DisplayName: Impact Taken
+      Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+      Sign: 1
+      ImpactTypes:
+      - Name: Damage.Dota.Attack
+        DisplayName: Damage.Dota.Attack
+      Chance:
+        Magnitude: 0.2
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
+      Target: 0
     Textures: []
   Tags:
     AssetTag:
@@ -95,11 +106,11 @@ MonoBehaviour:
   Cooldown: {fileID: 0}
   WorkerGroup:
     Name: Workers
-    AttributeWorkers:
-    - rid: 2403794372806049885
+    AttributeWorkers: []
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -149,28 +160,3 @@ MonoBehaviour:
     - rid: 2403794372806049884
       type: {class: IsAliveValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data: 
-    - rid: 2403794372806049885
-      type: {class: HitTakenEventAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        TimingConfig: 1
-        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-        AllowSelfModification: 1
-        TargetModification: 0
-        ExclusivelyTargetModification: 0
-        SignPolicy: 2
-        AnyImpactType: 0
-        ImpactTypes:
-        - Name: Damage.Dota.Attack
-          DisplayName: Damage.Dota.Attack
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ValidContextTags: []
-        Event:
-          Name: Event.Dota.Attacked
-          DisplayName: Event.Dota.Attacked
-        Chance:
-          Magnitude: 0.2
-          RealMagnitude: 2
-          Scaler:
-            rid: -2
-        DealerIsTarget: 0

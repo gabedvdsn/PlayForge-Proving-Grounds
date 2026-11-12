@@ -40,37 +40,22 @@ MonoBehaviour:
   WorkerGroup:
     Name: Workers
     AttributeWorkers: []
-    ImpactWorkers:
-    - rid: 2403794372806049895
+    ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit:
+  - Attribute: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
+    Effects:
+    - {fileID: 11400000, guid: 9a24a80393d2bbd4f9cca2708aba5843, type: 2}
+    To: 0
+    OnlyOnKill: 0
+    ImpactTypes:
+    - Name: Damage.RoR.Attack
+      DisplayName: Damage.RoR.Attack
+    When:
+      rid: -2
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049895
-      type: {class: OnHitApplyEffectsImpactWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        AcceptUnworkableImpact: 0
-        ImpactedAttribute: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
-        AnyImpactType: 0
-        ImpactType:
-        - Name: Damage.RoR.Attack
-          DisplayName: Damage.RoR.Attack
-        ImpactTarget: 0
-        ImpactTargetExclusive: 0
-        ImpactSign: 1
-        AllowSelfImpact: 0
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ImpactAbilityContextTags: []
-        WorkAttribute: {fileID: 0}
-        WorkImpactType: []
-        WorkSignPolicy: 0
-        Effects:
-        - {fileID: 11400000, guid: 9a24a80393d2bbd4f9cca2708aba5843, type: 2}
-        To: 0
-        OnlyOnKill: 0
-        When:
-          rid: -2

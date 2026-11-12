@@ -6,65 +6,8 @@ using ForgeAttribute = FarEmerald.PlayForge.Attribute;
 namespace FarEmerald.PlayForge.ProvingGrounds.LabKit
 {
     // The workers the Dota, Risk of Rain and Hades labs needed and PlayForge doesn't have. Each stands in for an item of
-    // Docs/TOOLING_WISHLIST.md, which names it; the labs' assets use them as an author would a built-in one.
-
-    /// <summary>Who an on-hit effect lands on.</summary>
-    public enum EOnHitWho
-    {
-        /// <summary>The one the hit landed on.</summary>
-        Target,
-
-        /// <summary>The one who dealt the hit: the worker's holder.</summary>
-        Self,
-    }
-
-    /// <summary>
-    /// Applies effects when its holder's hit lands: an item's or a boon's on-hit, as Desolator's Corruption, Tri-Tip
-    /// Dagger's bleed or Heartbreak Strike's Weak; or on the hit that kills, as Topaz Brooch's barrier. It takes the hits
-    /// any impact worker takes, by attribute, sign and impact type, so a bleed's ticks, typed apart from attacks, don't set
-    /// it off again. An effect's own Chance to Apply rolls as it lands. Wishlist: on-hit and on-kill effects.
-    /// <para>
-    /// Its holder is the hit's dealer, its context's System: an impact worker runs for the dealer. Its System was the one
-    /// hit until GAS-72, so the lab found its holder through the hit's carrier.
-    /// </para>
-    /// </summary>
-    [Serializable]
-    public class OnHitApplyEffectsImpactWorker : AbstractContextImpactWorker
-    {
-        [Tooltip("The effects it applies")]
-        public List<GameplayEffect> Effects = new();
-
-        [Tooltip("Who they land on: the one hit, or the holder")]
-        public EOnHitWho To = EOnHitWho.Target;
-
-        [Tooltip("Only on the hit that takes its attribute from above 0 to 0 or below: a kill")]
-        public bool OnlyOnKill;
-
-        [Tooltip("Applies only while this holds, read at the hit, the holder its caster and the one hit its target")]
-        [SerializeReference] public GameplayCondition When;
-
-        public override bool ValidateWorkFor(ImpactData impactData)
-        {
-            if (!base.ValidateWorkFor(impactData)) return false;
-            return !OnlyOnKill || (impactData.OldValue.CurrentValue > 0f && impactData.LiveValue.CurrentValue <= 0f);
-        }
-
-        public override IEnumerable<IRootAction> CreateDeferredActions(ImpactWorkerContext ctx)
-        {
-            var actions = new List<IRootAction>();
-            if (Effects == null || Effects.Count == 0) return actions;
-            if (When != null && !When.Holds(NumberContext.Of(in ctx))) return actions;
-
-            var holder = ctx.System;
-            if (holder == null) return actions;
-            var onto = To == EOnHitWho.Self ? holder as ITarget : ctx.ImpactData.Target;
-            if (onto == null) return actions;
-            var origin = IEffectOrigin.GenerateSourceDerivation(holder);
-            foreach (var effect in Effects)
-                if (effect != null) actions.Add(new ApplyEffectAction(onto, effect, origin));
-            return actions;
-        }
-    }
+    // Docs/TOOLING_WISHLIST.md, which names it; the labs' assets use them as an author would a built-in one. Each goes as
+    // its item lands (AC-6): the on-hit worker went to TW-6's On Hit, the hit-taken event to TW-5's Impact Taken.
 
     /// <summary>
     /// Blocks a hit outright on a chance, as Tougher Times does. The chance is a number read at the hit with the holder as
@@ -160,50 +103,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.LabKit
                 var tag = SendEvent;
                 ctx.ActionQueue.Enqueue(new LambdaAction(_ => self.SendGameplayEvent(tag), $"Send {tag}"));
             }
-        }
-
-        public override IEnumerable<IRootAction> DeferredIntercept(WorkerContext ctx)
-        {
-            yield break;
-        }
-    }
-
-    /// <summary>
-    /// Sends its holder an event as a hit lands on it, on a chance: what sets off an ability "when attacked", as Axe's
-    /// Counter Helix on a fifth of the hits. The chance is here, as an ability's activation rules run twice for each
-    /// activation, at the request and as it starts, so a rule that rolls draws twice. The dealer can be the event's
-    /// target, for a counterattack; an area ability, as Counter Helix, finds its own, as the dealer as its target would
-    /// take the place of what its search finds. Wishlist: built-in gameplay events, and a chance to activate.
-    /// </summary>
-    [Serializable]
-    public class HitTakenEventAttributeWorker : AbstractFocusedAttributeWorker
-    {
-        [Tooltip("The event its holder is sent")]
-        public Tag Event;
-
-        [Tooltip("The chance it's sent, from 0 to 1, read at the hit with the holder as its target")]
-        public ScalableFloat Chance = 1f;
-
-        [Tooltip("The dealer is the target of the ability the event sets off, as a counterattack's. Off, the ability finds " +
-                 "its own: an event's data has no place for who set it off apart from the ability's targets")]
-        public bool DealerIsTarget;
-
-        public override EWorkerExecution Execution => EWorkerExecution.Inline;
-
-        public override void Intercept(WorkerContext ctx)
-        {
-            if (!Event.IsValid || ctx.Change.Value.CurrentValue >= 0f) return;
-            float chance = Chance?.Evaluate(NumberContext.Of(in ctx)) ?? 1f;
-            if (chance <= 0f || (chance < 1f && ForgeRandom.Value >= chance)) return;
-            var dealer = DealerIsTarget ? ctx.Change.Value.Carrier?.GetOrigin()?.GetSource() as ITarget : null;
-            var self = ctx.System;
-            var tag = Event;
-            ctx.ActionQueue.Enqueue(new LambdaAction(_ =>
-            {
-                var data = ProcessDataPacket.Default();
-                if (dealer != null) data.SetPrimary(Tags.TARGET_REAL, dealer);
-                self.SendGameplayEvent(tag, data);
-            }, $"Send {tag}"));
         }
 
         public override IEnumerable<IRootAction> DeferredIntercept(WorkerContext ctx)
