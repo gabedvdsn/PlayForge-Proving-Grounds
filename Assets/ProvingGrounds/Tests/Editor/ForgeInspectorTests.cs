@@ -339,7 +339,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Attributes", "Abilities", "Items", "Workers", "LocalData", "UsedBy",
+                        "Identity", "Leveling", "Tags", "Attributes", "Abilities", "Items", "Death", "Workers", "LocalData", "UsedBy",
                     }), "the style doc's order: Identity, Leveling, Tags, the entity's own, Workers, Local Data");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–99"), "Leveling's range");
