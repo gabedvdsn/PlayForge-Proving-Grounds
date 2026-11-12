@@ -17,30 +17,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// <summary>
     /// TW-16 in the editor: an ability's Activation holds Ignores Crowd Control, after Proc Coefficient; an entity's
     /// Abilities hold its Crowd Control; a rule's row names abilities' tags only where it stops abilities tagged; and
-    /// Project Settings → PlayForge sets the project's rules.
+    /// Project Settings → PlayForge sets the project's rules, on its Forge Project since TW-29.
     /// </summary>
     public class CrowdControlEditorTests
     {
         private const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        private const string ProjectPath = "Assets/Resources/" + ProjectAttributes.ResourceName + ".asset";
-        private const string RulesPath = "Assets/TW-16 Rules.asset";
 
         private readonly List<Object> made = new();
-        private readonly List<string> madePaths = new();
-        private bool madeResources;
 
         [TearDown]
         public void Clean()
         {
             foreach (var each in made) if (each) Object.DestroyImmediate(each);
             made.Clear();
-            foreach (var path in madePaths) AssetDatabase.DeleteAsset(path);
-            madePaths.Clear();
-            if (madeResources && AssetDatabase.IsValidFolder("Assets/Resources") &&
-                AssetDatabase.FindAssets("", new[] { "Assets/Resources" }).Length == 0)
-                AssetDatabase.DeleteAsset("Assets/Resources");
-            madeResources = false;
-            ForgeAttributes.Refresh();
         }
 
         private T Instance<T>() where T : ScriptableObject
@@ -117,13 +106,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Document.panelSettings = settings;
             }
 
-            public VisualElement Build()
+            // A project's settings, as the page shows the active project's
+            public VisualElement Build(ForgeProject project)
             {
-                var root = new VisualElement();
-                Document.rootVisualElement.Add(root);
                 var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
-                pages.GetMethod("BuildProjectPage", AnyStatic).Invoke(null, new object[] { root });
-                return root;
+                var section = (VisualElement)pages.GetMethod("ForgeProjectSettings", AnyStatic).Invoke(null, new object[] { project });
+                Document.rootVisualElement.Add(section);
+                return section;
             }
 
             public void Destroy()
@@ -138,37 +127,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             for (int i = 0; i < 4; i++) yield return null;
         }
 
-        /// <summary>The page's Project Attributes hold the project's crowd control rules, which an entity naming none follows.</summary>
+        /// <summary>The settings page holds a project's default crowd control, which an entity naming none follows.</summary>
         [UnityTest]
-        public IEnumerator TW_16_The_Project_Settings_page_sets_the_projects_crowd_control()
+        public IEnumerator TW_16_The_settings_page_sets_the_projects_crowd_control()
         {
-            Assume.That(AssetDatabase.LoadAssetAtPath<ProjectAttributes>(ProjectPath), Is.Null, "the project has no attributes of its own yet");
-            madeResources = !AssetDatabase.IsValidFolder("Assets/Resources");
-            if (madeResources) AssetDatabase.CreateFolder("Assets", "Resources");
-            // Assets on disk, which go by their paths, not destroyed as instances are
-            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<ProjectAttributes>(), ProjectPath);
-            madePaths.Add(ProjectPath);
-            var rules = ScriptableObject.CreateInstance<CrowdControlRules>();
-            AssetDatabase.CreateAsset(rules, RulesPath);
-            madePaths.Add(RulesPath);
-            ForgeAttributes.Refresh();
+            var project = Instance<ForgeProject>();
+            var rules = Instance<CrowdControlRules>();
 
             var host = new Host();
             try
             {
                 yield return null;
                 Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
-                var root = host.Build();
+                var section = host.Build(project);
                 yield return Frames();
 
-                var field = root.Q("ProjectAttributes")?.Q<ObjectField>(nameof(ProjectAttributes.CrowdControl));
+                var field = section.Q<PropertyField>("CrowdControl")?.Q<ObjectField>();
                 Assert.IsNotNull(field, "the page has the project's crowd control");
                 Assert.AreEqual(typeof(CrowdControlRules), field.objectType, "which takes crowd control rules");
                 field.value = rules;
                 yield return Frames();
+                Assert.AreSame(rules, project.Settings.CrowdControl, "set on the page, the project's");
 
-                Assert.AreSame(rules, AssetDatabase.LoadAssetAtPath<ProjectAttributes>(ProjectPath).CrowdControl, "set on the page, the asset's");
-                Assert.AreSame(rules, ForgeAttributes.CrowdControl, "and the rules an entity naming none follows");
+                var was = ForgeProject.Use(project);
+                try
+                {
+                    Assert.AreSame(rules, ForgeProject.Current.Settings.CrowdControl, "and the rules an entity naming none follows");
+                }
+                finally
+                {
+                    ForgeProject.Use(was);
+                }
             }
             finally
             {

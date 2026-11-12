@@ -15,7 +15,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     {
         private Tag stunned, silenced, spell, attack;
         private readonly List<Object> made = new();
-        private ProjectAttributes previous;
+        private ForgeProject previous;
         private bool projectSet;
 
         [SetUp]
@@ -30,7 +30,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [TearDown]
         public void Clean()
         {
-            if (projectSet) ForgeAttributes.Use(previous);
+            if (projectSet) ForgeProject.Use(previous);
             projectSet = false;
             foreach (var each in made) if (each) Object.DestroyImmediate(each);
             made.Clear();
@@ -145,10 +145,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator TW_16_An_entity_follows_its_own_rules_or_the_projects([Values] Hub hub) => Live(async () =>
         {
-            var project = ScriptableObject.CreateInstance<ProjectAttributes>();
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
             made.Add(project);
-            project.CrowdControl = Rules(Stops(stunned));
-            previous = ForgeAttributes.Use(project);
+            project.Settings.CrowdControl = Rules(Stops(stunned));
+            previous = ForgeProject.Use(project);
             projectSet = true;
 
             var follower = Entity(hub, "Follower", null);

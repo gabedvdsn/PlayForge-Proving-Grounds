@@ -122,10 +122,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             rolls = Rolls(0.1f, 0.2f, 0.9f);
             Assert.IsFalse(ForgeChance.Roll(0.3f, in context, new ChanceRoll { OwnLuck = true, Luck = -2f }, null), "a luck of −2, the worst of three");
 
-            // The project's Luck, from its attributes (TW-28)
-            var project = ScriptableObject.CreateInstance<ProjectAttributes>();
-            project.Luck = luck;
-            var was = ForgeAttributes.Use(project);
+            // The attribute playing its project's Luck role (TW-29; TW-28's fixed Luck slot before it)
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LUCK, Attribute = luck });
+            var was = ForgeProject.Use(project);
             try
             {
                 rolls = Rolls(0.9f, 0.1f);
@@ -134,7 +134,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
             finally
             {
-                ForgeAttributes.Use(was);
+                ForgeProject.Use(was);
                 Object.DestroyImmediate(project);
             }
         });
