@@ -749,6 +749,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "New Project", Type = newProject,
                 Open = _ => newProject.GetMethod("Open", AnyStatic).Invoke(null, null),
             };
+            // A sheet's import, from The Forge's Spreadsheets menu (TW-27)
+            yield return new Window
+            {
+                Name = "Import Sheet", Type = typeof(ForgeSpreadsheetWindow),
+                Open = _ => ForgeSpreadsheetWindow.Show(ForgeSpreadsheets.Read("Asset Tag,Name,Field,Kind,Level 1\n"), "Smoke.csv"),
+            };
         }
 
         private static void CloseWindows()

@@ -160,8 +160,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// Every scaler spread its values over a level range (Decision 28). A scaler the drawer makes maps levels exactly,
-        /// and its Stretch Over Levels shows it, which a scaler saved before the option keeps on (ED-33).
+        /// Every scaler spread its values over a level range (Decision 28). A scaler the drawer makes maps levels exactly
+        /// (ED-33): a Table, whose kind says so, with no Values choice of its own (TW-27).
         /// </summary>
         [UnityTest]
         public IEnumerator ED_33_A_new_scaler_maps_levels_exactly()
@@ -181,18 +181,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 var kind = field.Query<PopupField<string>>().ToList().FirstOrDefault();
                 Assert.IsNotNull(kind, "the drawer offers a kind");
-                kind.value = "By Level";
+                kind.value = "Table";
                 yield return Frames();
                 var made = effect.DurationSpecification.DurationOperation.Scaler as SimpleScaler;
-                Assert.IsNotNull(made, "choosing By Level makes a simple scaler");
+                Assert.IsNotNull(made, "choosing Table makes a simple scaler");
                 Assert.IsFalse(made.StretchOverLevels, "which maps levels exactly");
 
                 ExpandScalers(field);
                 yield return Frames();
-                // Its Values say so: Per Level, beside Spread Over Levels, which was a Stretch Over Levels box (ED-54)
-                var values = field.Q<BaseField<int>>("ValuesMode");
-                Assert.IsNotNull(values, "and its Values say so");
-                Assert.AreEqual(0, values.value, "Per Level");
+                // Its kind says so: a Table, where a Stretch Over Levels box, then a Values choice, said it (ED-54, TW-27)
+                Assert.AreEqual("Table", field.Q<PopupField<string>>("Kind")?.value, "and its kind says so");
+                Assert.IsNull(field.Q("ValuesMode"), "with no Values choice of its own");
             }
             finally
             {
@@ -264,8 +263,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A magnitude field showed its Magnitude, Real Magnitude and scaler one after another, with the scaler in a tinted
-        /// box (ED-33). It reads as the scaler board draws it: its name and kind, By Level, with the range it gives, "6–8 s",
-        /// and its field menu, then its values per level; a Constant shows its number and unit, as Tick Every's "1 s".
+        /// box (ED-33). It reads as the scaler board draws it: its name and kind, a Table (TW-27), with the range it gives,
+        /// "6–8 s", and its field menu, then its values per level; a Constant shows its number and unit, as Tick Every's "1 s".
         /// </summary>
         [UnityTest]
         public IEnumerator ED_33_A_magnitude_field_reads_as_the_scaler_board()
@@ -280,7 +279,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var duration = Draw(host, serialized, DurationPath);
                 yield return Frames();
 
-                Assert.AreEqual("By Level", duration.Q<PopupField<string>>("Kind")?.value, "the field's kind");
+                Assert.AreEqual("Table", duration.Q<PopupField<string>>("Kind")?.value, "the field's kind");
                 Assert.AreEqual("6–8 s", duration.Q<Label>("Range")?.text, "the range it gives, in seconds");
                 Assert.That(Enumerable.Range(1, 5).Select(level => duration.Q<FloatField>($"Level{level}")?.value),
                     Is.EqualTo(new float?[] { 6f, 6.5f, 7f, 7.5f, 8f }), "a value for each level");
@@ -301,8 +300,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// A field's kind changes as one Undo step: a constant made By Level keeps its number as its first level's value,
-        /// and Make Constant keeps the value the first level read (ED-33).
+        /// A field's kind changes as one Undo step: a constant made a Table keeps its number as its first level's value,
+        /// and Make Constant keeps the value the first level read (ED-33, TW-27).
         /// </summary>
         [UnityTest]
         public IEnumerator ED_33_A_fields_kind_changes_as_one_undo_step()
@@ -319,10 +318,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Frames();
 
                 Undo.IncrementCurrentGroup();
-                tick.Q<PopupField<string>>("Kind").value = "By Level";
+                tick.Q<PopupField<string>>("Kind").value = "Table";
                 yield return Frames();
                 var interval = effect.DurationSpecification.TickIntervalOperation;
-                Assert.IsInstanceOf<SimpleScaler>(interval.Scaler, "By Level gives the field a table");
+                Assert.IsInstanceOf<SimpleScaler>(interval.Scaler, "Table gives the field a table");
                 Assert.AreEqual(new[] { 2f }, interval.Scaler.LevelValues, "whose first level keeps the field's number");
                 Assert.AreEqual(EMagnitudeOperation.UseScaler, interval.RealMagnitude, "and the field reads it");
                 Assert.IsFalse(interval.Scaler.StretchOverLevels, "levels map exactly");
@@ -380,7 +379,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsNull(field.Q("LevelTable"), "and neither field's table is drawn as both's");
 
                 Undo.IncrementCurrentGroup();
-                field.Q<PopupField<string>>("Kind").value = "By Level";
+                field.Q<PopupField<string>>("Kind").value = "Table";
                 yield return Frames();
                 var table = burning.DurationSpecification.DurationOperation.Scaler;
                 var made = chilled.DurationSpecification.DurationOperation.Scaler;
@@ -499,7 +498,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
                 var root = host.Inspect(saved);
                 yield return Frames();
-                Assert.AreEqual("Scaler · By Level · 2 uses", root.Q<Label>("AssetAbout")?.text, "the asset counts the fields that use it");
+                Assert.AreEqual("Scaler · Table · 2 uses", root.Q<Label>("AssetAbout")?.text, "the asset counts the fields that use it");
                 host.Document.rootVisualElement.Clear();
                 var field = Draw(host, new SerializedObject(burning), DurationPath);
                 yield return Frames();
@@ -995,9 +994,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// What Stretch Over Levels did was hard to see (ED-54, the user's report). A scaler's Values are Per Level or Spread
-        /// Over Levels, side by side; spread, the table numbers its points, over the provider's levels, and says how a level
-        /// between two reads (ED-62). Back to Per Level, it shows a value for each level.
+        /// What Stretch Over Levels did was hard to see (ED-54, the user's report). A number by level reads Per Level or
+        /// spread over the levels, which its kind says: a Table, or By Level (TW-27). By Level's table numbers its points,
+        /// over the provider's levels, and says how a level between two reads (ED-62). Made a Table, it shows a value for
+        /// each level.
         /// </summary>
         [UnityTest]
         public IEnumerator ED_54_Spread_over_levels_says_where_each_value_sits()
@@ -1016,17 +1016,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var field = Draw(host, serialized, DurationPath);
                 yield return Frames();
 
-                var mode = field.Q<BaseField<int>>("ValuesMode");
-                Assert.IsNotNull(mode, "the Values row chooses between them");
-                Assert.AreEqual(1, mode.value, "Spread Over Levels");
+                var kind = field.Q<PopupField<string>>("Kind");
+                Assert.AreEqual("By Level", kind?.value, "spread over the levels, it's By Level");
+                Assert.IsNull(field.Q("ValuesMode"), "whose kind says how it reads, with no Values choice of its own");
                 Assert.That(Enumerable.Range(1, 3).Select(point => field.Q<Label>($"At{point}")?.text), Is.EqualTo(new[] { "1", "2", "3" }),
                     "each point is numbered");
                 Assert.IsNotNull(field.Q<Label>("Reads5"), "and each of Fireball's levels shows what it reads");
                 Assert.IsNotNull(field.Q("BetweenLevels"), "and how a level between two reads");
 
-                mode.value = 0;
+                kind.value = "Table";
                 yield return Frames();
-                Assert.IsFalse(effect.DurationSpecification.DurationOperation.Scaler.StretchOverLevels, "Per Level");
+                Assert.IsFalse(effect.DurationSpecification.DurationOperation.Scaler.StretchOverLevels, "a Table reads Per Level");
                 Assert.IsNotNull(field.Q<FloatField>("Level5"), "shows a value for each of Fireball's levels");
                 Assert.IsNull(field.Q("BetweenLevels"), "and nothing between them");
             }
@@ -1197,15 +1197,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 var kind = field.Q<PopupField<string>>("Kind");
                 Assert.IsNotNull(kind, "the member's scaler has its kind");
-                Assert.AreEqual("By Level", kind.value, "a By Level");
+                Assert.AreEqual("Table", kind.value, "a Table (TW-27)");
                 Assert.AreEqual("Scaler/Clamped", kind.formatListItemCallback?.Invoke("Clamped"), "Clamped files under Scaler");
                 Assert.AreEqual("Effect/Effect Stacks", kind.formatListItemCallback?.Invoke("Effect Stacks"), "Effect Stacks under Effect");
-                Assert.AreEqual("By Level", kind.formatListItemCallback?.Invoke("By Level"), "By Level sits at the top");
+                Assert.AreEqual("Table", kind.formatListItemCallback?.Invoke("Table"), "Table sits at the top");
+                Assert.AreEqual("By Level", kind.formatListItemCallback?.Invoke("By Level"), "and By Level");
                 Assert.AreEqual("Clamped", kind.formatSelectedValueCallback?.Invoke("Clamped"), "and the box shows a kind's name alone");
                 Assert.That(kind.choices.IndexOf("By Level"), Is.LessThan(kind.choices.IndexOf("Clamped")), "the top's kinds come first");
-                // The cached By Level and Shared share their names with a number's
+                // The cached Table, By Level and Shared share their names with a number's
                 var twice = kind.choices.GroupBy(choice => choice).Where(each => each.Count() > 1).Select(each => each.Key).ToList();
-                Assert.That(twice, Has.No.Member("By Level").And.No.Member("Shared"), "a member takes none of the cached kinds, which share names with its own");
+                Assert.That(twice, Has.No.Member("Table").And.No.Member("By Level").And.No.Member("Shared"),
+                    "a member takes none of the cached kinds, which share names with its own");
             }
             finally
             {
