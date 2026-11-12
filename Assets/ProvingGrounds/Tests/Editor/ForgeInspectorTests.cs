@@ -950,6 +950,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // Builds an inspector as the Inspector does, and hands it to a check
+        /// <summary>
+        /// TW-6: an item's, an ability's and an effect's Workers section holds On Hit above the workers, and its line
+        /// counts the entries beside the workers, so an item with an On Hit alone doesn't read "None".
+        /// </summary>
+        [Test]
+        public void TW_6_The_Workers_section_holds_On_Hit_and_counts_it()
+        {
+            var dagger = ScriptableObject.CreateInstance<Item>();
+            var passive = ScriptableObject.CreateInstance<Ability>();
+            var blade = ScriptableObject.CreateInstance<GameplayEffect>();
+            try
+            {
+                dagger.OnHit.Add(new OnHitEntry());
+                dagger.WorkerGroup ??= new StandardWorkerGroup();
+                dagger.WorkerGroup.AnalysisWorkers.Add(new DeathWatcherAnalysisWorker());
+                passive.OnHit.Add(new OnHitEntry());
+                passive.OnHit.Add(new OnHitEntry());
+                blade.OnHit.Add(new OnHitEntry());
+                foreach (var (asset, line) in new (Object, string)[] { (dagger, "1 on hit, 1 worker"), (passive, "2 on hits"), (blade, "1 on hit") })
+                    Inspect(asset, root =>
+                    {
+                        var fields = root.Q(name: "Workers_CONTAINER").Query<PropertyField>().ToList();
+                        Assert.That(fields.Select(field => field.name).FirstOrDefault(), Is.EqualTo("OnHit"),
+                            $"{asset.GetType().Name}: On Hit is first in Workers");
+                        Assert.That(Summary(root, "Workers"), Is.EqualTo(line), $"{asset.GetType().Name}: its line counts On Hit");
+                    });
+            }
+            finally
+            {
+                Object.DestroyImmediate(dagger);
+                Object.DestroyImmediate(passive);
+                Object.DestroyImmediate(blade);
+            }
+        }
+
         private static void Inspect(Object target, System.Action<VisualElement> check)
         {
             var editor = UnityEditor.Editor.CreateEditor(target);
