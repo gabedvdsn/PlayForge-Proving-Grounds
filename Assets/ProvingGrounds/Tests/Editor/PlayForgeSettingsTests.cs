@@ -16,14 +16,20 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// PlayForge's settings: the project's, on Project Settings → PlayForge and kept in ProjectSettings/PlayForgeSettings.asset,
-    /// and each user's, on Preferences → PlayForge and kept in EditorPrefs. Each test puts back the settings and the
-    /// EditorPrefs entries it touches, since EditorPrefs is the machine's.
+    /// PlayForge's settings: the project's, on Project Settings → PlayForge and kept in its Forge Project since TW-30 (in
+    /// ProjectSettings/PlayForgeSettings.asset before), and each user's, on Preferences → PlayForge and kept in EditorPrefs.
+    /// Each test works in a Forge Project of its own, and puts back the settings and the EditorPrefs entries it touches,
+    /// since EditorPrefs is the machine's.
     /// </summary>
     public class PlayForgeSettingsTests
     {
         private const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        private const string SettingsFile = "ProjectSettings/PlayForgeSettings.asset";
+        private const string ProjectFolder = "Assets/ED-21 Project";
+
+        // The project the tests write to, of their own, whose asset holds the project's settings (TW-30)
+        private ForgeProject project;
+        private ForgeProject previousProject;
+        private string SettingsFile => AssetDatabase.GetAssetPath(project);
         private const string Prefix = "PlayForge_";
         private static string ProjectTemplatesKey => Prefix + "TemplateRegistry_" + PlayerSettings.productGUID.ToString("N");
 
@@ -58,6 +64,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             foreach (var key in BoolKeys) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetBool(key) : null;
             foreach (var key in IntKeys) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetInt(key) : null;
             keptSettings = EditorJsonUtility.ToJson(PlayForgeSettings.instance);
+
+            // ProjectSettings/PlayForgeSettings.asset's settings handed on already, so the project starts afresh
+            typeof(PlayForgeSettings).GetField("movedToProject", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(PlayForgeSettings.instance, true);
+            Assume.That(AssetDatabase.IsValidFolder(ProjectFolder), Is.False, "the project's folder is free");
+            AssetDatabase.CreateFolder("Assets", "ED-21 Project");
+            project = ScriptableObject.CreateInstance<ForgeProject>();
+            AssetDatabase.CreateAsset(project, $"{ProjectFolder}/Forge Project.asset");
+            previousProject = PlayForgeSettings.UseProject(project);
         }
 
         [TearDown]
@@ -76,6 +90,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ForgeLog.MinimumLevel = ForgeLogSettingsBridge.CurrentLevel;
             EditorJsonUtility.FromJsonOverwrite(keptSettings, PlayForgeSettings.instance);
             PlayForgeSettings.instance.SaveSettings();
+            PlayForgeSettings.UseProject(previousProject);
+            AssetDatabase.DeleteAsset(ProjectFolder);
             foreach (var path in made) AssetDatabase.DeleteAsset(path);
             made.Clear();
         }
@@ -124,8 +140,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// Every setting was an EditorPref, which every project on the machine shares (ED-21). A folder set now is the
-        /// project's: it's written to ProjectSettings/PlayForgeSettings.asset, which travels with the project, and the
-        /// machine's EditorPrefs are left as they were.
+        /// project's: it's written to its Forge Project's asset (TW-30), which travels with the project, and the machine's
+        /// EditorPrefs are left as they were.
         /// </summary>
         [Test]
         public void ED_21_A_shared_setting_belongs_to_the_project()
@@ -138,7 +154,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("AB_", PlayForgeSettings.PrefixFor(typeof(Ability)));
             Assert.AreEqual("_X", PlayForgeSettings.SuffixFor(typeof(Ability)));
             Assert.AreEqual(machine, EditorPrefs.GetString(Prefix + "Path_Ability", "unset"), "the machine's EditorPrefs stay as they were");
-            Assert.IsTrue(File.Exists(SettingsFile), "the project keeps a settings file");
+            Assert.IsTrue(File.Exists(SettingsFile), "the project's asset keeps its settings");
             StringAssert.Contains("ED-21 Abilities", File.ReadAllText(SettingsFile), "which holds the folder");
         }
 
@@ -182,7 +198,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// Project Settings → PlayForge shows each type's folder and file names, its defaults and the Cost and Cooldown
-        /// effects, bound to the settings, so an edit is saved and one Undo takes it back (ED-21).
+        /// effects, bound to the project's settings, so an edit is saved in its asset and one Undo takes it back (ED-21,
+        /// TW-30).
         /// </summary>
         [UnityTest]
         public IEnumerator ED_21_The_Project_Settings_page_edits_the_shared_settings()
