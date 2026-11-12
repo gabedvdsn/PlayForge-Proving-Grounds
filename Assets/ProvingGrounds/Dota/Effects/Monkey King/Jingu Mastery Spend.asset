@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.JinguMasterySpend
-      DisplayName: Effect.Dota.JinguMasterySpend
+      Name: Effect.JinguMasterySpend
+      DisplayName: JinguMasterySpend
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

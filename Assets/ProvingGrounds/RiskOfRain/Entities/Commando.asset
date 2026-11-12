@@ -23,8 +23,8 @@ MonoBehaviour:
   - Name: Team.RoR.Survivors
     DisplayName: Team.RoR.Survivors
   AssetTag:
-    Name: Entity.RoR.Commando
-    DisplayName: Entity.RoR.Commando
+    Name: Entity.Commando
+    DisplayName: Commando
   GrantedTags: []
   ContextTags: []
   StartingLevel: 1
@@ -62,6 +62,12 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  Death:
+    Policy: 0
+    EndsEffectsTagged: []
+    OnDeath: []
+    OnRevive: []
+    Body: {fileID: 0}
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:

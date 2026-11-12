@@ -23,8 +23,8 @@ MonoBehaviour:
   - Name: Team.Hades.Underworld
     DisplayName: Team.Hades.Underworld
   AssetTag:
-    Name: Entity.Hades.Megaera
-    DisplayName: Entity.Hades.Megaera
+    Name: Entity.Megaera
+    DisplayName: Megaera
   GrantedTags: []
   ContextTags: []
   StartingLevel: 1
@@ -61,6 +61,12 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  Death:
+    Policy: 0
+    EndsEffectsTagged: []
+    OnDeath: []
+    OnRevive: []
+    Body: {fileID: 0}
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:

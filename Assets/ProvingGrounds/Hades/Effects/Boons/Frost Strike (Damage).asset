@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.FrostStrike.Damage
-      DisplayName: Effect.Hades.FrostStrike.Damage
+      Name: Effect.FrostStrikeDamage
+      DisplayName: FrostStrikeDamage
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 1
     MultiplyBehaviour: 1
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

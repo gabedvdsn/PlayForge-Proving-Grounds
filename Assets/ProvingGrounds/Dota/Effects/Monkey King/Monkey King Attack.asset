@@ -30,8 +30,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.MonkeyKingAttack
-      DisplayName: Effect.Dota.MonkeyKingAttack
+      Name: Effect.MonkeyKingAttack
+      DisplayName: MonkeyKingAttack
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

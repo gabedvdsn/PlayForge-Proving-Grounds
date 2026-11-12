@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.Maledict
-      DisplayName: Effect.Dota.Maledict
+      Name: Effect.Maledict
+      DisplayName: Maledict
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

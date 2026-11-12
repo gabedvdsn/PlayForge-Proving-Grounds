@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.IceBlast.Blast
-      DisplayName: Effect.Dota.IceBlast.Blast
+      Name: Effect.IceBlastBlast
+      DisplayName: IceBlastBlast
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

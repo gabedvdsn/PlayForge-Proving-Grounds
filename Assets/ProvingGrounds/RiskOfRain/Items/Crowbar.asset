@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.Crowbar
-      DisplayName: Item.RoR.Crowbar
+      Name: Item.Crowbar
+      DisplayName: Crowbar
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

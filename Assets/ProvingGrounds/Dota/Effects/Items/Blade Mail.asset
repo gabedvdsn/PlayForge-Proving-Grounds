@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.BladeMail
-      DisplayName: Effect.Dota.BladeMail
+      Name: Effect.BladeMail
+      DisplayName: BladeMail
     ContextTags: []
     GrantedTags:
     - Name: State.Dota.BladeMail

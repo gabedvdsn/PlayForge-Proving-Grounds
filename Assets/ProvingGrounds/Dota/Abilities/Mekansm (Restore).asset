@@ -28,8 +28,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.Mekansm.Restore
-      DisplayName: Ability.Dota.Mekansm.Restore
+      Name: Ability.MekansmRestore
+      DisplayName: MekansmRestore
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []
@@ -113,7 +113,7 @@ MonoBehaviour:
         AffinityFilter: 0
         Mode: 0
         MaxTargets: 0
-        Range: 0
+        Range: 15
         DetectionLayers:
           serializedVersion: 2
           m_Bits: 4294967295

@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.RoR.Bleed
-      DisplayName: Effect.RoR.Bleed
+      Name: Effect.Bleed
+      DisplayName: Bleed
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -230,6 +232,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049907
       type: {class: AssetPartKind, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -267,8 +273,8 @@ MonoBehaviour:
         Behaviours: []
         What: 2
         Tagged:
-          Name: Item.RoR.TriTipDagger
-          DisplayName: Item.RoR.TriTipDagger
+          Name: Item.TriTipDagger
+          DisplayName: TriTipDagger
         On: 0
         EffectPart: 1
         WorkerKey:

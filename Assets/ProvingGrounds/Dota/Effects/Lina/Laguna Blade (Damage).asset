@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.LagunaBlade.Damage
-      DisplayName: Effect.Dota.LagunaBlade.Damage
+      Name: Effect.LagunaBladeDamage
+      DisplayName: LagunaBladeDamage
     ContextTags:
     - Name: Effect.Dota.Magical
       DisplayName: Effect.Dota.Magical
@@ -43,6 +43,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -400,6 +402,10 @@ MonoBehaviour:
         CaptureFrom: 0
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049866
       type: {class: ConstantScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:

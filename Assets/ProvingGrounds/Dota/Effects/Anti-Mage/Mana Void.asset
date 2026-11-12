@@ -46,8 +46,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.ManaVoid
-      DisplayName: Effect.Dota.ManaVoid
+      Name: Effect.ManaVoid
+      DisplayName: ManaVoid
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

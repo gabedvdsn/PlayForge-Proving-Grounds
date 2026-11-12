@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.GodMode
-      DisplayName: Effect.Hades.GodMode
+      Name: Effect.GodMode
+      DisplayName: GodMode
     ContextTags: []
     GrantedTags:
     - Name: State.Hades.GodMode
@@ -42,6 +42,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

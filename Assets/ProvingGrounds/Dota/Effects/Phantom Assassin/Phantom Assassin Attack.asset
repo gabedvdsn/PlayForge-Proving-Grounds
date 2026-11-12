@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.PhantomAssassinAttack
-      DisplayName: Effect.Dota.PhantomAssassinAttack
+      Name: Effect.PhantomAssassinAttack
+      DisplayName: PhantomAssassinAttack
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

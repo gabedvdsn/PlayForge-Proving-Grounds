@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.TriTipDagger
-      DisplayName: Item.RoR.TriTipDagger
+      Name: Item.TriTipDagger
+      DisplayName: TriTipDagger
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

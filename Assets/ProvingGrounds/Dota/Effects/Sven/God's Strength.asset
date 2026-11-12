@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.GodsStrength
-      DisplayName: Effect.Dota.GodsStrength
+      Name: Effect.GodsStrength
+      DisplayName: GodsStrength
     ContextTags: []
     GrantedTags:
     - Name: State.Dota.GodsStrength
@@ -43,6 +43,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 1
     MultiplyBehaviour: 1
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.TougherTimes
-      DisplayName: Item.RoR.TougherTimes
+      Name: Item.TougherTimes
+      DisplayName: TougherTimes
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1
@@ -146,8 +146,8 @@ MonoBehaviour:
         Behaviours: []
         What: 2
         Tagged:
-          Name: Item.RoR.TougherTimes
-          DisplayName: Item.RoR.TougherTimes
+          Name: Item.TougherTimes
+          DisplayName: TougherTimes
         On: 1
         EffectPart: 1
         WorkerKey:

@@ -213,9 +213,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Mekansm: heals each ally 275, but none healed by a Mekansm in the last 21 seconds. The area search finds
-        /// MonoBehaviour entities alone, and never its caster, so this is a Mono test, and Mekansm doesn't heal its holder
-        /// (see the wishlist).
+        /// Mekansm: heals each ally within 15 of its holder 275, but none healed by a Mekansm in the last 21 seconds. Its
+        /// search has a range, as the user set it, so it searches with physics: a MonoBehaviour entity with a collider is
+        /// found, and its caster never is, so Mekansm doesn't heal its holder (see the wishlist, TW-10).
         /// </summary>
         [UnityTest]
         public IEnumerator Mekansm_heals_its_allies_once_in_a_while() => Live(async () =>
@@ -225,6 +225,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ally = Hero(Hub.Mono, "Ally", Radiant, healthNow: 500f);
             var enemy = Hero(Hub.Mono, "Enemy", Dire, healthNow: 500f);
             var other = Hero(Hub.Mono, "Other", Radiant, healthNow: 500f);
+            var far = Hero(Hub.Mono, "Far", Radiant, healthNow: 500f);
+            // A search with a range finds a MonoBehaviour entity by its collider
+            foreach (var hero in new[] { holder, ally, enemy, other, far })
+                ((UnityEngine.Component)hero).gameObject.AddComponent<UnityEngine.SphereCollider>();
+            ((UnityEngine.Component)far).transform.position = new UnityEngine.Vector3(20f, 0f, 0f);
+            UnityEngine.Physics.SyncTransforms();
             await Frames.Step();
             Hold(holder, ItemNamed("Mekansm"));
             Hold(other, ItemNamed("Mekansm"));
@@ -235,6 +241,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(775f, Value(ally, Health), 0.01f, "275");
             Assert.AreEqual(775f, Value(other, Health), 0.01f, "each ally");
             Assert.AreEqual(500f, Value(enemy, Health), 0.01f, "no enemy");
+            Assert.AreEqual(500f, Value(far, Health), 0.01f, "nor an ally 20 away");
             Assert.AreEqual(500f, Value(holder, Health), 0.01f, "nor the holder: the area search leaves out its caster");
 
             // The heal's lockout lands a frame after the heal: a delay of 0 between an ability's effects waits a frame

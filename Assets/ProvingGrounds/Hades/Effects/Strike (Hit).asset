@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.Strike.Hit
-      DisplayName: Effect.Hades.Strike.Hit
+      Name: Effect.StrikeHit
+      DisplayName: StrikeHit
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -230,6 +232,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049913
       type: {class: ConditionalScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -339,3 +345,7 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0

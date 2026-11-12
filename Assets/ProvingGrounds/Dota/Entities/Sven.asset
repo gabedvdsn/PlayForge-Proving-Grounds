@@ -24,8 +24,8 @@ MonoBehaviour:
   - Name: Team.Dota.Radiant
     DisplayName: Team.Dota.Radiant
   AssetTag:
-    Name: Entity.Dota.Sven
-    DisplayName: Entity.Dota.Sven
+    Name: Entity.Sven
+    DisplayName: Sven
   GrantedTags: []
   ContextTags: []
   StartingLevel: 1
@@ -64,6 +64,12 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  Death:
+    Policy: 0
+    EndsEffectsTagged: []
+    OnDeath: []
+    OnRevive: []
+    Body: {fileID: 0}
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:

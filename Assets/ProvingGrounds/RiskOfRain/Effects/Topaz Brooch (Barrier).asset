@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.RoR.TopazBrooch.Barrier
-      DisplayName: Effect.RoR.TopazBrooch.Barrier
+      Name: Effect.TopazBroochBarrier
+      DisplayName: TopazBroochBarrier
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -40,6 +40,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -182,8 +184,8 @@ MonoBehaviour:
         Behaviours: []
         What: 2
         Tagged:
-          Name: Item.RoR.TopazBrooch
-          DisplayName: Item.RoR.TopazBrooch
+          Name: Item.TopazBrooch
+          DisplayName: TopazBrooch
         On: 0
         EffectPart: 1
         WorkerKey:

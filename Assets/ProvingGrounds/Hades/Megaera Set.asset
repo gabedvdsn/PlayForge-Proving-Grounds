@@ -20,8 +20,8 @@ MonoBehaviour:
   Description: 
   Textures: []
   AssetTag:
-    Name: Set.Hades.Megaera
-    DisplayName: Set.Hades.Megaera
+    Name: AttributeSet.MegaeraSet
+    DisplayName: MegaeraSet
   Attributes:
   - Attribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
     Current:

@@ -27,8 +27,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.BlackKingBar.Activate
-      DisplayName: Ability.Dota.BlackKingBar.Activate
+      Name: Ability.BlackKingBarActivate
+      DisplayName: BlackKingBarActivate
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

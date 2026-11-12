@@ -32,8 +32,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.CounterHelix
-      DisplayName: Ability.Dota.CounterHelix
+      Name: Ability.CounterHelix
+      DisplayName: CounterHelix
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []
@@ -173,3 +173,4 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
+        DealerIsTarget: 0

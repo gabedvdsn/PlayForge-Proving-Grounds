@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.AttributeShift.StrengthGain
-      DisplayName: Effect.Dota.AttributeShift.StrengthGain
+      Name: Effect.AttributeShiftStrengthGain
+      DisplayName: AttributeShiftStrengthGain
     ContextTags:
     - Name: Ability.Dota.AttributeShift.Strength
       DisplayName: Ability.Dota.AttributeShift.Strength

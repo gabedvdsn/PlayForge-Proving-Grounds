@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.AttributeShift.AgilityGain
-      DisplayName: Effect.Dota.AttributeShift.AgilityGain
+      Name: Effect.AttributeShiftAgilityGain
+      DisplayName: AttributeShiftAgilityGain
     ContextTags:
     - Name: Ability.Dota.AttributeShift.Agility
       DisplayName: Ability.Dota.AttributeShift.Agility

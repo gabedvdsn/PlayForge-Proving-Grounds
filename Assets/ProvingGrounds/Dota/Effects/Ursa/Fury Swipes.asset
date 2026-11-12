@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.FurySwipes
-      DisplayName: Effect.Dota.FurySwipes
+      Name: Effect.FurySwipes
+      DisplayName: FurySwipes
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

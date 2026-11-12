@@ -20,8 +20,8 @@ MonoBehaviour:
   Description: 
   Textures: []
   AssetTag:
-    Name: Set.Dota.Hero
-    DisplayName: Set.Dota.Hero
+    Name: AttributeSet.DotaHero
+    DisplayName: DotaHero
   Attributes:
   - Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     Current:

@@ -27,8 +27,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Hades.Strike
-      DisplayName: Ability.Hades.Strike
+      Name: Ability.Strike
+      DisplayName: Strike
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.EssenceShift.Stolen
-      DisplayName: Effect.Dota.EssenceShift.Stolen
+      Name: Effect.EssenceShiftStolen
+      DisplayName: EssenceShiftStolen
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

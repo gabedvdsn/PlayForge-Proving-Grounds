@@ -26,8 +26,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.SoldiersSyringe
-      DisplayName: Item.RoR.SoldiersSyringe
+      Name: Item.SoldiersSyringe
+      DisplayName: SoldiersSyringe
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.RoR.SoldiersSyringe.AttackSpeed
-      DisplayName: Effect.RoR.SoldiersSyringe.AttackSpeed
+      Name: Effect.SoldiersSyringeAttackSpeed
+      DisplayName: SoldiersSyringeAttackSpeed
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 1
     MultiplyBehaviour: 1
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

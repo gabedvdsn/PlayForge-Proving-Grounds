@@ -20,8 +20,8 @@ MonoBehaviour:
   Description: 
   Textures: []
   AssetTag:
-    Name: Set.Dota.StrengthHero
-    DisplayName: Set.Dota.StrengthHero
+    Name: AttributeSet.DotaStrengthHero
+    DisplayName: DotaStrengthHero
   Attributes:
   - Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     Current:

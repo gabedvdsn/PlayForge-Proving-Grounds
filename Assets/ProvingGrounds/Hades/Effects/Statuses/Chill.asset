@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.Chill
-      DisplayName: Effect.Hades.Chill
+      Name: Effect.Chill
+      DisplayName: Chill
     ContextTags: []
     GrantedTags:
     - Name: State.Hades.Chill
@@ -43,6 +43,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 1
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 1
   Tags:
     AssetTag:
-      Name: Item.Hades.FrostStrike
-      DisplayName: Item.Hades.FrostStrike
+      Name: Item.FrostStrike
+      DisplayName: FrostStrike
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

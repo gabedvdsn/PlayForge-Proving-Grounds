@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.UrsaAttack
-      DisplayName: Effect.Dota.UrsaAttack
+      Name: Effect.UrsaAttack
+      DisplayName: UrsaAttack
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -310,8 +310,8 @@ MonoBehaviour:
         Behaviours: []
         What: 0
         Tagged:
-          Name: Effect.Dota.FurySwipes
-          DisplayName: Effect.Dota.FurySwipes
+          Name: Effect.FurySwipes
+          DisplayName: FurySwipes
         On: 1
         EffectPart: 1
         WorkerKey:

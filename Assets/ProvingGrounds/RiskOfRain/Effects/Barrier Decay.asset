@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.RoR.BarrierDecay
-      DisplayName: Effect.RoR.BarrierDecay
+      Name: Effect.BarrierDecay
+      DisplayName: BarrierDecay
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -40,6 +40,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -184,3 +186,7 @@ MonoBehaviour:
         CaptureFrom: 0
         CaptureWhen: 1
         CaptureWhat: 1
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0

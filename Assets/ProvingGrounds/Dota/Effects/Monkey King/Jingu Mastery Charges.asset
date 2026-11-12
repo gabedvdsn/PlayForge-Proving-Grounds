@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.JinguMasteryCharges
-      DisplayName: Effect.Dota.JinguMasteryCharges
+      Name: Effect.JinguMasteryCharges
+      DisplayName: JinguMasteryCharges
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

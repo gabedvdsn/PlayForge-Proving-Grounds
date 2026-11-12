@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 1
   Tags:
     AssetTag:
-      Name: Item.Dota.BlackKingBar
-      DisplayName: Item.Dota.BlackKingBar
+      Name: Item.BlackKingBar
+      DisplayName: BlackKingBar
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

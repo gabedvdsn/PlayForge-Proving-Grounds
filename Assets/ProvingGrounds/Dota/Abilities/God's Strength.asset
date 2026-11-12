@@ -28,8 +28,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.GodsStrength
-      DisplayName: Ability.Dota.GodsStrength
+      Name: Ability.GodsStrength
+      DisplayName: GodsStrength
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

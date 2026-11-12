@@ -26,8 +26,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.TopazBrooch
-      DisplayName: Item.RoR.TopazBrooch
+      Name: Item.TopazBrooch
+      DisplayName: TopazBrooch
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

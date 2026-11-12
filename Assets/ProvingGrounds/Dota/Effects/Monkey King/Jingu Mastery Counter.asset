@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.JinguMasteryCounter
-      DisplayName: Effect.Dota.JinguMasteryCounter
+      Name: Effect.JinguMasteryCounter
+      DisplayName: JinguMasteryCounter
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

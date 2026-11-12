@@ -26,8 +26,8 @@ MonoBehaviour:
     MaxStackSize: 99
   Tags:
     AssetTag:
-      Name: Item.RoR.LensMakersGlasses
-      DisplayName: Item.RoR.LensMakersGlasses
+      Name: Item.LensMakersGlasses
+      DisplayName: LensMakersGlasses
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

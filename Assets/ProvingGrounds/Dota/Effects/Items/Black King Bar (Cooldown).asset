@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.BlackKingBar.Cooldown
-      DisplayName: Effect.Dota.BlackKingBar.Cooldown
+      Name: Effect.BlackKingBarCooldown
+      DisplayName: BlackKingBarCooldown
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -40,6 +40,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

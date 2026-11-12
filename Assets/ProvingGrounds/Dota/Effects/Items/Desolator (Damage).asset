@@ -28,8 +28,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.Desolator.Damage
-      DisplayName: Effect.Dota.Desolator.Damage
+      Name: Effect.DesolatorDamage
+      DisplayName: DesolatorDamage
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -40,6 +40,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

@@ -26,8 +26,8 @@ MonoBehaviour:
     MaxStackSize: 1
   Tags:
     AssetTag:
-      Name: Item.Dota.Mekansm
-      DisplayName: Item.Dota.Mekansm
+      Name: Item.Mekansm
+      DisplayName: Mekansm
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

@@ -28,8 +28,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.StormHammer
-      DisplayName: Ability.Dota.StormHammer
+      Name: Ability.StormHammer
+      DisplayName: StormHammer
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

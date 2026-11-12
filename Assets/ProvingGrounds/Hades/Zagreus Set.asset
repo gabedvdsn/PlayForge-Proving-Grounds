@@ -20,8 +20,8 @@ MonoBehaviour:
   Description: 
   Textures: []
   AssetTag:
-    Name: Set.Hades.Zagreus
-    DisplayName: Set.Hades.Zagreus
+    Name: AttributeSet.ZagreusSet
+    DisplayName: ZagreusSet
   Attributes:
   - Attribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
     Current:
@@ -232,6 +232,9 @@ MonoBehaviour:
         From: 0
         RelativeTo: {fileID: 11400000, guid: 698d428083d5b234cbb7050f46d2739d, type: 2}
         RelativeMultiplier: 1
+        RelativeGroups:
+          Read: 0
+          Groups: []
         Operation: 1
         OperationTarget: 0
         OperationPolicy: 1

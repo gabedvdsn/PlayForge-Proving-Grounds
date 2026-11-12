@@ -28,8 +28,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.RoR.DoubleTap
-      DisplayName: Ability.RoR.DoubleTap
+      Name: Ability.DoubleTap
+      DisplayName: DoubleTap
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

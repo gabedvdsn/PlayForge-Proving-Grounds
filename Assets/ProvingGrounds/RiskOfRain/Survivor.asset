@@ -20,8 +20,8 @@ MonoBehaviour:
   Description: 
   Textures: []
   AssetTag:
-    Name: Set.RoR.Survivor
-    DisplayName: Set.RoR.Survivor
+    Name: AttributeSet.Survivor
+    DisplayName: Survivor
   Attributes:
   - Attribute: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
     Current:

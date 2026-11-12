@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.RoR.Bullet
-      DisplayName: Effect.RoR.Bullet
+      Name: Effect.Bullet
+      DisplayName: Bullet
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -233,6 +235,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049835
       type: {class: ScalerGroup, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -540,6 +546,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049843
       type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -579,6 +589,10 @@ MonoBehaviour:
         CaptureFrom: 0
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049844
       type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -618,6 +632,10 @@ MonoBehaviour:
         CaptureFrom: 0
         CaptureWhen: 1
         CaptureWhat: 1
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049845
       type: {class: AssetPartKind, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -655,8 +673,8 @@ MonoBehaviour:
         Behaviours: []
         What: 2
         Tagged:
-          Name: Item.RoR.Crowbar
-          DisplayName: Item.RoR.Crowbar
+          Name: Item.Crowbar
+          DisplayName: Crowbar
         On: 0
         EffectPart: 1
         WorkerKey:

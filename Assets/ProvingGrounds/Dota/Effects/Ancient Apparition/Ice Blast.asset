@@ -30,8 +30,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.IceBlast
-      DisplayName: Effect.Dota.IceBlast
+      Name: Effect.IceBlast
+      DisplayName: IceBlast
     ContextTags: []
     GrantedTags:
     - Name: State.Dota.Frostbitten

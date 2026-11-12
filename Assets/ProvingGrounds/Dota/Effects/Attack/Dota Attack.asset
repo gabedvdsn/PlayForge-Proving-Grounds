@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.DotaAttack
-      DisplayName: Effect.Dota.DotaAttack
+      Name: Effect.DotaAttack
+      DisplayName: DotaAttack
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -230,6 +232,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794372806049850
       type: {class: StackingCurveKind, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
       data:
@@ -312,3 +318,7 @@ MonoBehaviour:
         CaptureFrom: 0
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0

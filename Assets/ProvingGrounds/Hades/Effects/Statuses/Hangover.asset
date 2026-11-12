@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.Hangover
-      DisplayName: Effect.Hades.Hangover
+      Name: Effect.Hangover
+      DisplayName: Hangover
     ContextTags: []
     GrantedTags:
     - Name: State.Hades.Hangover
@@ -43,6 +43,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

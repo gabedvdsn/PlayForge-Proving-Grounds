@@ -27,8 +27,8 @@ MonoBehaviour:
     MaxStackSize: 1
   Tags:
     AssetTag:
-      Name: Item.Dota.Desolator
-      DisplayName: Item.Dota.Desolator
+      Name: Item.Desolator
+      DisplayName: Desolator
     ContextTags: []
     PassiveGrantedTags: []
   StartingLevel: 1

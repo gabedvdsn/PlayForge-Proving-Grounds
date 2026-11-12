@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.SlarkAttack
-      DisplayName: Effect.Dota.SlarkAttack
+      Name: Effect.SlarkAttack
+      DisplayName: SlarkAttack
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []

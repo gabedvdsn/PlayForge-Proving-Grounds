@@ -28,8 +28,8 @@ MonoBehaviour:
     Textures: []
   Tags:
     AssetTag:
-      Name: Ability.Dota.LagunaBlade
-      DisplayName: Ability.Dota.LagunaBlade
+      Name: Ability.LagunaBlade
+      DisplayName: LagunaBlade
     ContextTags: []
     PassiveGrantedTags: []
     ActiveGrantedTags: []

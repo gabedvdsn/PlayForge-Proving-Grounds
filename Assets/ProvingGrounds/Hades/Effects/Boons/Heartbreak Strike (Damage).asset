@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Hades.HeartbreakStrike.Damage
-      DisplayName: Effect.Hades.HeartbreakStrike.Damage
+      Name: Effect.HeartbreakStrikeDamage
+      DisplayName: HeartbreakStrikeDamage
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
@@ -41,6 +41,8 @@ MonoBehaviour:
     TargetImpact: 0
     ImpactOperation: 1
     MultiplyBehaviour: 1
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []

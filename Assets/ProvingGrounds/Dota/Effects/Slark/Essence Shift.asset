@@ -29,8 +29,8 @@ MonoBehaviour:
       DisplayName: Ignore
   Tags:
     AssetTag:
-      Name: Effect.Dota.EssenceShift
-      DisplayName: Effect.Dota.EssenceShift
+      Name: Effect.EssenceShift
+      DisplayName: EssenceShift
     ContextTags: []
     GrantedTags: []
     RemovesEffectsTagged: []
