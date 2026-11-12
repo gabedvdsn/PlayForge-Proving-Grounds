@@ -115,39 +115,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        /// <summary>
-        /// An ability's cost and cooldown apply only from a stage set to Apply Usage Effects, and nothing said so when no
-        /// stage was: the Tactics lab's Slash had a cooldown that never applied (ED-41). A cost or a cooldown that no stage
-        /// applies is a problem, which names what goes unapplied, until a stage applies them.
-        /// </summary>
-        [Test]
-        public void ED_41_A_cost_or_cooldown_no_stage_applies_is_a_problem()
-        {
-            var slash = ScriptableObject.CreateInstance<Ability>();
-            slash.Definition.Name = "Slash";
-            var tags = slash.Tags;
-            tags.AssetTag = TagOf("Ability.Slash");
-            slash.Tags = tags;
-            slash.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
-            var cooldown = Effect("Cooldown");
-            var cost = Effect("Cost");
-            try
-            {
-                Assert.That(Messages(slash), Has.None.Contains("usage effects"), "with neither, there's nothing to apply");
-
-                slash.Cooldown = cooldown;
-                Assert.That(Messages(slash), Has.Some.Contains("No stage applies usage effects, so the cooldown"), "a cooldown no stage applies");
-                slash.Cost = cost;
-                Assert.That(Messages(slash), Has.Some.Contains("the cost and the cooldown"), "and a cost with it");
-
-                slash.Behaviour.Stages[0].ApplyUsageEffects = true;
-                Assert.That(Messages(slash), Has.None.Contains("usage effects"), "and none once a stage applies them");
-            }
-            finally
-            {
-                foreach (var each in new Object[] { slash, cooldown, cost }) Object.DestroyImmediate(each);
-            }
-        }
+        // ED-41 warned of a cost or a cooldown no stage applied; TW-17 applies them as the ability starts, so the warning
+        // went, and ChargesEditorTests checks there is none
 
         /// <summary>An edit checks its asset again, with no refresh: fixing the problem takes it off the list.</summary>
         [UnityTest]
@@ -293,8 +262,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         /// Each problem a simple step fixes has a Quick Fix, which does what it says: a link with no provider takes its own
         /// levels, a field that reads a scaler it hasn't got reads its number, a magnitude outside its bounds is held to
         /// them, a set's element with no attribute goes, a stale asset tag is stored, and a scaler two fields hold is copied
-        /// for the second. One Undo takes a fix back. A problem that needs a choice, as which stage applies usage effects,
-        /// has none (FEAT-25).
+        /// for the second. One Undo takes a fix back. A problem that needs a choice, as how charges with no Cooldown should
+        /// come back, has none (FEAT-25).
         /// </summary>
         [Test]
         public void FEAT_25_A_quick_fix_does_what_it_says()
@@ -369,12 +338,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     "each field holds a scaler of its own");
                 Assert.AreEqual(new[] { 1f, 2f }, shared.DurationSpecification.TickIntervalOperation.Scaler.LevelValues, "with the same values");
 
-                var unapplied = LinkedAbility();
-                made.Add(unapplied);
-                unapplied.LinkMode = EAbilityLinkMode.Standalone;
-                unapplied.Cooldown = ScriptableObject.CreateInstance<GameplayEffect>();
-                made.Add(unapplied.Cooldown);
-                Assert.IsNull(ProblemOf(unapplied, "No stage applies usage effects").Fix, "a problem that needs a choice has no quick fix");
+                // Charges with no Cooldown to bring them back: a Cooldown, or a recharge of one's own, is the author's choice (TW-17)
+                var charged = LinkedAbility();
+                made.Add(charged);
+                charged.LinkMode = EAbilityLinkMode.Standalone;
+                charged.Charges = 3;
+                Assert.IsNull(ProblemOf(charged, "never run out").Fix, "a problem that needs a choice has no quick fix");
             }
             finally
             {

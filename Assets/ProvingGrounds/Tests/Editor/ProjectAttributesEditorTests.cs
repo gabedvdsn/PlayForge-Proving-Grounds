@@ -236,7 +236,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             });
         }
 
-        /// <summary>A Mana Cost with no Mana of the project's to pay it is a problem; it's a cost, so one no stage applies is too.</summary>
+        /// <summary>
+        /// A Mana Cost with no Mana of the project's to pay it is a problem. One no stage takes was too, until TW-17 paid it as
+        /// the ability starts.
+        /// </summary>
         [Test]
         public void TW_28_A_Mana_Cost_with_nothing_to_pay_it_is_a_problem()
         {
@@ -246,7 +249,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             var messages = ForgeValidator.Check(bolt).Select(problem => problem.Message).ToList();
             Assert.That(messages, Has.Some.Contains("no Mana"), $"no Mana to pay it: {string.Join(" | ", messages)}");
-            Assert.That(messages, Has.Some.Contains("the cost never applies"), "and no stage applies it");
 
             var project = Instance<ProjectAttributes>();
             project.Mana = Instance<Attribute>();

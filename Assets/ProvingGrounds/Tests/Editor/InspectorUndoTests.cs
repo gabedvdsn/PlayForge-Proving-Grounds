@@ -2060,45 +2060,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        /// <summary>
-        /// An ability's cost and cooldown apply only from a stage set to Apply Usage Effects, and nothing said so when no
-        /// stage was: the Tactics lab's Slash had a cooldown that never applied (ED-41). The Ability inspector warns under
-        /// the cooldown while no stage applies them, and the warning goes once a stage does.
-        /// </summary>
-        [UnityTest]
-        public IEnumerator ED_41_The_Ability_inspector_warns_of_usage_no_stage_applies()
-        {
-            var cooldown = ScriptableObject.CreateInstance<GameplayEffect>();
-            var slash = ScriptableObject.CreateInstance<Ability>();
-            slash.Definition = new AbilityDefinition { Name = "Slash", Textures = new List<TextureItem>() };
-            slash.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
-            slash.Cooldown = cooldown;
-            var host = new Host();
-            try
-            {
-                yield return null;
-                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
-                var root = host.Inspect(slash);
-                yield return Frames();
-                var note = root.Q<HelpBox>("UnappliedUsage");
-                Assert.IsNotNull(note, "the inspector has a note for usage effects no stage applies");
-                Assert.AreNotEqual(DisplayStyle.None, note.style.display.value, "shown while no stage applies the cooldown");
-                Assert.That(note.text, Does.Contain("cooldown"), "which it names");
+        // ED-41 warned of a cost or a cooldown no stage applied; TW-17 applies them as the ability starts, so the warning
+        // went, and ChargesEditorTests checks there is none
 
-                var serialized = new SerializedObject(slash);
-                serialized.FindProperty($"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Stages)}.Array.data[0].{nameof(AbilityTaskBehaviourStage.ApplyUsageEffects)}")
-                    .boolValue = true;
-                serialized.ApplyModifiedProperties();
-                yield return Frames();
-                Assert.AreEqual(DisplayStyle.None, note.style.display.value, "and gone once a stage applies it");
-            }
-            finally
-            {
-                host.Destroy();
-                Object.DestroyImmediate(slash);
-                Object.DestroyImmediate(cooldown);
-            }
-        }
         /// <summary>An ability activated only when asked for (FEAT-4). The Activation section edits its triggers.</summary>
         [UnityTest]
         public IEnumerator FEAT_4_The_Ability_inspector_edits_its_triggers()

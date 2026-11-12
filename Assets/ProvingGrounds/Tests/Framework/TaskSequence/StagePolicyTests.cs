@@ -19,6 +19,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private const int ExitFrames = 12;
 
         /// <summary>
+        /// A stage's OnTerminate says whether it succeeded, and one cut short as its run is interrupted didn't. WhenAll took
+        /// its cancelled tasks as finished, so it said it had, and an ability's stage that applies usage effects as it ends,
+        /// on success alone, paid them for a channel a stun broke (TS-AE, found by TW-17).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_AE_An_interrupted_stage_does_not_succeed([Values] bool whenAny) => Live(async () =>
+        {
+            bool? first = null, second = null;
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Cut Short")
+                .Stage(stage =>
+                {
+                    if (whenAny) stage.WhenAny();
+                    stage.Delay(0.01f).OnTerminate((_, succeeded) => first = succeeded);
+                })
+                .Stage(stage =>
+                {
+                    if (whenAny) stage.WhenAny();
+                    stage.Delay(100f).OnTerminate((_, succeeded) => second = succeeded);
+                })
+                .Build());
+
+            ProcessControl.Register(sequence, out var relay);
+            World.Own(relay);
+            await Frames.Until(() => first.HasValue, ExitFrames, "the first stage ends");
+            Assert.That(first, Is.True, "having finished");
+            await Frames.Step(2);
+
+            Assert.That(sequence.Interrupt(), "the interrupt is accepted");
+            await Frames.Until(() => second.HasValue, ExitFrames, "the second stage ends");
+            Assert.That(second, Is.False, "cut short, it didn't succeed");
+        });
+
+        /// <summary>
         /// WhenAny waited for a task to finish and ignored cancellation, so a stage stopped from outside
         /// cancelled every task, none finished, and the sequence hung on that stage for good.
         /// </summary>
