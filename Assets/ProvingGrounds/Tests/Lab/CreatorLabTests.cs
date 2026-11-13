@@ -45,6 +45,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             if (lab) Object.DestroyImmediate(lab.gameObject);
             lab = null;
+            if (pressing != null) ForgeInput.Use(previousInput);
+            pressing = null;
         }
 
         private EntityIdentity Fighter(string name, float hp = 100f, float walk = 5f, params Ability[] abilities)
@@ -80,6 +82,82 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private void Run(float seconds, float step = 0.05f)
         {
             for (float t = 0f; t < seconds - 0.0001f; t += step) lab.Step(step);
+        }
+
+        // An input a test presses: a pointer at a point of the screen, and buttons and keys held pressed until it lets go
+        private sealed class PressingInput : IForgeInput
+        {
+            public Vector2? Pointer;
+            public readonly HashSet<int> Buttons = new();
+            public readonly HashSet<KeyCode> Keys = new();
+
+            public bool PointerPressed(int button) => Buttons.Contains(button);
+
+            public bool TryGetPointerRay(out Ray ray)
+            {
+                ray = default;
+                return false;
+            }
+
+            public bool TryGetPointerPosition(out Vector2 position)
+            {
+                position = Pointer.GetValueOrDefault();
+                return Pointer.HasValue;
+            }
+
+            public bool KeyPressed(KeyCode key) => Keys.Contains(key);
+
+            public void LetGo()
+            {
+                Buttons.Clear();
+                Keys.Clear();
+            }
+        }
+
+        // A project's driver: it keeps each order it's given and passes none on, so its unit does nothing of itself
+        private sealed class RecordingDriver : LabDriver
+        {
+            public readonly List<(LabUnit Unit, Vector3 Point)> Moves = new();
+            public readonly List<(LabUnit Unit, LabUnit Target)> Attacks = new();
+            public readonly List<(LabUnit Unit, Ability Ability)> Casts = new();
+            public readonly List<LabUnit> Stops = new();
+
+            public override void MoveTo(LabUnit unit, Vector3 point) => Moves.Add((unit, point));
+            public override void Attack(LabUnit unit, LabUnit target) => Attacks.Add((unit, target));
+
+            public override bool Cast(LabUnit unit, Ability ability, ProcessDataPacket data)
+            {
+                Casts.Add((unit, ability));
+                return true;
+            }
+
+            public override void Stop(LabUnit unit) => Stops.Add(unit);
+        }
+
+        private PressingInput pressing;
+        private IForgeInput previousInput;
+
+        private PressingInput Press()
+        {
+            pressing = new PressingInput();
+            previousInput = ForgeInput.Use(pressing);
+            return pressing;
+        }
+
+        // A right-click, or keys, read by the controls over a frame
+        private async Cysharp.Threading.Tasks.UniTask Click(PressingInput input, Vector3 world)
+        {
+            input.Pointer = lab.View.Camera.WorldToScreenPoint(world);
+            input.Buttons.Add(1);
+            await Frames.Step();
+            input.LetGo();
+        }
+
+        private async Cysharp.Threading.Tasks.UniTask Key(PressingInput input, KeyCode key)
+        {
+            input.Keys.Add(key);
+            await Frames.Step();
+            input.LetGo();
         }
 
         /// <summary>The lab builds its space: the ground, its camera, a world of its own and its own caster, on no side.</summary>
@@ -461,6 +539,185 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(again.Items(), Has.Member(trinket), "with the item");
             Assert.That(again.Known(), Has.Member(bolt), "and the ability");
             Assert.AreEqual(3, again.LevelOf(bolt), "at its level");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // The author's unit (LAB-11)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The author's unit takes the lab's controls: a right-click on the ground sends it there, on a foe sets it on the
+        /// foe, and on an ally walks to it; S stops it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_11_A_right_click_moves_the_authors_unit_or_sets_it_on_a_foe() => Live(async () =>
+        {
+            var hero = Fighter("Hero");
+            var foe = Fighter("Foe");
+            Lab(false, hero, foe);
+            var input = Press();
+            var mine = lab.PutDownOwnUnit(hero, LabSides.Blue, Vector3.zero);
+            var theirs = lab.AddUnit(foe, LabSides.Red, new Vector3(4f, 0f, 2f));
+            var friend = lab.AddUnit(foe, LabSides.Blue, new Vector3(-4f, 0f, 2f));
+            await Frames.Step(2);
+            lab.Step(0.01f);
+            Assert.AreSame(mine, lab.ControlledUnit, "the unit put down is the author's");
+            Assert.IsNotNull(lab.Controls, "and the lab's controls take it");
+
+            await Click(input, new Vector3(3f, 0f, -3f));
+            Assert.IsTrue(mine.Destination.HasValue, "a right-click on the ground sends it there");
+            Assert.AreEqual(3f, mine.Destination.Value.x, 0.1f);
+            Assert.AreEqual(-3f, mine.Destination.Value.z, 0.1f);
+
+            await Click(input, theirs.transform.position + Vector3.up);
+            Assert.AreSame(theirs, mine.Target, "one on a foe sets it on the foe");
+
+            await Click(input, friend.transform.position + Vector3.up);
+            Assert.IsNull(mine.Target, "one on an ally walks to it");
+            Assert.IsTrue(mine.Destination.HasValue);
+
+            await Key(input, KeyCode.S);
+            Assert.IsNull(mine.Destination, "S stops it");
+
+            lab.ReleaseControl();
+            await Click(input, new Vector3(-2f, 0f, -2f));
+            Assert.IsNull(mine.Destination, "let go, it takes no orders");
+        });
+
+        /// <summary>
+        /// The author's orders go through a driver: a project's, named on its Lab Rules, takes them all, the keys casting
+        /// the unit's abilities past its attack in order, with no data, so click targeting waits for a left-click.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_11_A_projects_driver_takes_the_authors_orders() => Live(async () =>
+        {
+            var dash = Make.Ability("Dash", Make.Stage());
+            var leap = Make.Ability("Leap", Make.Stage());
+            var hero = Fighter("Hero", abilities: new[] { Strike(Hit("Blow", 5f)), dash, leap });
+            var foe = Fighter("Foe");
+            var driver = ScriptableObject.CreateInstance<RecordingDriver>();
+            var rules = ScriptableObject.CreateInstance<LabRules>();
+            try
+            {
+                rules.Driver = driver;
+                lab = CreatorLab.Create(new ListLibrary("Test", new ScriptableObject[] { hero, foe, health, speed }), rules, panels: false);
+                lab.Paused = true;
+                var input = Press();
+                var mine = lab.PutDownOwnUnit(hero, LabSides.Blue, Vector3.zero);
+                var theirs = lab.AddUnit(foe, LabSides.Red, new Vector3(4f, 0f, 2f));
+                await Frames.Step(2);
+                lab.Step(0.01f);
+
+                await Click(input, new Vector3(3f, 0f, -3f));
+                Assert.AreEqual(1, driver.Moves.Count, "a right-click on the ground is the driver's move");
+                Assert.AreSame(mine, driver.Moves[0].Unit);
+                Assert.AreEqual(3f, driver.Moves[0].Point.x, 0.1f);
+                Assert.IsNull(mine.Destination, "and the driver's alone: the unit goes nowhere of itself");
+
+                await Click(input, theirs.transform.position + Vector3.up);
+                Assert.AreEqual(1, driver.Attacks.Count, "one on a foe, its attack");
+                Assert.AreSame(theirs, driver.Attacks[0].Target);
+
+                await Key(input, KeyCode.Q);
+                await Key(input, KeyCode.W);
+                Assert.That(driver.Casts.Select(cast => cast.Ability).ToList(), Is.EqualTo(new List<Ability> { dash, leap }),
+                    "Q and W cast its abilities past its attack, in order");
+
+                await Key(input, KeyCode.S);
+                Assert.That(driver.Stops, Is.EqualTo(new List<LabUnit> { mine }), "S is its stop");
+
+                var own = ScriptableObject.CreateInstance<RecordingDriver>();
+                try
+                {
+                    lab.Controls.Driver = own;
+                    await Key(input, KeyCode.S);
+                    Assert.AreEqual(1, own.Stops.Count, "a driver on the controls comes before the rules'");
+                    Assert.AreEqual(1, driver.Stops.Count);
+                }
+                finally
+                {
+                    lab.Controls.Driver = null;
+                    Object.DestroyImmediate(own);
+                }
+            }
+            finally
+            {
+                if (lab) Object.DestroyImmediate(lab.gameObject);
+                lab = null;
+                Object.DestroyImmediate(rules);
+                Object.DestroyImmediate(driver);
+            }
+        });
+
+        /// <summary>
+        /// The author takes control of a bot: it stops fighting until it's let go, a new fight passes it over, a reset keeps
+        /// the author on its seat's new bot, and a unit taken out is let go.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_11_Taking_control_of_a_bot_stops_it_fighting_until_its_let_go() => Live(async () =>
+        {
+            var fighter = Fighter("Fighter", abilities: Strike(Hit("Blow", 1f)));
+            Lab(false, fighter);
+            lab.SetMode(LabMode.Battle);
+            var mine = lab.AddBot(fighter, LabSides.Blue, Vector3.zero);
+            var theirs = lab.AddBot(fighter, LabSides.Red, new Vector3(6f, 0f, 0f));
+            await Frames.Step();
+            lab.Step(0.01f);
+            lab.Play();
+            lab.Paused = true;
+            Assert.IsTrue(mine.Fighting, "the bots fight");
+
+            lab.TakeControl(mine.Unit);
+            Assert.AreSame(mine.Unit, lab.ControlledUnit, "the author has the bot");
+            Assert.IsFalse(mine.Fighting, "which stops fighting");
+            Assert.IsTrue(theirs.Fighting, "while the others fight on");
+
+            var seat = lab.SeatOf(mine.Unit);
+            lab.ResetBattle();
+            Assert.IsNotNull(seat.Unit, "a reset makes the seat's bot again");
+            Assert.AreSame(seat.Unit, lab.ControlledUnit, "and the author keeps it");
+            var again = seat.Unit.GetComponent<LabBot>();
+            lab.Play();
+            lab.Paused = true;
+            Assert.IsFalse(again.Fighting, "a new fight passes it over");
+
+            lab.ReleaseControl();
+            Assert.IsNull(lab.ControlledUnit, "let go");
+            Assert.IsTrue(again.Fighting, "it fights again");
+
+            var gone = theirs.Unit;
+            lab.TakeControl(gone);
+            Assert.IsNull(lab.ControlledUnit, "a bot the reset took out can't be taken over");
+
+            var red = lab.Seats.First(each => each.Side.Tag.Equals(LabSides.Red.Tag)).Unit;
+            lab.TakeControl(red);
+            lab.Follow(red);
+            Assert.AreSame(red.transform, lab.View.Following, "the camera follows it");
+            lab.RemoveUnit(red);
+            Assert.IsNull(lab.ControlledUnit, "a unit taken out is let go");
+            Assert.IsNull(lab.View.Following, "and no longer followed");
+        });
+
+        /// <summary>The Lab panel's Your unit section: Put down, Take control, Release and Follow, and whom the author has.</summary>
+        [UnityTest]
+        public IEnumerator LAB_11_The_lab_panel_has_a_section_for_the_authors_unit() => Live(async () =>
+        {
+            var hero = Fighter("Hero");
+            Lab(true, hero);
+            await Frames.Step(2);
+            var root = lab.Panels.Root;
+            Assert.IsNotNull(root.Q(name: "UnitSection"), "the Lab panel has a Your unit section");
+            foreach (var name in new[] { "PutDownOwn", "TakeControl", "ReleaseControl", "FollowUnit" })
+                Assert.IsNotNull(root.Q<Button>(name: name), $"with {name}");
+            var line = root.Q<Label>(name: "ControlLine");
+            Assert.IsNotNull(line, "and a line of whom the author has");
+
+            var mine = lab.PutDownOwnUnit(hero, LabSides.Blue, Vector3.zero);
+            lab.Panels.Redraw();
+            Assert.That(line.text, Does.Contain(mine.name), "naming the unit");
+            lab.ReleaseControl();
+            lab.Panels.Redraw();
+            Assert.That(line.text, Does.Not.Contain(mine.name), "and no longer once it's let go");
         });
     }
 }
