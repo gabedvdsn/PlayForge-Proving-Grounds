@@ -1183,6 +1183,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-5: a project's code tags
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A tag written in code reached the editor's pickers only from PlayForge's own Tags: a project's, as Proving
+        /// Grounds' Enraged or the Demo's keys, none offered, and its attribute couldn't mark a field (TAG-5). A code tag
+        /// marked [ForgeTagExposed], a field or a property, is offered under the contexts it names, or under Code; one not
+        /// marked isn't, so a project chooses which of its tags its designers see (Decision 73).
+        /// </summary>
+        [Test]
+        public void TAG_5_The_projects_code_tags_reach_the_pickers()
+        {
+            ForgeTagRegistry.MarkDirty();
+            ForgeTagRegistry.RefreshCache();
+            bool Offers(string context, string text) =>
+                ForgeTagRegistry.GetTagsForContext(new[] { context }, false).Any(tag => tag.ToString() == text);
+            // Found in code, apart from what assets hold: the recipes' Enrage effect grants Enraged, which offers it alone
+            bool InCode(string context, string text) =>
+                ForgeTagRegistry.GetSystemDefaultTagsForContext(new[] { context }).Any(tag => tag.ToString() == text);
+
+            Assert.IsTrue(InCode(ForgeContext.Granted, "Recipe.Enraged"), "a project's tag, a field it exposes, under its context");
+            Assert.IsTrue(Offers(ForgeContext.Data, "CB_IS_DISJOINTABLE"), "a packet key PlayForge exposes, a property no picker offered");
+            Assert.IsTrue(Offers(ForgeContext.Data, Tags.TARGETED_INTENT.ToString()), "a key of Tags itself, exposed now as every one of them is");
+            Assert.IsTrue(Offers(ForgeContext.Code, Tags.FAILED_TO_INITIALIZE.ToString()), "one exposed with no context, under Code");
+            Assert.IsFalse(ForgeTagRegistry.GetAllTags().Any(tag => tag.ToString() == "CB_DISJOINT"), "and a code tag not exposed isn't offered");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {

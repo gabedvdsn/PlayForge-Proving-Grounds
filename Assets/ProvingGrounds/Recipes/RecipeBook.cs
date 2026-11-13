@@ -80,7 +80,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
     public static class RecipeBook
     {
         /// <summary>The tag Enrage grants the boss as its phase turns.</summary>
-        public static Tag Enraged => Tag.Generate("Recipe.Enraged");
+        // A state the recipe grants, exposed where granted tags are picked (TAG-5)
+        [FarEmerald.PlayForge.Extended.ForgeTagExposed(FarEmerald.PlayForge.Extended.ForgeContext.Granted)]
+        public static readonly Tag Enraged = Tag.Generate("Recipe.Enraged");
 
         /// <summary>Builds every recipe, each asset kept by <paramref name="maker"/> before another refers to it.</summary>
         public static RecipeSet Build(IRecipeMaker maker)
