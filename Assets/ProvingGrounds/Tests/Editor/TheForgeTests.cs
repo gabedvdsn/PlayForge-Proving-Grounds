@@ -1397,6 +1397,137 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "a tag query reads what an entity carries");
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-8: Tags.cs made sound
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Each core tag by its property: the text it reads by, its name, which is its identity and what assets store, and
+        // the contexts it's exposed for, none for Code (TAG-8)
+        private static readonly (string property, string text, string name, string[] contexts)[] CoreTags =
+        {
+            ("SYSTEM", "System", "SystemOLQ9qO2QNi90czFATHnI2QYqY3e7WzWAOLQ9qO2QNi90czFATHnI2QYqY3", new[] { ForgeContext.Affiliation }),
+            ("GAME_ROOT", "Game Root", "Game RootmyZY1dFN98Sd0ORv96TQENlnm4Y172mmmyZY1dFN98Sd0ORv96TQENl", new string[0]),
+            ("NONE", "None", "NoneFv8AlMe4QRmQ2qbZGL0mP5zRblKk9dGtFv8AlMe4QRmQ2qbZGL0mP5zRblKk", new string[0]),
+            ("ALWAYS_ALLOW", "Always Allow", "Always AllowczjcMV2XfpiugEKfudRhljXLLgnKirSfczjcMV2XfpiugEKfudRh", new[] { ForgeContext.ImpactType }),
+            ("NEVER_ALLOW", "Never Allow", "Never Allowl6eLpuNIkrOsr0QFaT6YUkCfXefxEE5Hl6eLpuNIkrOsr0QFaT6YU", new[] { ForgeContext.ImpactType }),
+            ("RETURNED", "Returned", "Returned2qJFFTWU8ghtRaIZW3rH64hTo4RbaYxx2qJFFTWU8ghtRaIZW3rH64hT", new[] { ForgeContext.ImpactType }),
+            ("DEBUG", "Debug", "DebugAdaVuhhu2y_W7YWeGgYRNp9YbHVBjXwNAdaVuhhu2y_W7YWeGgYRNp9YbHV", new string[0]),
+            ("IGNORE", "Ignore", "IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism", new[] { ForgeContext.RetentionGroup }),
+            ("PRIMARY", "Primary", "PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc", new[] { ForgeContext.TextureSlot }),
+            ("DEFAULT", "Default", "DefaultHZrocVrnTyCe46yj0U4URw7eigNeYI7THZrocVrnTyCe46yj0U4URw7ei", new[] { ForgeContext.RetentionGroup }),
+            ("BONUS", "Bonus", "BonusyjJTN9mNKWQRBtyrTZCKCEbhD63hGgFGyjJTN9mNKWQRBtyrTZCKCEbhD63", new[] { ForgeContext.RetentionGroup }),
+            ("ALWAYS_VISIBLE", "Always Visible", "Always Visibleycx2HSMbeCw4_ZdNk8WObSgxBodyaEWcycx2HSMbeCw4_ZdNk8", new[] { ForgeContext.Visibility }),
+            ("NOT_VISIBLE", "Not Visible", "Not Visibled2xuDNqtid9uamDM5aBXkxUexwFpJUF4d2xuDNqtid9uamDM5aBXk", new[] { ForgeContext.Visibility }),
+            ("TRANSFORM", "Transform", "Transformvzcc39S241gwUN6VDCLgpcwj07aImO_rvzcc39S241gwUN6VDCLgpcw", new[] { ForgeContext.DataKey }),
+            ("POSITION", "Position", "PositionUdA0nPKFwm0si1roTY40ir2zGbpyzLF9UdA0nPKFwm0si1roTY40ir2z", new[] { ForgeContext.DataKey }),
+            ("ROTATION", "Rotation", "Rotationy3LaB8y9qvil4bci199uDOqeRlfUmzX9y3LaB8y9qvil4bci199uDOqe", new[] { ForgeContext.DataKey }),
+            ("GAMEPLAY_ABILITY_SYSTEM", "GameplayAbilitySystem", "GameplayAbilitySystemhQRDDFnNxglKsSg9_jk9Wc6hLH_qWCvBhQRDDFnNxgl", new[] { ForgeContext.DataKey }),
+            ("DERIVATION", "Derivation", "DerivationS1sCz1tkEC3uTcFWFcpt8izYLLONMxjFS1sCz1tkEC3uTcFWFcpt8i", new[] { ForgeContext.DataKey }),
+            ("AFFILIATION", "Affiliation", "AffiliationL6jKG5Q9qXE1ZSku2cgcFq6DcAoe5dYvL6jKG5Q9qXE1ZSku2cgcF", new[] { ForgeContext.DataKey }),
+            ("SOURCE", "Source", "SourceoymO9bK8ptefaabLxXIb6M9wlFZIfBfHoymO9bK8ptefaabLxXIb6M9wlF", new[] { ForgeContext.DataKey }),
+            ("TARGET", "Target", "TargetzfvEmaa5gNtqhQ0_dE2_NOOAGh1QLRP8zfvEmaa5gNtqhQ0_dE2_NOOAGh", new[] { ForgeContext.DataKey }),
+            ("TARGET_REAL", "TargetReal", "TargetRealgXUzSIBzE3KaizyDkAneOiKoO7BtcdZdgXUzSIBzE3KaizyDkAneOi", new[] { ForgeContext.DataKey }),
+            ("TARGET_POS", "TargetPosition", "TargetPosition9GKno4NgBm3iCmjMTIPk_vu4cFEj3oAB9GKno4NgBm3iCmjMTI", new[] { ForgeContext.DataKey }),
+            ("EVENT_SUBJECT", "EventSubject", "EventSubject8wrHUO8kfW4DDiZusGQwm0LPmYTARTDR8wrHUO8kfW4DDiZusGQw", new[] { ForgeContext.DataKey }),
+            ("EVENT_IMPACT", "EventImpact", "EventImpactzJIFxVyMXK2qJCpmjz7wuPh_OSqQdgp0zJIFxVyMXK2qJCpmjz7wu", new[] { ForgeContext.DataKey }),
+            ("ROLE_HEALTH", "Health", "HealthwlgkU1_U0ptONBlYz9jTuP8r1wWU2j5gwlgkU1_U0ptONBlYz9jTuP8r1w", new[] { ForgeContext.AttributeRole }),
+            ("ROLE_LUCK", "Luck", "Luck4U3MdI9kV7Zf8eHFAoSRTm75F7mRIuXU4U3MdI9kV7Zf8eHFAoSRTm75F7mR", new[] { ForgeContext.AttributeRole }),
+            ("ROLE_MOVEMENT_SPEED", "Movement Speed", "Movement Speed6s1trn1l70Ski32tSaE4xLdx8JUs69_46s1trn1l70Ski32tSa", new[] { ForgeContext.AttributeRole }),
+            ("IMPACT_DEALT", "Impact Dealt", "Impact DealtFTN8KO5Jf5YqWEIbR3YbUgsyJ3zS1bEwFTN8KO5Jf5YqWEIbR3Yb", new[] { ForgeContext.Event }),
+            ("IMPACT_TAKEN", "Impact Taken", "Impact TakenCxbKO7Cc9k6c8dHrg_t58gAhmogDGfsFCxbKO7Cc9k6c8dHrg_t5", new[] { ForgeContext.Event }),
+            ("KILL", "Kill", "KillXZxDDyRbFpGHEI9eIFJzb2LZnQ8YXRfXXZxDDyRbFpGHEI9eIFJzb2LZnQ8Y", new[] { ForgeContext.Event }),
+            ("DIED", "Died", "Dieds0TDTmvxUT9b7yOwFWs3t8TreBk_oBFQs0TDTmvxUT9b7yOwFWs3t8TreBk_", new[] { ForgeContext.Event }),
+            ("REVIVED", "Revived", "Revived0RhasMNXNRDEc7kU6BcHc2Ik0edgMWMZ0RhasMNXNRDEc7kU6BcHc2Ik0", new[] { ForgeContext.Event }),
+            ("BLOCKED", "Blocked", "Blockedy1IwbFMJBBP2rWbI4ayzGa_Axmw_ZoSDy1IwbFMJBBP2rWbI4ayzGa_Ax", new[] { ForgeContext.Event }),
+            ("EVADED", "Evaded", "EvadedDewNbJCNXHN2UmicqkhLjvr1ac9adHdcDewNbJCNXHN2UmicqkhLjvr1ac", new[] { ForgeContext.Event }),
+            ("HIT_BLOCKED", "Hit Blocked", "Hit BlockedwxqGcKTYrcC7rcXVGmy4w5U0PIvF3BflwxqGcKTYrcC7rcXVGmy4w", new[] { ForgeContext.Event }),
+            ("HIT_EVADED", "Hit Evaded", "Hit EvadedsILPcFi6iSZR1I3yW3DMq7TjFjllcB0RsILPcFi6iSZR1I3yW3DMq7", new[] { ForgeContext.Event }),
+            ("DATA", "Data", "DatargR6DU5tvt5qmeQHOs1n8I6kUhdyRpyOrgR6DU5tvt5qmeQHOs1n8I6kUhdy", new[] { ForgeContext.DataKey }),
+            ("ASSETS", "Assets", "Assetsas0D8m6eBt_MlSQb0FSGh4NV4XOSxf6qas0D8m6eBt_MlSQb0FSGh4NV4X", new[] { ForgeContext.DataKey }),
+            ("EFFECTS", "Effects", "Effects1hrldAfmelBJryWmirBAFALaw9ISFYz_1hrldAfmelBJryWmirBAFALaw", new[] { ForgeContext.DataKey }),
+            ("ABILITIES", "Abilities", "AbilitiesdvRBCCYCASJ7L1H9Vim3iDJ5JrANhWA4dvRBCCYCASJ7L1H9Vim3iDJ", new[] { ForgeContext.DataKey }),
+            ("ENTITIES", "Entities", "EntitiesbE8rdJv2JUnIUKOnz0QgfYH1fYvUWwmrbE8rdJv2JUnIUKOnz0QgfYH1", new[] { ForgeContext.DataKey }),
+            ("ATTRIBUTES", "Attributes", "AttributesmoBr_Bdp18SPLjuOpUnhXXYDxbREMTSsmoBr_Bdp18SPLjuOpUnhXX", new[] { ForgeContext.DataKey }),
+            ("ATTRIBUTE_SETS", "AttributeSets", "AttributeSetsM_FUlP8b89QFWAhvCaaJIbPPe2nfrh3RM_FUlP8b89QFWAhvCaa", new[] { ForgeContext.DataKey }),
+            ("TAGS", "Tags", "TagstXNCi32fcEh6Nx4y2v0UW3ZPhVO4BfFRtXNCi32fcEh6Nx4y2v0UW3ZPhVO4", new[] { ForgeContext.DataKey }),
+            ("INDEX", "Index", "Index5gbrAKbIyt2i0pE97e9TDoG0aEhBuEPT5gbrAKbIyt2i0pE97e9TDoG0aEh", new[] { ForgeContext.DataKey }),
+            ("OBJECT", "Object", "ObjectJODj1eqTNcEMFvbLQDMG88PevygmAa_IJODj1eqTNcEMFvbLQDMG88Pevy", new[] { ForgeContext.DataKey }),
+            ("GAMEOBJECT", "GameObject", "GameObject7KTPSNceg0fsYrdLxPzLo8i2O_7qkI4f7KTPSNceg0fsYrdLxPzLo8", new[] { ForgeContext.DataKey }),
+            ("PROCESS", "Process", "ProcessJfafSwSa7__bTnnnfe0Ryo6g6UdBXLSOJfafSwSa7__bTnnnfe0Ryo6g6", new[] { ForgeContext.DataKey }),
+            ("DELTA", "Delta", "Deltayf9LH757mxccGD8ssPto7_wMHeERNLvayf9LH757mxccGD8ssPto7_wMHeE", new[] { ForgeContext.DataKey }),
+            ("RADIUS", "Radius", "RadiusWJNCeun0wdKET3qQdHG_PUnldm2qojIrWJNCeun0wdKET3qQdHG_PUnldm", new[] { ForgeContext.DataKey }),
+            ("DURATION", "Duration", "DurationqiQ8nwns9h7IBUo7EbdwmrMsps2172zmqiQ8nwns9h7IBUo7EbdwmrMs", new[] { ForgeContext.DataKey }),
+            ("DISTANCE", "Distance", "Distance5a6KzQ_zzCN7C4aXUCS9hQy6ua0LREa75a6KzQ_zzCN7C4aXUCS9hQy6", new[] { ForgeContext.DataKey }),
+            ("CENTER", "Center", "CenterChg1NSWJlWGXVahmdZdpoHUtlUuL8_K3Chg1NSWJlWGXVahmdZdpoHUtlU", new[] { ForgeContext.DataKey }),
+            ("ORIGIN", "Origin", "OriginwKi7OLbazZysqWBcUk6oiCLA4LpRSZMnwKi7OLbazZysqWBcUk6oiCLA4L", new[] { ForgeContext.DataKey }),
+            ("DIMENSIONS", "Dimensions", "DimensionstceyLGQKbMEtyLOuU6HOcnoZkmqVNoCgtceyLGQKbMEtyLOuU6HOcn", new[] { ForgeContext.DataKey }),
+            ("VECTOR", "Vector", "VectorNRw1fiGHfdIxQmFyzNoVflq_7Rt3PXu6NRw1fiGHfdIxQmFyzNoVflq_7R", new[] { ForgeContext.DataKey }),
+            ("VECTOR2", "Vector2", "Vector2UiTEXWUCHtlWIBPBOGj0oh6LeCrbsZacUiTEXWUCHtlWIBPBOGj0oh6Le", new[] { ForgeContext.DataKey }),
+            ("VECTOR3", "Vector3", "Vector32gvNctMNqMKVRK0oaBIoa9Trp1JWU2Is2gvNctMNqMKVRK0oaBIoa9Trp", new[] { ForgeContext.DataKey }),
+            ("HEIGHT", "Height", "HeightcLVMb60L_Mrvk52vwDNNoE0WdEMWSq6JcLVMb60L_Mrvk52vwDNNoE0WdE", new[] { ForgeContext.DataKey }),
+            ("WAIT_FOR", "WaitFor", "WaitFor1IT01PEK45EzXPa6eHvcBxOuKyzoqRXC1IT01PEK45EzXPa6eHvcBxOuK", new[] { ForgeContext.DataKey }),
+            ("ITERATIONS", "Iterations", "Iterationsib30YuwMQpoXfU7ahWw44edO9n1EPQO3ib30YuwMQpoXfU7ahWw44e", new[] { ForgeContext.DataKey }),
+            ("VALID", "Valid", "Valid4wIgXqSLtqfvW0IEKoRb6LHhHSGvUvqn4wIgXqSLtqfvW0IEKoRb6LHhHSG", new[] { ForgeContext.DataKey }),
+            ("INVALID", "Invalid", "InvalidyglhzUxDMmwMhetKnN75NljZaDjikV5TyglhzUxDMmwMhetKnN75NljZa", new[] { ForgeContext.DataKey }),
+            ("CAMERA", "Camera", "CameradkmnFc1ILk_2ES58jk8xcloN857NQLX0dkmnFc1ILk_2ES58jk8xcloN85", new[] { ForgeContext.DataKey }),
+            ("PROCESS_RELAY", "ProcessRelay", "ProcessRelayH7hp9FBbZesRz_m9pT92Vm34CGgKlbg4H7hp9FBbZesRz_m9pT92", new[] { ForgeContext.DataKey }),
+            ("CONTAINER", "Container", "Containerm5JRkAX_nebKQUL_xgDYPz8GzVILKAI5m5JRkAX_nebKQUL_xgDYPz8", new[] { ForgeContext.DataKey }),
+            ("UI", "UI", "UI9YQH4xK7DtvEt2vwapOfLuk3bK0YtDKI9YQH4xK7DtvEt2vwapOfLuk3bK0YtD", new[] { ForgeContext.DataKey }),
+            ("TARGETED_INTENT", "TargetedIntent", "TargetedIntenta3XiGkE8akraVWK2yGSHUChAFOsL3mwHa3XiGkE8akraVWK2yG", new[] { ForgeContext.DataKey }),
+            ("PROJECTILE_SPEED", "ProjectileSpeed", "ProjectileSpeedTDOqnRj7a_7x7WNN99NhMMccYmVZPKzFTDOqnRj7a_7x7WNN9", new[] { ForgeContext.SetByCallerKey }),
+            ("FAILED_TO_INITIALIZE", "FailedToInitialize", "FailedToInitialize1Hhg_KCN7CKTI1mAd0Oze_b2DJQAOc2o1Hhg_KCN7CKTI1", new string[0]),
+            ("FAILED_WHILE_ACTIVE", "FailedWhileActive", "FailedWhileActiveOLFOEHg9C7Hp31nzOe5iaEtqV1L1q9ngOLFOEHg9C7Hp31n", new string[0]),
+        };
+
+        /// <summary>
+        /// Nothing pinned Tags.cs: a core tag's name is its text padded by a hash of it, which every asset that uses the tag
+        /// stores, so a change to a text, the padding or the hash would lose them, and no test said so; and six properties
+        /// read otherwise than their texts, as ADDITIONAL is Bonus (TAG-8). Each core tag keeps its name and its contexts,
+        /// under a property named as its text reads.
+        /// </summary>
+        [Test]
+        public void TAG_8_Each_core_tag_keeps_its_name_and_contexts()
+        {
+            var exposed = typeof(Tags).GetProperties(BindingFlags.Public | BindingFlags.Static)
+                .Where(property => property.PropertyType == typeof(Tag) && property.IsDefined(typeof(ForgeTagExposed)))
+                .ToDictionary(property => property.Name);
+            var problems = new List<string>();
+            foreach (var (property, text, name, contexts) in CoreTags)
+            {
+                if (!exposed.TryGetValue(property, out var found))
+                {
+                    problems.Add($"no Tags.{property}");
+                    continue;
+                }
+                var tag = (Tag)found.GetValue(null);
+                if (tag.Name != name) problems.Add($"Tags.{property} is named {tag.Name}, not {name}");
+                if (tag.ToString() != text) problems.Add($"Tags.{property} reads {tag}, not {text}");
+                var exposedFor = found.GetCustomAttribute<ForgeTagExposed>().Context;
+                if (!exposedFor.SequenceEqual(contexts))
+                    problems.Add($"Tags.{property} is exposed for {string.Join(" + ", exposedFor)}, not {string.Join(" + ", contexts)}");
+            }
+            problems.AddRange(exposed.Keys.Except(CoreTags.Select(row => row.property)).Select(extra => $"Tags.{extra} isn't pinned"));
+            Assert.IsEmpty(problems, string.Join("; ", problems));
+        }
+
+        /// <summary>
+        /// A unique tag's text of 64 characters or more is cut to 64, so two long paths that begin alike were one tag, and
+        /// New Tag made them; and a tag made was remembered by its text and prefix run together, so another split of the same
+        /// letters was the same tag, and a tag asked for at another length came back at the first's (TAG-8). New Tag refuses
+        /// a path that long, and a tag is remembered by its prefix, its text and its length, each apart.
+        /// </summary>
+        [Test]
+        public void TAG_8_A_unique_tag_is_told_apart_by_its_whole_text()
+        {
+            Assert.AreNotEqual(Tag.GenerateAsUnique("Test.TAG8x", "yz").Name, Tag.GenerateAsUnique("Test.TAG8xy", "z").Name,
+                "a text and its prefix are told apart from another split of the same letters");
+            Assert.AreEqual(40, Tag.GenerateAsUnique("Test.TAG8n", "", 40).Name.Length, "a tag made at one length");
+            Assert.AreEqual(64, Tag.GenerateAsUnique("Test.TAG8n", "", 64).Name.Length, "and its text made at another");
+            var problemOf = EditorType("ForgeNewTagWindow").GetMethod("ProblemOf", AnyStatic);
+            Assert.IsNull(problemOf.Invoke(null, new object[] { "Test." + new string('a', 58) }), "New Tag makes a path of 63 characters");
+            Assert.IsNotNull(problemOf.Invoke(null, new object[] { "Test." + new string('a', 59) }), "and refuses one of 64, which is cut");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {

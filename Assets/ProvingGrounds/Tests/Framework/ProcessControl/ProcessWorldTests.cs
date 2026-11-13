@@ -237,7 +237,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var sequence = TaskSequenceBuilder.Create("FEAT-10 Unparented").Stage(stage => stage.Delay(1f)).BuildSequence();
             var relay = ProcessControl.Register(sequence).In(world).Run().Relay;
             Assert.IsNotNull(relay, "it takes a sequence with no packet given");
-            Assert.IsNull(relay.Wrapper.Data.GetPrimary<UnityEngine.Transform>(Tags.PARENT_TRANSFORM), "whose packet is parented nowhere");
+            Assert.IsNull(relay.Wrapper.Data.GetPrimary<UnityEngine.Transform>(Tags.TRANSFORM), "whose packet is parented nowhere");
 
             probe.TerminateImmediate();
             relay.TerminateImmediate();
