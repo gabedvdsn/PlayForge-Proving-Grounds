@@ -1016,6 +1016,84 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-12: every asset's inspector, and The Forge's types
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A Requirement Template, a Crowd Control Rules asset, a Tag Library, a Forge Project and the lab's assets had no
+        /// inspector of their own, and a Scaler asset's, an Effect Modifier's and a Value Pipeline's had no header (FN-12,
+        /// Decision 72). Each opens with the shared header: its type's icon, its name and type, and the asset menu.
+        /// </summary>
+        [Test]
+        public void FN_12_Every_PlayForge_asset_opens_with_the_shared_header()
+        {
+            var types = new[]
+            {
+                typeof(Ability), typeof(GameplayEffect), typeof(Item), typeof(Attribute), typeof(AttributeSet), typeof(EntityIdentity),
+                typeof(ScalerAsset), typeof(RequirementTemplate), typeof(ValuePipeline), typeof(EffectModifier), typeof(CrowdControlRules),
+                typeof(ForgeTagLibrary), typeof(ForgeProject), typeof(Lab.LabRules), typeof(Lab.LabDriver),
+            };
+            foreach (var type in types)
+            {
+                var asset = ScriptableObject.CreateInstance(type);
+                var editor = UnityEditor.Editor.CreateEditor(asset);
+                try
+                {
+                    var root = editor.CreateInspectorGUI();
+                    Assert.IsNotNull(root, $"{type.Name} has an inspector of its own");
+                    var header = root.Q(className: "pf-asset-header");
+                    Assert.IsNotNull(header, $"{type.Name}'s opens with the shared header");
+                    Assert.IsNotNull(header.Q<Button>("HeaderMenu"), $"{type.Name}'s header has the asset menu");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(editor);
+                    Object.DestroyImmediate(asset);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The Forge listed eight types; it lists Value Pipelines, Effect Modifiers and Crowd Control Rules too (FN-12,
+        /// Decision 72). The common six are the toolbar's toggles, and the rest are filters under More, which says the one
+        /// chosen.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_12_The_Forge_lists_the_rules_assets() => Guarded(FN_12_The_Forge_lists_the_rules_assetsBody());
+
+        private IEnumerator FN_12_The_Forge_lists_the_rules_assetsBody()
+        {
+            var pipeline = Save(ScriptableObject.CreateInstance<ValuePipeline>(), "FN12 Pipeline");
+            var modifier = Save(ScriptableObject.CreateInstance<EffectModifier>(), "FN12 Modifier");
+            var rules = Save(ScriptableObject.CreateInstance<CrowdControlRules>(), "FN12 Rules");
+            var forge = Open();
+            yield return Frames();
+            TheForge.OpenToAsset(pipeline);
+            yield return Frames();
+            Assert.That(Listed(forge), Has.Member(pipeline), "The Forge lists a Value Pipeline");
+
+            var toolbar = forge.rootVisualElement.Q<Toolbar>("ForgeToolbar");
+            foreach (var common in new[] { "Ability", "GameplayEffect", "Item", "Attribute", "AttributeSet", "EntityIdentity" })
+                Assert.IsNotNull(toolbar.Q<ToolbarToggle>(common), $"{common} is a toggle");
+            Assert.IsNull(toolbar.Q<ToolbarToggle>("ValuePipeline"), "the rest aren't");
+            var more = toolbar.Q<ToolbarMenu>("More");
+            Assert.IsNotNull(more, "they're under More");
+            var items = more.menu.MenuItems().OfType<DropdownMenuAction>().ToList();
+            Assert.That(items.Select(item => item.name), Is.SupersetOf(new[] { "Scaler Asset", "Requirement Template", "Value Pipeline", "Effect Modifier", "Crowd Control Rules" }),
+                "every other type");
+
+            Assert.AreEqual("Value Pipeline", more.text, "and More says the type it shows");
+
+            items.First(item => item.name == "Effect Modifier").Execute();
+            yield return Frames();
+            Assert.That(Listed(forge), Has.Member(modifier).And.No.Member(pipeline), "a filter under More shows its type alone");
+            Assert.AreEqual("Effect Modifier", more.text, "and More says the one chosen");
+            items.First(item => item.name == "Crowd Control Rules").Execute();
+            yield return Frames();
+            Assert.That(Listed(forge), Has.Member(rules), "Crowd Control Rules too");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {

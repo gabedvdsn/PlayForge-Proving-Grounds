@@ -41,6 +41,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             typeof(Item),
         };
 
+        // The other assets PlayForge draws an inspector for, each opening with the shared header (FN-12)
+        private static readonly (Type Type, string Name)[] OtherTypes =
+        {
+            (typeof(ScalerAsset), "Scaler asset"), (typeof(ValuePipeline), "Value Pipeline"), (typeof(EffectModifier), "Effect Modifier"),
+            (typeof(RequirementTemplate), "Requirement Template"), (typeof(CrowdControlRules), "Crowd Control Rules"),
+            (typeof(ForgeTagLibrary), "Tag Library"), (typeof(ForgeProject), "Forge Project"),
+        };
+
         public sealed class SmokeProcess : AbstractMonoProcess
         {
             public override UniTask RunProcess(CancellationToken token) => UniTask.CompletedTask;
@@ -183,6 +191,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static Object NewAsset(List<Object> made, Type type) => Keep(made, ScriptableObject.CreateInstance(type));
 
+        // An asset with something to edit: a new Crowd Control Rules or Tag Library has an empty list, so it's given a first
+        // element (FN-12)
+        private static Object Filled(Object asset)
+        {
+            switch (asset)
+            {
+                case CrowdControlRules rules:
+                    rules.Rules.Add(new CrowdControlRule());
+                    break;
+                case ForgeTagLibrary library:
+                    library.Entries.Add(new ForgeTagLibrary.Entry { Name = "Smoke.Tag" });
+                    break;
+            }
+            return asset;
+        }
+
         private static Object NewProcess(List<Object> made) =>
             Keep(made, new GameObject("Smoke Process")).AddComponent<SmokeProcess>();
 
@@ -198,12 +222,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             yield return new Subject { Name = "a MonoProcess", Make = made => new[] { NewProcess(made) } };
             yield return new Subject { Name = "two MonoProcesses", Make = made => new[] { NewProcess(made), NewProcess(made) } };
-            // A Scaler asset's inspector has no asset header, so it isn't among the asset types (ED-33)
-            yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
-            // A Value Pipeline's too, a stage list and no asset header (TW-2)
-            yield return new Subject { Name = "a new Value Pipeline", Make = made => new[] { NewAsset(made, typeof(ValuePipeline)) } };
-            // And an Effect Modifier's, a rule and no asset header (TW-7)
-            yield return new Subject { Name = "a new Effect Modifier", Make = made => new[] { NewAsset(made, typeof(EffectModifier)) } };
+            // The other assets' inspectors, each opening with the shared header (FN-12)
+            foreach (var (type, name) in OtherTypes)
+                yield return new Subject { Name = $"a new {name}", Make = made => new[] { NewAsset(made, type) } };
         }
 
         // A new asset of each type, a MonoProcess, and the fullest Demo asset in each of the Demo's folders
@@ -212,10 +233,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             foreach (var type in AssetTypes)
                 yield return new Subject { Name = $"a new {type.Name}", Make = made => new[] { NewAsset(made, type) } };
             yield return new Subject { Name = "a MonoProcess", Make = made => new[] { NewProcess(made) } };
-            yield return new Subject { Name = "a new Scaler asset", Make = made => new[] { NewAsset(made, typeof(ScalerAsset)) } };
-            // A Value Pipeline's too, a stage list and no asset header (TW-2)
-            yield return new Subject { Name = "a new Value Pipeline", Make = made => new[] { NewAsset(made, typeof(ValuePipeline)) } };
-            yield return new Subject { Name = "a new Effect Modifier", Make = made => new[] { NewAsset(made, typeof(EffectModifier)) } };
+            foreach (var (type, name) in OtherTypes)
+                yield return new Subject { Name = $"a new {name}", Make = made => new[] { Filled(NewAsset(made, type)) } };
 
             var folder = DemoFolder;
             foreach (var group in DemoAssets().GroupBy(inSample => Path.GetDirectoryName(inSample)))
@@ -388,8 +407,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var inspected = typeof(CustomEditor).GetField("m_InspectedType", Private);
             Assume.That(inspected, Is.Not.Null, "an inspector names the type it draws");
-            var opened = AssetTypes.Append(typeof(SmokeProcess)).Append(typeof(ScalerAsset)).Append(typeof(ValuePipeline))
-                .Append(typeof(EffectModifier)).ToList();
+            var opened = AssetTypes.Append(typeof(SmokeProcess)).Concat(OtherTypes.Select(other => other.Type)).ToList();
             var missing = typeof(TheForge).Assembly.GetTypes()
                 .SelectMany(type => type.GetCustomAttributes<CustomEditor>(false))
                 .Select(attribute => (Type)inspected.GetValue(attribute))
