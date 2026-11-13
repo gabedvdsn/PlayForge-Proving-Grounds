@@ -36,6 +36,38 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers: []
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 0}
+    When:
+      rid: -2
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
     TargetImpact: 0
@@ -50,7 +82,15 @@ MonoBehaviour:
       Magnitude: 1
       RealMagnitude: 3
       Scaler:
-        rid: 2403794372806049905
+        rid: 2403794399030411274
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes:
     - Name: Damage.RoR.Bleed
       DisplayName: Damage.RoR.Bleed
@@ -102,6 +142,12 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -143,6 +189,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -150,49 +200,6 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049905
-      type: {class: StackingCurveKind, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        Name: 
-        Configuration: 0
-        MaxLevel: 10
-        LevelValues:
-        - 1
-        Interpolation: 1
-        StretchOverLevels: 1
-        Scaling:
-          serializedVersion: 2
-          m_Curve:
-          - serializedVersion: 3
-            time: 0
-            value: 1
-            inSlope: 0
-            outSlope: 0
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          - serializedVersion: 3
-            time: 1
-            value: 1
-            inSlope: 0
-            outSlope: 0
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          m_PreInfinity: 2
-          m_PostInfinity: 2
-          m_RotationOrder: 4
-        Behaviours: []
-        Count:
-          Magnitude: 1
-          RealMagnitude: 3
-          Scaler:
-            rid: 2403794372806049907
-        Curve: 0
-        Coefficient: 0.1
-        Plus: 0
     - rid: 2403794372806049906
       type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -284,3 +291,50 @@ MonoBehaviour:
         ItemPart: 1
         Among: 0
         Default: 0
+    - rid: 2403794399030411274
+      type: {class: StackingCurveKind, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Name: 
+        Configuration: 0
+        MaxLevel: 10
+        LevelValues:
+        - 1
+        Interpolation: 1
+        StretchOverLevels: 1
+        Scaling:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        Behaviours: []
+        Count:
+          Magnitude: 1
+          RealMagnitude: 3
+          Scaler:
+            rid: 2403794372806049907
+        Curve: 0
+        Coefficient:
+          Magnitude: 0.1
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+        Plus: 0

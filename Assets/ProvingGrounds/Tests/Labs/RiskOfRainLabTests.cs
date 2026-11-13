@@ -65,9 +65,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Tougher Times: a chance to block a hit outright, 1 − 1/(1 + 0.15 × stacks): 13% with one, 43% with five. A Lab
-        /// Kit worker blocks, and a Lab Kit curve reads the stacks: PlayForge has neither a chance to block nor a
-        /// hyperbolic number (see the wishlist).
+        /// Tougher Times: a chance to block a hit outright, 1 − 1/(1 + 0.15 × stacks): 13% with one, 43% with five. Its
+        /// incoming Block stage (TW-12) reads a hyperbolic stacking curve of its stacks (TW-9), and a blocked hit is
+        /// refused.
         /// </summary>
         [UnityTest]
         public IEnumerator Tougher_Times_blocks_by_a_hyperbolic_chance([Values] Hub hub) => Live(async () =>
@@ -79,7 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             var rolls = Rolls(0.10f, 0.20f, 0.40f, 0.45f);
-            Assert.IsTrue(Hit(beetle, commando, Blow(20f)));
+            Assert.IsFalse(Hit(beetle, commando, Blow(20f)), "a roll of 0.10 is under 13%: refused");
             await Frames.Step();
             Assert.AreEqual(110f, Value(commando, Health), 0.01f, "a roll of 0.10 is under 13%: blocked");
             Assert.IsTrue(Hit(beetle, commando, Blow(20f)));
@@ -88,7 +88,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.AreEqual(4, commando.GetItemSystem().GiveItem(ItemNamed("Tougher Times"), 4), "four more");
             await Frames.Step();
-            Assert.IsTrue(Hit(beetle, commando, Blow(20f)));
+            Assert.IsFalse(Hit(beetle, commando, Blow(20f)), "with five, 0.40 is under 43%: refused");
             await Frames.Step();
             Assert.AreEqual(90f, Value(commando, Health), 0.01f, "with five, 0.40 is under 43%: blocked");
             Assert.IsTrue(Hit(beetle, commando, Blow(20f)));
@@ -97,7 +97,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(4, rolls.Drawn, "a roll for each hit");
         });
 
-        /// <summary>A blocked hit lands as nothing, so the attacker's on-hit items don't go off.</summary>
+        /// <summary>
+        /// A blocked hit is refused, so the attacker's on-hit items don't go off. The bleed a hit that lands sets off is an
+        /// effect on Health landing on the defender too, so Tougher Times rolls for it as it lands, once (TW-12).
+        /// </summary>
         [UnityTest]
         public IEnumerator A_blocked_hit_sets_off_no_item([Values] Hub hub) => Live(async () =>
         {
@@ -109,8 +112,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Hold(defender, ItemNamed("Tougher Times"));
             await Frames.Step();
 
-            Rolls(0f, 0.99f);
-            Assert.IsTrue(Hit(attacker, defender, Bullet));
+            Rolls(0f, 0.99f, 0.99f);
+            Assert.IsFalse(Hit(attacker, defender, Bullet), "a roll of 0 is under 13%: refused");
             await Frames.Step(2);
             Assert.AreEqual(110f, Value(defender, Health), 0.01f, "blocked");
             Assert.IsFalse(Has(defender, bleed), "so ten daggers, a sure bleed, don't bleed it");
@@ -168,8 +171,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Topaz Brooch: on a kill, 15 barrier a stack, which takes a hit before health and fades over 30 seconds. A Lab
-        /// Kit worker acts on the kill, and another soaks the hit: PlayForge has neither (see the wishlist).
+        /// Topaz Brooch: on a kill, 15 barrier a stack, which takes a hit before health and fades over 30 seconds. Its On
+        /// Kill entry gives it (TW-6), and Barrier, an attribute that absorbs for Health, takes the hit first (TW-12).
         /// </summary>
         [UnityTest]
         public IEnumerator Topaz_Brooch_gives_a_barrier_on_a_kill([Values] Hub hub) => Live(async () =>
@@ -195,8 +198,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Lens-Maker's Glasses: 10% crit chance a stack, a critical hit dealing double. The bullet rolls through a Lab
-        /// Kit condition: PlayForge has no chance in a number (see the wishlist). The roll is drawn once for each hit.
+        /// Lens-Maker's Glasses: 10% crit chance a stack, a critical hit dealing double. The bullet rolls through a Chance
+        /// condition, its chance a number (TW-8). The roll is drawn once for each hit.
         /// </summary>
         [UnityTest]
         public IEnumerator Lens_Makers_Glasses_make_hits_critical([Values] Hub hub) => Live(async () =>

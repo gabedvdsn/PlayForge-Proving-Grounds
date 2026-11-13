@@ -114,11 +114,11 @@ MonoBehaviour:
   CollisionResolutionPolicy: 0
   WorkerGroup:
     Name: Workers
-    AttributeWorkers:
-    - rid: 2403794372806049846
+    AttributeWorkers: []
     ImpactWorkers: []
     TagWorkers: []
-    AnalysisWorkers: []
+    AnalysisWorkers:
+    - rid: 2403794399030411271
   StartingLevel: 1
   MaxLevel: 4
   LinkMode: 0
@@ -128,23 +128,21 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049846
-      type: {class: ThresholdCrossingAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
+    - rid: 2403794399030411271
+      type: {class: ThresholdAnalysisWorker, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
-        TimingConfig: 0
-        TargetAttribute: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
-        AllowSelfModification: 1
-        TargetModification: 0
-        ExclusivelyTargetModification: 0
-        SignPolicy: 2
-        AnyImpactType: 1
-        ImpactTypes: []
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ValidContextTags: []
-        ShareOfBase: 0.5
-        ApplyToSelf:
+        Target: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
+        Groups:
+          Read: 0
+          Groups: []
+        What: 3
+        Threshold: 0.5
+        Crossing: 1
+        Comparison: 0
+        TriggerOnce: 0
+        Effects:
         - {fileID: 11400000, guid: 440511b7cbb92154d9c6a66eed32a989, type: 2}
-        SendEvent:
+        AppliedBy: 0
+        Event:
           Name: Event.Hades.Phase
           DisplayName: Event.Hades.Phase

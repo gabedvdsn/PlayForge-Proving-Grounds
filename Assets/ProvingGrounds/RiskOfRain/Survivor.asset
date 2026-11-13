@@ -172,8 +172,7 @@ MonoBehaviour:
   CollisionResolutionPolicy: 0
   WorkerGroup:
     Name: Workers
-    AttributeWorkers:
-    - rid: 2403794372806049832
+    AttributeWorkers: []
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
@@ -186,18 +185,3 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794372806049832
-      type: {class: BarrierAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        TimingConfig: 0
-        TargetAttribute: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
-        AllowSelfModification: 1
-        TargetModification: 0
-        ExclusivelyTargetModification: 0
-        SignPolicy: 2
-        AnyImpactType: 1
-        ImpactTypes: []
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ValidContextTags: []
-        Barrier: {fileID: 11400000, guid: f18301299eb66f94ba155a2cdb927179, type: 2}

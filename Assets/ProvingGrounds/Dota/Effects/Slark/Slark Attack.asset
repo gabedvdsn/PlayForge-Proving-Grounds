@@ -36,11 +36,45 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers: []
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 0}
+    When:
+      rid: -2
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -49,6 +83,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -60,6 +102,10 @@ MonoBehaviour:
     Packets:
     - Policy: 0
       ContainedEffect: {fileID: 11400000, guid: 4a3776933e1e12d42addb18a8bd06ff8, type: 2}
+      LandsOn: 0
+    - Policy: 0
+      ContainedEffect: {fileID: 11400000, guid: 94c8f2773bb3b9842bb661b7525b89f6, type: 2}
+      LandsOn: 1
   DurationSpecification:
     DurationPolicy: 0
     DurationOperation:
@@ -99,8 +145,13 @@ MonoBehaviour:
       Scaler:
         rid: -2
       Rounding: 0
-  Workers:
-  - rid: 2403794368834043921
+  Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -142,6 +193,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -188,11 +243,7 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
-    - rid: 2403794368834043921
-      type: {class: ApplyToSourceEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
-      data:
-        Moment: 0
-        When:
-          rid: -2
-        Effects:
-        - {fileID: 11400000, guid: 94c8f2773bb3b9842bb661b7525b89f6, type: 2}
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0

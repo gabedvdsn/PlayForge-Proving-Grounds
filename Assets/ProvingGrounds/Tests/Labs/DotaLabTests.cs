@@ -74,9 +74,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private static bool Has(IGameplayAbilitySystem gas, GameplayEffect effect) => gas.TryGetEffectContainer(effect, out _);
 
-        // A hero with health and whatever else it needs, each current as its base unless it says. A pool, as health,
-        // mana or charges, stays between 0 and its base; a stat, as Agility, can be raised past its base by a bonus, as
-        // the Dota Hero set has them
+        // A hero with health, Attack Damage and Healing Received, and whatever else it needs, each current as its base
+        // unless it says. A pool, as health, mana or charges, stays between 0 and its base; a stat, as Agility, can be
+        // raised past its base by a bonus, as the Dota Hero set has them
         private IGameplayAbilitySystem Hero(Hub hub, string name, float health = 1000f, float healthNow = -1f, float attackDamage = 100f,
             params (string attribute, float current, float @base)[] more)
         {
@@ -84,6 +84,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 Make.Element(Health, healthNow < 0f ? health : healthNow, health, EAttributeOverflowPolicy.ZeroToBase),
                 Make.Element(Attribute("Attack Damage"), attackDamage, attackDamage),
+                Make.Element(Attribute("Healing Received"), 1f, 1f),
             };
             foreach (var (attribute, current, @base) in more)
             {
@@ -213,7 +214,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         /// <summary>
         /// Ice Blast: 325 as it lands, then frostbite for 10 seconds: 20 a second, no healing, and a blow that leaves its
-        /// target below 13% of its maximum health shatters it. Its rules go with it.
+        /// target below 13% of its maximum health shatters it. Its rules go with it: Healing Received held at 0, which
+        /// Health's gains are scaled by, and an incoming Execute stage (TW-15).
         /// </summary>
         [UnityTest]
         public IEnumerator Ice_blast_blocks_healing_and_shatters([Values] Hub hub) => Live(async () =>

@@ -180,9 +180,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Pressure Points: 2% more chance of a critical hit, for triple. Strike rolls through a Lab Kit condition: only
-        /// hits that read Crit Chance can be critical, so Doom and Hangover can't, where Hades makes any damage (see the
-        /// wishlist).
+        /// Pressure Points: 2% more chance of a critical hit, for triple. Strike rolls through a Chance condition (TW-8):
+        /// only hits that read Crit Chance can be critical, so Doom and Hangover can't, where Hades makes any damage.
         /// </summary>
         [UnityTest]
         public IEnumerator Pressure_Points_makes_strikes_critical([Values] Hub hub) => Live(async () =>
@@ -220,8 +219,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// Megaera, made from her asset, rages as her health falls past half: 50% more damage, once. A Lab Kit worker
-        /// watches the line: PlayForge's thresholds only log (see the wishlist). Weak multiplies apart from her rage, so
+        /// Megaera, made from her asset, rages as her health falls past half: 50% more damage, once. Her set's threshold
+        /// watches the line, firing as a loss takes her share below it (TW-11). Weak multiplies apart from her rage, so
         /// she deals 1 × 1.5 × 0.7.
         /// </summary>
         [UnityTest]

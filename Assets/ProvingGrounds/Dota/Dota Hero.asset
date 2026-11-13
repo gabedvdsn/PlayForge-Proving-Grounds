@@ -226,6 +226,35 @@ MonoBehaviour:
       AutoScaleWithBase: 0
       RoundingMode: 0
       SnapInterval: 0
+  - Attribute: {fileID: 11400000, guid: 52202b95708185949a9fcc28115d96d2, type: 2}
+    Current:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    Base:
+      Magnitude: 1
+      Scaling:
+        rid: -2
+      RealMagnitude: 2
+    LinkCurrentToBase: 0
+    Overflow:
+      Policy: 4
+      Floor:
+        CurrentValue: 0
+        BaseValue: 0
+      Ceil:
+        CurrentValue: 0
+        BaseValue: 0
+    RetentionGroup:
+      Name: DefaultHZrocVrnTyCe46yj0U4URw7eigNeYI7THZrocVrnTyCe46yj0U4URw7ei
+      DisplayName: Default
+    CollisionPolicy: 0
+    Constraints:
+      AutoClamp: 1
+      AutoScaleWithBase: 0
+      RoundingMode: 0
+      SnapInterval: 0
   SubSets: []
   CollisionResolutionPolicy: 0
   WorkerGroup:

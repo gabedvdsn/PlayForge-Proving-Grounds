@@ -39,11 +39,53 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers:
+  - Shared: {fileID: 0}
+    Rule:
+      Direction: 1
+      EffectTags: []
+      When:
+        rid: -2
+      Changes:
+      - rid: 2403794399030411267
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 0}
+    When:
+      rid: -2
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -52,6 +94,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -59,10 +109,28 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
-    AdditionalImpacts: []
+    AdditionalImpacts:
+    - AttributeTarget: {fileID: 11400000, guid: 52202b95708185949a9fcc28115d96d2, type: 2}
+      Delivery: 0
+      TargetSlot: 0
+      Operation: 2
+      MultiplyBehaviour: 0
+      AddBehaviour: 0
+      Pipeline: {fileID: 0}
+      SortOrder: 0
+      Magnitude:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
+      RetentionGroupOverride:
+        Name: 
+        DisplayName: 
+      ImpactTypes: []
     Packets:
     - Policy: 0
       ContainedEffect: {fileID: 11400000, guid: 9e9a3d057a6d18f45a4b8c6374692e6c, type: 2}
+      LandsOn: 0
   DurationSpecification:
     DurationPolicy: 1
     DurationOperation:
@@ -102,8 +170,13 @@ MonoBehaviour:
       Scaler:
         rid: -2
       Rounding: 0
-  Workers:
-  - rid: 2403794368834043943
+  Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -145,6 +218,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -152,38 +229,21 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794368834043943
-      type: {class: GrantAttributeWorkersEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+    - rid: 2403794399030411267
+      type: {class: ChangeImpactChange, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
-        Workers:
-        - rid: 2403794368834043944
-        - rid: 2403794368834043945
-    - rid: 2403794368834043944
-      type: {class: HealBlockAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
-      data:
-        TimingConfig: 0
-        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-        AllowSelfModification: 1
-        TargetModification: 0
-        ExclusivelyTargetModification: 0
-        SignPolicy: 1
-        AnyImpactType: 1
+        Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
         ImpactTypes: []
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ValidContextTags: []
-    - rid: 2403794368834043945
-      type: {class: ShatterAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+        Stage:
+          rid: 2403794399030411268
+    - rid: 2403794399030411268
+      type: {class: ExecuteStage, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
-        TimingConfig: 0
-        TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-        AllowSelfModification: 1
-        TargetModification: 0
-        ExclusivelyTargetModification: 0
-        SignPolicy: 2
-        AnyImpactType: 1
-        ImpactTypes: []
-        AnyContextTag: 1
-        ContextMatchingPolicy: 0
-        ValidContextTags: []
-        BelowShareOfBase: 0.13
+        Label: Shatter
+        Enabled: 1
+        Share:
+          Magnitude: 0.13
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+        Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}

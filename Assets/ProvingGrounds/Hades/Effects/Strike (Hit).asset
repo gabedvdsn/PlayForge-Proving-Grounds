@@ -36,6 +36,38 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers: []
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 0}
+    When:
+      rid: -2
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 716464545050eb1429fed60e210b6ddd, type: 2}
     TargetImpact: 0
@@ -51,6 +83,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes:
     - Name: Damage.Hades.Attack
       DisplayName: Damage.Hades.Attack
@@ -102,6 +142,12 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -143,6 +189,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -272,7 +322,7 @@ MonoBehaviour:
           m_RotationOrder: 4
         Behaviours: []
         When:
-          rid: 2403794372806049914
+          rid: 2403794399030411272
         TrueValue:
           Magnitude: 3
           RealMagnitude: 2
@@ -298,14 +348,6 @@ MonoBehaviour:
           rid: -2
         FalseScaler:
           rid: -2
-    - rid: 2403794372806049914
-      type: {class: ChanceCondition, ns: FarEmerald.PlayForge.ProvingGrounds.LabKit, asm: FarEmerald.PlayForge.ProvingGrounds.LabKit}
-      data:
-        Chance:
-          Magnitude: 1
-          RealMagnitude: 3
-          Scaler:
-            rid: 2403794372806049915
     - rid: 2403794372806049915
       type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -349,3 +391,19 @@ MonoBehaviour:
           Read: 0
           Groups: []
         ReadAs: 0
+    - rid: 2403794399030411272
+      type: {class: ChanceCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Chance:
+          Magnitude: 1
+          RealMagnitude: 3
+          Scaler:
+            rid: 2403794372806049915
+        Roll:
+          PseudoRandom: 0
+          OwnLuck: 0
+          Luck:
+            Magnitude: 0
+            RealMagnitude: 2
+            Scaler:
+              rid: -2

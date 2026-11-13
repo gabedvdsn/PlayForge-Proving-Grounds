@@ -20,3 +20,9 @@ MonoBehaviour:
   Abbreviation: HP
   Description: What a hero can take; at 0 it dies
   Textures: []
+  Role: 0
+  AbsorbsFor: {fileID: 0}
+  DecayPerSecond: 0
+  DecayAsShareOfBase: 0
+  FadesWithEffect: 0
+  GainsScaledBy: {fileID: 11400000, guid: 52202b95708185949a9fcc28115d96d2, type: 2}

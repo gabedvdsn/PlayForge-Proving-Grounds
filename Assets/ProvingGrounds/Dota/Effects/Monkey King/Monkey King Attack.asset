@@ -37,11 +37,45 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers: []
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0.3
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
+    When:
+      rid: 2403794368834043934
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -50,6 +84,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -61,6 +103,10 @@ MonoBehaviour:
     Packets:
     - Policy: 0
       ContainedEffect: {fileID: 11400000, guid: d7f4a60b002270b4f86270f73b40562c, type: 2}
+      LandsOn: 0
+    - Policy: 0
+      ContainedEffect: {fileID: 11400000, guid: 411ce66e69ac97d499ae04eef4f27e55, type: 2}
+      LandsOn: 1
   DurationSpecification:
     DurationPolicy: 0
     DurationOperation:
@@ -100,9 +146,13 @@ MonoBehaviour:
       Scaler:
         rid: -2
       Rounding: 0
-  Workers:
-  - rid: 2403794368834043930
-  - rid: 2403794368834043931
+  Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -144,6 +194,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -194,25 +248,6 @@ MonoBehaviour:
             rid: 2403794368834043933
           RelativeOperation: 0
         OverrideMemberCollisionPolicy: 0
-    - rid: 2403794368834043930
-      type: {class: LifestealEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
-      data:
-        Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-        Share:
-          Magnitude: 0.3
-          RealMagnitude: 2
-          Scaler:
-            rid: -2
-        When:
-          rid: 2403794368834043934
-    - rid: 2403794368834043931
-      type: {class: ApplyToSourceEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
-      data:
-        Moment: 1
-        When:
-          rid: 2403794368834043935
-        Effects:
-        - {fileID: 11400000, guid: 411ce66e69ac97d499ae04eef4f27e55, type: 2}
     - rid: 2403794368834043932
       type: {class: AttributeBackedScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -252,6 +287,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794368834043933
       type: {class: ConditionalScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -320,18 +359,9 @@ MonoBehaviour:
         On: 0
         Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
         What: 0
-        Comparison: 5
-        Value:
-          Magnitude: 0
-          RealMagnitude: 2
-          Scaler:
-            rid: -2
-    - rid: 2403794368834043935
-      type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
-      data:
-        On: 0
-        Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
-        What: 0
+        Groups:
+          Read: 0
+          Groups: []
         Comparison: 5
         Value:
           Magnitude: 0
@@ -344,6 +374,9 @@ MonoBehaviour:
         On: 0
         Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
         What: 0
+        Groups:
+          Read: 0
+          Groups: []
         Comparison: 5
         Value:
           Magnitude: 0

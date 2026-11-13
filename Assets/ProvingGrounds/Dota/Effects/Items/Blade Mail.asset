@@ -38,11 +38,45 @@ MonoBehaviour:
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
   GrantedAbilities: []
+  SideChange:
+    Changes: 0
+    Source: 0
+    Sides: []
+    Priority: 0
+    Interrupts: 0
+  OnHit: []
+  Modifiers: []
+  Auras: []
+  Area:
+    Radius:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Flat: 1
+    Takes: 1
+    IncludeCaster: 0
+    MaxTargets: 0
+    UseResolveOrder: 1
+  Lifesteal:
+    Share:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    Attribute: {fileID: 0}
+    When:
+      rid: -2
+  Transfers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient: 1
   ImpactSpecification:
     AttributeTarget: {fileID: 0}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -51,6 +85,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -99,8 +141,14 @@ MonoBehaviour:
       Scaler:
         rid: -2
       Rounding: 0
-  Workers:
-  - rid: 2403794368834043949
+  Workers: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers:
+    - rid: 2403794399030411270
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -142,6 +190,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -149,13 +201,8 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 2403794368834043949
-      type: {class: GrantAttributeWorkersEffectWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
-      data:
-        Workers:
-        - rid: 2403794368834043950
-    - rid: 2403794368834043950
-      type: {class: DamageReturnAttributeWorker, ns: FarEmerald.PlayForge.ProvingGrounds.Dota, asm: FarEmerald.PlayForge.ProvingGrounds.Dota}
+    - rid: 2403794399030411270
+      type: {class: ReturnDamageAttributeWorker, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
         TimingConfig: 1
         TargetAttribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}

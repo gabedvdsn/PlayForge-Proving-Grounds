@@ -8,8 +8,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// <summary>
     /// The Dota lab's second bot: abilities, items and an entity from Dota 2, authored as assets beside the first lab's
     /// effects. Lina's Laguna Blade, Sven's God's Strength and Storm Hammer, Axe's Counter Helix, Black King Bar,
-    /// Desolator, Mekansm, and Sven himself. Where the lab needed what PlayForge doesn't have, a Lab Kit worker stands in,
-    /// and Docs/TOOLING_WISHLIST.md names it.
+    /// Desolator, Mekansm, and Sven himself. Where the lab needed what PlayForge didn't have, a Lab Kit worker stood in
+    /// until its built-in landed (AC-6), as Docs/TOOLING_WISHLIST.md says.
     /// </summary>
     [Category("Lab")]
     public class DotaAbilitiesLabTests : LabTest
@@ -181,8 +181,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         /// <summary>
         /// Desolator: 50 Attack Damage, and each attack takes 6 armor from its target for 7 seconds, refreshed, not stacked.
-        /// An attack deals its Attack Damage less what armor takes off, 1/(1 + 0.06 × armor), through a Lab Kit curve: no
-        /// number divides (see the wishlist). The armor comes off after the hit that brings it.
+        /// An attack deals its Attack Damage less what armor takes off, 1/(1 + 0.06 × armor), through a reciprocal
+        /// stacking curve (TW-9). The armor comes off after the hit that brings it.
         /// </summary>
         [UnityTest]
         public IEnumerator Desolator_corrupts_what_its_holder_hits([Values] Hub hub) => Live(async () =>

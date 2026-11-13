@@ -20,3 +20,9 @@ MonoBehaviour:
   Abbreviation: BAR
   Description: Health over its health, taken first and lost over 30 seconds
   Textures: []
+  Role: 4
+  AbsorbsFor: {fileID: 11400000, guid: 2daa3eb7495f59848ba704b5b41fa6a3, type: 2}
+  DecayPerSecond: 0
+  DecayAsShareOfBase: 0
+  FadesWithEffect: 0
+  GainsScaledBy: {fileID: 0}
