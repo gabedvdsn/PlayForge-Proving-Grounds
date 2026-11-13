@@ -131,6 +131,54 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A Used By row is a button, which the editor's theme centers the words of, and its label took that: the asset's
+        /// name sat in the middle of its row. The name keeps to the row's left, after its icon (FN-5).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_5_A_Used_By_rows_name_sits_at_its_left()
+        {
+            const string folder = "Assets/FN-5 Used By";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "FN-5 Used By");
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            var host = new GameObject("FN-5 Panel") { hideFlags = HideFlags.HideAndDontSave };
+            UnityEditor.Editor editor = null;
+            try
+            {
+                var mana = ScriptableObject.CreateInstance<Attribute>();
+                mana.Name = "Mana";
+                AssetDatabase.CreateAsset(mana, $"{folder}/Mana.asset");
+                var casters = ScriptableObject.CreateInstance<AttributeSet>();
+                casters.Attributes.Add(new AttributeSetElement { Attribute = mana });
+                AssetDatabase.CreateAsset(casters, $"{folder}/Caster Set.asset");
+                AssetDatabase.SaveAssets();
+
+                var document = host.AddComponent<UIDocument>();
+                document.panelSettings = settings;
+                yield return null;
+                Assume.That(document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                editor = UnityEditor.Editor.CreateEditor(mana);
+                var root = editor.CreateInspectorGUI();
+                document.rootVisualElement.Add(root);
+                var row = root.Q(name: "UsedBy_CONTAINER")?.Q<Button>(className: "pf-used-by__row");
+                Assume.That(row, Is.Not.Null, "Mana's Used By has a row, for the set that holds it");
+                // As the editor's theme draws every button, its words in the middle
+                row.style.unityTextAlign = TextAnchor.MiddleCenter;
+                for (int i = 0; i < 4; i++) yield return null;
+
+                var name = row.Q<Label>(className: "pf-used-by__name");
+                Assert.AreEqual("Caster Set", name?.text, "the row names the set");
+                Assert.AreEqual(TextAnchor.MiddleLeft, name.resolvedStyle.unityTextAlign, "at its left");
+            }
+            finally
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(settings);
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        /// <summary>
         /// The Item inspector strayed from Docs/EDITOR_STYLE.md (ED-37): its sections came in another order, with Level
         /// Source apart from Leveling, a collapsed section showed nothing, and seven sections' Import and Clear only
         /// logged a warning. Its sections keep the style doc's order now, Leveling holds the level link, each collapsed
@@ -1139,6 +1187,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(host);
                 Object.DestroyImmediate(settings);
                 Object.DestroyImmediate(owner);
+            }
+        }
+
+        /// <summary>
+        /// An entity's Items section draws Max Items and Max Equipped Items by their names, and its Abilities section Max
+        /// Abilities: each was drawn with an empty label, so its whole-number field stood unnamed (FN-3).
+        /// </summary>
+        [Test]
+        public void FN_3_An_entitys_limits_are_drawn_by_their_names()
+        {
+            var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+            try
+            {
+                Inspect(entity, root =>
+                {
+                    foreach (var (section, path, name) in new[]
+                    {
+                        ("Items", nameof(EntityIdentity.MaxItemsOperation), "Max Items"),
+                        ("Items", nameof(EntityIdentity.MaxEquippedItemsOperation), "Max Equipped Items"),
+                        ("Abilities", nameof(EntityIdentity.MaxAbilitiesOperation), "Max Abilities"),
+                    })
+                    {
+                        var container = root.Q(name: $"{section}_CONTAINER");
+                        Assert.IsNotNull(container, $"the inspector has a {section} section");
+                        var field = container.Query<PropertyField>().ToList().FirstOrDefault(each => each.bindingPath == path);
+                        Assert.IsNotNull(field, $"its {section} section draws {path}");
+                        Assert.AreEqual(name, field.label, $"{path} by its name");
+                    }
+                });
+            }
+            finally
+            {
+                Object.DestroyImmediate(entity);
             }
         }
 

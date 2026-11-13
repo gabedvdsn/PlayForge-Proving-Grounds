@@ -578,6 +578,90 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "and For's");
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-6 and FN-7: a row's words, and the columns hidden
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // An element's middle against its row's, as the list lays them out
+        private static void AssertInItsRowsMiddle(VisualElement element, string what)
+        {
+            Assert.IsNotNull(element, $"{what} is drawn");
+            var row = element.parent;
+            while (row != null && !row.ClassListContains("unity-collection-view__item") && !row.ClassListContains("unity-list-view__item")) row = row.parent;
+            Assert.IsNotNull(row, $"{what} is in a row");
+            Assert.That(element.worldBound.center.y, Is.EqualTo(row.worldBound.center.y).Within(1f), $"{what} sits in its row's middle");
+        }
+
+        /// <summary>
+        /// The Forge's rows set their words and icons in the middle of the row's height, and a text column's words keep off
+        /// the column's left edge: a list's cells sat at the top of their rows, and the Tags view's words pressed against
+        /// the window's edge (FN-6).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_6_A_rows_words_sit_in_its_middle_off_its_left_edge() => Guarded(FN_6_Body());
+
+        private IEnumerator FN_6_Body()
+        {
+            Save(Ability("Fireball"), "Fireball");
+            var forge = Open();
+            yield return Frames();
+            using var laid = new LaidOut(forge, 1280f, 720f);
+            yield return Press(laid, "Ability");
+            yield return Frames();
+            var assets = laid.Root.Q<MultiColumnListView>("Assets");
+            AssertInItsRowsMiddle(assets.Q(className: "pf-forge__name-cell")?.Q("Icon"), "an asset's icon");
+            AssertInItsRowsMiddle(assets.Q<Label>(className: "pf-forge__name"), "its name");
+            var type = assets.Q<Label>(className: "pf-forge__cell");
+            AssertInItsRowsMiddle(type, "its type");
+            Assert.That(type.resolvedStyle.paddingLeft, Is.GreaterThanOrEqualTo(3f), "which keeps off its column's left edge");
+
+            yield return Press(laid, "Tags");
+            yield return Frames();
+            var tag = laid.Root.Q<MultiColumnListView>("TagList").Q<Label>(className: "pf-forge__cell");
+            Assume.That(tag, Is.Not.Null, "the Tags view lists a tag");
+            AssertInItsRowsMiddle(tag, "a tag");
+            Assert.That(tag.resolvedStyle.paddingLeft, Is.GreaterThanOrEqualTo(3f), "which keeps off the window's edge");
+        }
+
+        /// <summary>
+        /// A column hidden from the header's menu came back as the window was closed and opened again, as a domain reload
+        /// builds it again: Type and Asset Tag, which the user always hides (FN-7). The window remembers the columns hidden,
+        /// as it does their widths, and a column shown again stays shown.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_7_A_hidden_column_stays_hidden() => Guarded(FN_7_Body());
+
+        private IEnumerator FN_7_Body()
+        {
+            using var hidden = new KeptPreference("PlayForge_HiddenColumns_Forge.Assets");
+            var forge = Open();
+            yield return Frames();
+            var columns = ListOf(forge).columns;
+            Assume.That(columns["Type"].visible && columns["AssetTag"].visible, "Type and Asset Tag show at first");
+            // As the header's menu hides a column
+            columns["Type"].visible = false;
+            columns["AssetTag"].visible = false;
+            yield return Frames();
+            forge.Close();
+            yield return Frames();
+
+            forge = Open();
+            yield return Frames();
+            columns = ListOf(forge).columns;
+            Assert.IsFalse(columns["Type"].visible, "the window remembers Type is hidden");
+            Assert.IsFalse(columns["AssetTag"].visible, "and Asset Tag");
+            Assert.IsTrue(columns["Name"].visible && columns["Levels"].visible, "and shows the rest");
+            columns["Type"].visible = true;
+            yield return Frames();
+            forge.Close();
+            yield return Frames();
+
+            forge = Open();
+            yield return Frames();
+            Assert.IsTrue(ListOf(forge).columns["Type"].visible, "a column shown again stays shown");
+            Assert.IsFalse(ListOf(forge).columns["AssetTag"].visible, "the other stays hidden");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {

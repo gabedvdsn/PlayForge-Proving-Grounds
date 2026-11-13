@@ -69,11 +69,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// A worker group is its name and its four lists of workers, Unity's reorderable lists, where a new worker starts
-        /// empty for its kind to be picked; and it sets no look in code (ED-57).
+        /// A worker group draws no Name: nothing reads it, and the Workers section it sits in names it (FN-4).
         /// </summary>
         [UnityTest]
-        public IEnumerator ED_57_A_worker_group_is_its_name_and_four_lists()
+        public IEnumerator FN_4_A_worker_group_draws_no_name()
+        {
+            var holder = ScriptableObject.CreateInstance<Holder>();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = host.Draw(new SerializedObject(holder), nameof(Holder.Workers));
+                yield return Until(() => field.Q<PropertyField>("AttributeWorkers") != null);
+                yield return Frames();
+
+                Assume.That(field.Q<PropertyField>("AttributeWorkers"), Is.Not.Null, "the group is drawn");
+                Assert.IsNull(field.Q<TextField>("WorkerGroupName"), "with no Name");
+                Assert.That(field.Query<TextField>().ToList().Where(each => each.label == "Name"), Is.Empty, "nor any field called that");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        /// <summary>
+        /// A worker group is its four lists of workers, Unity's reorderable lists, where a new worker starts empty for its
+        /// kind to be picked; and it sets no look in code (ED-57). Its name, which nothing shows, it no longer draws (FN-4).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_57_A_worker_group_is_its_four_lists()
         {
             var holder = ScriptableObject.CreateInstance<Holder>();
             var host = new Host();
@@ -85,7 +112,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Until(() => field.Q<PropertyField>("AttributeWorkers")?.Q<Button>("unity-list-view__add-button") != null);
                 yield return Frames();
 
-                Assert.IsNotNull(field.Q<TextField>("WorkerGroupName"), "its name");
                 foreach (var list in new[] { "AttributeWorkers", "ImpactWorkers", "TagWorkers", "AnalysisWorkers" })
                     Assert.IsNotNull(field.Q<PropertyField>(list)?.Q<ListView>(), $"{list}, Unity's list");
                 Assert.IsNull(field.Q(name: "WorkerGroupContainer"), "and no box of its own");

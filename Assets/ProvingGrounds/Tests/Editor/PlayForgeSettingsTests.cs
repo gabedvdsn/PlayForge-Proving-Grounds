@@ -41,9 +41,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             Prefix + "Path_Ability", Prefix + "Prefix_Ability", Prefix + "Postfix_Ability", Prefix + "TemplateRegistry",
             Prefix + "EffectTemplate_Cost", Prefix + "EffectTemplate_Cooldown", Prefix + "LastTypeFilter",
-            // The tables' column widths (ED-48), which Use Defaults forgets
+            // The tables' column widths (ED-48), and the columns they hide (FN-7), which Use Defaults forgets
             Prefix + "Columns_Debugger.Entities", Prefix + "Columns_Debugger.Processes", Prefix + "Columns_Debugger.Tags",
             Prefix + "Columns_Debugger.Timeline", Prefix + "Columns_Forge.Assets", Prefix + "Columns_Forge.Tags", Prefix + "Columns_Problems",
+            Prefix + "HiddenColumns_Debugger.Entities", Prefix + "HiddenColumns_Debugger.Processes", Prefix + "HiddenColumns_Debugger.Tags",
+            Prefix + "HiddenColumns_Debugger.Timeline", Prefix + "HiddenColumns_Forge.Assets", Prefix + "HiddenColumns_Forge.Tags",
+            Prefix + "HiddenColumns_Problems",
         };
         private static readonly string[] BoolKeys =
         {
@@ -270,6 +273,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 EditorPrefs.SetInt(Prefix + "RecentlyCreatedRows", 3);
                 EditorPrefs.SetString(Prefix + "LastTypeFilter", nameof(Ability));
                 EditorPrefs.SetString(Prefix + "Columns_Forge.Assets", "Type=120");
+                EditorPrefs.SetString(Prefix + "HiddenColumns_Forge.Assets", "Type");
                 ForgeLogSettingsBridge.SetLevel(ForgeLog.ELevel.Error);
 
                 var useDefaults = root.Q<Button>("UseDefaults");
@@ -279,8 +283,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     useDefaults.SendEvent(submit);
                 }
 
-                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Append(Prefix + "Columns_Forge.Assets").Where(EditorPrefs.HasKey),
-                    Is.Empty, "Use Defaults leaves no preference set, a table's column widths among them");
+                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Append(Prefix + "Columns_Forge.Assets")
+                        .Append(Prefix + "HiddenColumns_Forge.Assets").Where(EditorPrefs.HasKey),
+                    Is.Empty, "Use Defaults leaves no preference set, a table's column widths and hidden columns among them (FN-7)");
                 Assert.IsFalse(fullPaths.value, "and the page shows the defaults");
                 Assert.AreEqual(ForgeLog.ELevel.Info, ForgeLog.MinimumLevel, "the log level among them");
             }
