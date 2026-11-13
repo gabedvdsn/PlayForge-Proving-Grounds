@@ -757,6 +757,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Open = _ => ForgeRenameWindow.Show(AssetDatabase.LoadMainAssetAtPath(
                     AssetDatabase.GUIDToAssetPath(AssetDatabase.FindAssets("t:Ability").First()))),
             };
+            // A name asked for, as a tag's new path in The Forge's Tags view or a new tag context (FN-9)
+            var nameWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNameWindow");
+            yield return new Window
+            {
+                Name = "Name", Type = nameWindow,
+                Open = _ => nameWindow.GetMethod("Show", AnyStatic).Invoke(null, new object[]
+                    { "Smoke", "Name", "", "OK", (Func<string, string>)(_ => null), (Action<string>)(_ => { }) }),
+            };
             // A sheet's import, from The Forge's Spreadsheets menu (TW-27)
             yield return new Window
             {

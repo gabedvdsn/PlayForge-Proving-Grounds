@@ -423,7 +423,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 tags.SetSelection(at);
                 yield return Frames();
                 var title = forge.rootVisualElement.Q("Detail").Q(className: "pf-forge__summary-title") as Label;
-                Assert.AreEqual("Test.ED60.Fireball", title?.text, "and its detail names it by its display name");
+                // By its name, its whole path under it (FN-9)
+                Assert.AreEqual("Fireball", title?.text, "and its detail names it by its display name");
+                Assert.AreEqual("Test.ED60.Fireball", forge.rootVisualElement.Q("Detail").Q<Label>("TagPath")?.text, "its whole path under it");
             }
             finally
             {
@@ -869,6 +871,148 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 if (window != null) window.Close();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-9: tags in The Forge
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Shows a tag in The Forge's Tags view, found by a search for its text, and its detail
+        private static IEnumerator ShowTag(TheForge forge, Tag tag, string search)
+        {
+            forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+            forge.rootVisualElement.Q<ToolbarSearchField>("Search").value = search;
+            yield return Frames();
+            var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+            int at = tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().ToList().FindIndex(record => record.Tag == tag);
+            Assume.That(at, Is.GreaterThanOrEqualTo(0), $"The Forge lists {tag}");
+            tags.SetSelection(at);
+            yield return Frames();
+        }
+
+        // The window a name is asked in, its view built, as batch mode may build it only as it's shown
+        private static EditorWindow NameWindow()
+        {
+            var type = EditorType("ForgeNameWindow");
+            var window = Resources.FindObjectsOfTypeAll(type).OfType<EditorWindow>().SingleOrDefault();
+            if (window != null && window.rootVisualElement.Q("Name") == null) type.GetMethod("CreateGUI", AnyInstance).Invoke(window, null);
+            return window;
+        }
+
+        private static void Answer(EditorWindow window, string name)
+        {
+            window.rootVisualElement.Q<TextField>("Name").value = name;
+            window.GetType().GetMethod("Confirm", AnyInstance).Invoke(window, null);
+        }
+
+        /// <summary>
+        /// A tag's summary in The Forge named it by its whole path; it names it by its own name now, its leaf, with the whole
+        /// path under it where the path says more, as an asset tag's type or a tag's parents (FN-9).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_9_A_tags_summary_names_it_with_its_path_under() => Guarded(FN_9_A_tags_summary_names_it_with_its_path_underBody());
+
+        private IEnumerator FN_9_A_tags_summary_names_it_with_its_path_underBody()
+        {
+            var burn = Tag.Generate("Test.FN9.Status.Burn");
+            var soaked = Tag.Generate("FN9Soaked");
+            var fire = Ability("FN9 Fireball");
+            fire.Tags.ContextTags = new List<Tag> { burn, soaked };
+            Save(fire, "FN9 Fireball");
+            var forge = Open();
+            yield return Frames();
+            yield return ShowTag(forge, burn, "FN9");
+            var detail = forge.rootVisualElement.Q("Detail");
+            Assert.AreEqual("Burn", detail.Q<Label>("TagName")?.text, "a tag is named by its own name");
+            Assert.AreEqual("Test.FN9.Status.Burn", detail.Q<Label>("TagPath")?.text, "its whole path under it");
+
+            yield return ShowTag(forge, soaked, "FN9Soaked");
+            detail = forge.rootVisualElement.Q("Detail");
+            Assert.AreEqual("FN9Soaked", detail.Q<Label>("TagName")?.text, "a root tag by its name");
+            Assert.IsNull(detail.Q<Label>("TagPath"), "with no path under it, which would say nothing more");
+        }
+
+        /// <summary>
+        /// A tag could be renamed nowhere but in each asset that used it (FN-9). The Tags view renames it, as F2 or a row's
+        /// Rename… does: it and the tags under its path take the new path in every asset that names them, a unique tag
+        /// staying unique. A tag that is an asset's own, which follows its asset's name, it doesn't rename, and says why.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_9_The_Tags_view_renames_a_tag_and_those_under_it() => Guarded(FN_9_The_Tags_view_renames_a_tag_and_those_under_itBody());
+
+        private IEnumerator FN_9_The_Tags_view_renames_a_tag_and_those_under_itBody()
+        {
+            var status = Tag.GenerateAsUnique("Test.FN9R.Status");
+            var burn = Tag.GenerateAsUnique("Test.FN9R.Status.Burn");
+            var fire = Ability("FN9R Fireball");
+            fire.Tags.AssetTag = Tag.Generate("Test.FN9R.Fireball");
+            fire.Tags.ContextTags = new List<Tag> { status, burn };
+            Save(fire, "FN9R Fireball");
+            var forge = Open();
+            yield return Frames();
+            yield return ShowTag(forge, status, "FN9R");
+
+            typeof(TheForge).GetMethod("RenameTag", AnyInstance).Invoke(forge, new object[] { status });
+            yield return Frames();
+            var window = NameWindow();
+            Assert.IsNotNull(window, "Rename asks for the tag's new path");
+            Assert.AreEqual("Test.FN9R.Status", window.rootVisualElement.Q<TextField>("Name")?.value, "starting from its path");
+            Answer(window, "Test.FN9R.Ailment");
+            yield return Frames(8);
+
+            var paths = fire.Tags.ContextTags.Select(each => each.Path).ToList();
+            Assert.That(paths, Is.EqualTo(new[] { "Test.FN9R.Ailment", "Test.FN9R.Ailment.Burn" }), "the tag and the one under it take the new path");
+            Assert.That(fire.Tags.ContextTags.All(each => each.Name != each.Path), "staying unique");
+            Assert.That(fire.Tags.ContextTags[1].IsChildOf(fire.Tags.ContextTags[0]), "and the one under it is still under it");
+
+            var renames = EditorType("ForgeTagRenames");
+            var why = (string)renames.GetMethod("WhyNotRename", AnyStatic).Invoke(null, new object[] { fire.Tags.AssetTag, "Test.FN9R.Other" });
+            StringAssert.Contains("own tag", why ?? "", "an asset's own tag follows its name, and isn't renamed");
+        }
+
+        /// <summary>
+        /// The contexts were PlayForge's and those a field named; a project could make none of its own (FN-9, Decision 70).
+        /// A tag contexts field's New Context… makes one, kept in the project's Tag Library, offered in every contexts
+        /// field, and chosen in the field that made it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_9_A_new_context_is_made_and_offered() => Guarded(FN_9_A_new_context_is_made_and_offeredBody());
+
+        private IEnumerator FN_9_A_new_context_is_made_and_offeredBody()
+        {
+            const string context = "FN9 Own Context";
+            var newTag = EditorType("ForgeNewTagWindow");
+            var tagWindow = (EditorWindow)newTag.GetMethod("ShowFor", AnyStatic)
+                .Invoke(null, new object[] { "Test.FN9C.", new[] { ForgeContext.Granted }, (System.Action<Tag>)(_ => { }) });
+            try
+            {
+                yield return Frames();
+                if (tagWindow.rootVisualElement.Q("TagPath") == null) newTag.GetMethod("CreateGUI", AnyInstance).Invoke(tagWindow, null);
+                var field = tagWindow.rootVisualElement.Q("TagContexts");
+                Assert.IsNotNull(field, "New Tag has the tag's contexts");
+                field.GetType().GetMethod("NewContext", AnyInstance).Invoke(field, null);
+                yield return Frames();
+                var window = NameWindow();
+                Assert.IsNotNull(window, "New Context… asks for its name");
+                Answer(window, context);
+                yield return Frames();
+
+                var all = (System.Collections.Generic.List<string>)EditorType("ForgeTagContexts").GetMethod("All", AnyStatic).Invoke(null, null);
+                Assert.That(all, Has.Member(context), "the context is made, offered in every contexts field");
+                var chosen = (System.Collections.Generic.IReadOnlyList<string>)field.GetType().GetProperty("Contexts", AnyInstance).GetValue(field);
+                Assert.That(chosen, Has.Member(context), "and chosen in the field that made it");
+            }
+            finally
+            {
+                if (tagWindow != null) tagWindow.Close();
+                foreach (var guid in AssetDatabase.FindAssets("t:ForgeTagLibrary"))
+                {
+                    var library = AssetDatabase.LoadAssetAtPath<ForgeTagLibrary>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (library?.Contexts == null || !library.Contexts.Remove(context)) continue;
+                    EditorUtility.SetDirty(library);
+                    AssetDatabase.SaveAssetIfDirty(library);
+                }
             }
         }
 
