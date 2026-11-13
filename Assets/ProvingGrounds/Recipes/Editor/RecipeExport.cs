@@ -17,6 +17,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
     {
         public const string Root = "Assets/PlayForgeAdditional/Recipes";
 
+        /// <summary>Where the formula presets go, beside the recipes (AC-3).</summary>
+        public const string FormulasRoot = "Assets/PlayForgeAdditional/Formulas";
+
+        /// <summary>Where the starter set goes, beside the recipes (AC-5).</summary>
+        public const string StarterRoot = "Assets/PlayForgeAdditional/Starter Set";
+
         // Saves each asset at its path under its folder, or copies it into the one there
         private sealed class SavingMaker : IRecipeMaker
         {
@@ -54,12 +60,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
             return maker.Saved;
         }
 
+        /// <summary>
+        /// Saves the recipes, the formula presets and the starter set, each under its root, each asset in place where it's
+        /// there; how many it saved. The starter set's hits read the recipes' Health (AC-3, AC-5).
+        /// </summary>
+        public static int SaveAll(string recipes = Root, string formulas = FormulasRoot, string starter = StarterRoot)
+        {
+            var recipeMaker = new SavingMaker(recipes);
+            var set = RecipeBook.Build(recipeMaker);
+            var formulaMaker = new SavingMaker(formulas);
+            FormulaBook.Build(formulaMaker);
+            var starterMaker = new SavingMaker(starter);
+            StarterBook.Build(starterMaker, set.Health);
+            AssetDatabase.SaveAssets();
+            return recipeMaker.Saved + formulaMaker.Saved + starterMaker.Saved;
+        }
+
         public static void Build()
         {
             try
             {
-                int saved = Save(Root);
-                Debug.Log($"[RecipeExport] Saved {saved} recipe assets under {Root}.");
+                int saved = SaveAll();
+                Debug.Log($"[RecipeExport] Saved {saved} assets under {Root}, {FormulasRoot} and {StarterRoot}.");
                 if (Application.isBatchMode) EditorApplication.Exit(0);
             }
             catch (Exception e)

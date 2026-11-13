@@ -169,9 +169,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
         // Each asset, made as its inspector fills one in
         // ═══════════════════════════════════════════════════════════════════════════
 
-        private static string Compact(string name) => name.Replace(" ", "").Replace("'", "");
+        internal static string Compact(string name) => name.Replace(" ", "").Replace("'", "");
 
-        private static ForgeAttribute Attribute(string name)
+        internal static ForgeAttribute Attribute(string name)
         {
             var attribute = ScriptableObject.CreateInstance<ForgeAttribute>();
             attribute.name = attribute.Name = name;
@@ -202,16 +202,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             return set;
         }
 
-        // An effect with one impact, an add to the attribute it names, or none; instant unless it says
-        private static GameplayEffect Effect(string name, ForgeAttribute attribute, float magnitude,
-            EEffectDurationPolicy policy = EEffectDurationPolicy.Instant, float duration = 0f, int ticks = 0)
+        // An effect with one impact, an add to the attribute it names, or none; instant unless it says; its asset tag in a
+        // family of the sample's, as Recipe.Effect.Curse
+        internal static GameplayEffect Effect(string name, ForgeAttribute attribute, float magnitude,
+            EEffectDurationPolicy policy = EEffectDurationPolicy.Instant, float duration = 0f, int ticks = 0, string family = "Recipe")
         {
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.name = name;
             effect.Definition = new GameplayEffectDefinition { Name = name, Textures = new List<TextureItem>() };
             effect.Tags = new GameplayEffectTags
             {
-                AssetTag = Tag.Generate($"Recipe.Effect.{Compact(name)}"),
+                AssetTag = Tag.Generate($"{family}.Effect.{Compact(name)}"),
                 ContextTags = new List<Tag>(),
                 GrantedTags = new List<Tag>(),
             };
@@ -243,21 +244,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             return effect;
         }
 
-        private static EffectTagRequirements NoRequirements() => new()
+        internal static EffectTagRequirements NoRequirements() => new()
         {
             ApplicationRequirements = new AvoidRequireTagGroup(),
             OngoingRequirements = new AvoidRequireTagGroup(),
             RemovalRequirements = new AvoidRequireTagGroup(),
         };
 
-        private static StandardWorkerGroup Workers(params AbstractAttributeWorker[] workers)
+        internal static StandardWorkerGroup Workers(params AbstractAttributeWorker[] workers)
         {
             var group = new StandardWorkerGroup();
             group.AttributeWorkers.AddRange(workers);
             return group;
         }
 
-        private static ValuePipeline Pipeline(string name, string description, params AbstractValueStage[] stages)
+        internal static ValuePipeline Pipeline(string name, string description, params AbstractValueStage[] stages)
         {
             var pipeline = ScriptableObject.CreateInstance<ValuePipeline>();
             pipeline.name = name;
@@ -266,14 +267,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             return pipeline;
         }
 
-        private static Ability Ability(string name, params AbstractAbilityTask[] tasks)
+        internal static Ability Ability(string name, params AbstractAbilityTask[] tasks) => Ability("Recipe", name, tasks);
+
+        // An ability of one stage of these tasks, its asset tag in a family of the sample's
+        internal static Ability Ability(string family, string name, params AbstractAbilityTask[] tasks)
         {
             var ability = ScriptableObject.CreateInstance<Ability>();
             ability.name = name;
             ability.Definition = new AbilityDefinition { Name = name, Textures = new List<TextureItem>() };
             ability.Tags = new AbilityTags
             {
-                AssetTag = Tag.Generate($"Recipe.Ability.{Compact(name)}"),
+                AssetTag = Tag.Generate($"{family}.Ability.{Compact(name)}"),
                 ContextTags = new List<Tag>(),
                 PassiveGrantedTags = new List<Tag>(),
                 ActiveGrantedTags = new List<Tag>(),
@@ -291,12 +295,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             return ability;
         }
 
-        private static Item Item(string name)
+        internal static Item Item(string name, string family = "Recipe")
         {
             var item = ScriptableObject.CreateInstance<Item>();
             item.name = name;
             item.Definition.Name = name;
-            item.Tags.AssetTag = Tag.Generate($"Recipe.Item.{Compact(name)}");
+            item.Tags.AssetTag = Tag.Generate($"{family}.Item.{Compact(name)}");
             return item;
         }
     }

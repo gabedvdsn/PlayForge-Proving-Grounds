@@ -11,9 +11,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     public class RecipeExportTests
     {
         private const string Root = "Assets/TW23 Recipes";
+        private const string Formulas = "Assets/AC3 Formulas";
+        private const string Starter = "Assets/AC5 Starter Set";
 
         [TearDown]
-        public void Clean() => AssetDatabase.DeleteAsset(Root);
+        public void Clean()
+        {
+            AssetDatabase.DeleteAsset(Root);
+            AssetDatabase.DeleteAsset(Formulas);
+            AssetDatabase.DeleteAsset(Starter);
+        }
+
+        /// <summary>
+        /// AC-3 and AC-5: the formula presets and the starter set save beside the recipes, each folder its own, the
+        /// starter set's hits on the recipes' saved Health, and a rebuild keeps them in place.
+        /// </summary>
+        [Test]
+        public void AC_5_The_formulas_and_the_starter_set_save_beside_the_recipes()
+        {
+            Assert.AreEqual(18 + 7 + 10, RecipeExport.SaveAll(Root, Formulas, Starter), "the recipes, seven formula assets and ten starter assets");
+
+            string boltPath = $"{Starter}/Bolt/Bolt Hit.asset";
+            string boltGuid = AssetDatabase.AssetPathToGUID(boltPath);
+            var health = AssetDatabase.LoadAssetAtPath<Attribute>($"{Root}/Attributes/Health.asset");
+            var boltHit = AssetDatabase.LoadAssetAtPath<GameplayEffect>(boltPath);
+            Assert.AreSame(health, boltHit.ImpactSpecification.AttributeTarget, "the bolt hits the recipes' Health");
+            var reciprocal = AssetDatabase.LoadAssetAtPath<ScalerAsset>($"{Formulas}/Armor/Armor Reciprocal 0.06.asset");
+            Assert.AreEqual("1 ÷ (1 + 0.06 × Armor)", reciprocal.DisplayName, "the formula is named for its math");
+            var shield = AssetDatabase.LoadAssetAtPath<GameplayEffect>($"{Starter}/Shield/Shield.asset");
+            Assert.That(shield.Modifiers[0].Rule.Changes[0], Is.InstanceOf<ChangeImpactChange>(), "the shield's absorb is saved");
+
+            Assert.AreEqual(35, RecipeExport.SaveAll(Root, Formulas, Starter), "a rebuild saves them again");
+            Assert.AreEqual(boltGuid, AssetDatabase.AssetPathToGUID(boltPath), "keeping their GUIDs");
+        }
 
         [Test]
         public void TW_23_The_recipes_save_as_assets_and_keep_their_GUIDs()
