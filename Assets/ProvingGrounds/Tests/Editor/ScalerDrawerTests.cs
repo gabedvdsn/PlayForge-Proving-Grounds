@@ -1356,5 +1356,111 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             Assert.That(log.Errors, Is.Empty, "errors while the wizard was open");
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-2: a Group's new member, and what two elements share
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private static void Press(Button button)
+        {
+            using var submit = NavigationSubmitEvent.GetPooled();
+            submit.target = button;
+            button.SendEvent(submit);
+        }
+
+        /// <summary>
+        /// A member the Group's list adds is a copy of the last, as Unity's list makes one, with a scaler of its own. Grown as
+        /// an array, the list gave it the last member's scaler, so the two shared one and each warned of it (FN-2).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_2_A_new_group_member_holds_a_scaler_of_its_own()
+        {
+            var effect = WithAMember();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var field = Draw(host, new SerializedObject(effect), DurationPath);
+                Button AddButton() => field.Q<PropertyField>(nameof(ScalerGroup.Calculations))?.Q<Button>("unity-list-view__add-button");
+                yield return Frames();
+                for (int round = 0; round < 3 && AddButton() == null; round++)
+                {
+                    ExpandScalers(field);
+                    yield return Frames();
+                }
+                Assert.IsNotNull(AddButton(), "the Group's members are a list that adds");
+                // Its + pressed as the list presses it: a submit sent to it here, in a number field's list, never reaches it
+                var list = field.Q<PropertyField>(nameof(ScalerGroup.Calculations)).Q<ListView>();
+                if (list.overridingAddButtonBehavior != null) list.overridingAddButtonBehavior(list, AddButton());
+                else if (list.onAdd != null) list.onAdd(list);
+                else list.viewController.AddItems(1);
+                yield return Frames();
+
+                var members = ((ScalerGroup)effect.DurationSpecification.DurationOperation.Scaler).Calculations;
+                Assert.AreEqual(2, members.Length, "a second member");
+                Assert.AreNotSame(members[0].Calculation, members[1].Calculation, "with a scaler of its own");
+                Assert.IsInstanceOf<SimpleScaler>(members[1].Calculation, "a copy of the last member's");
+                CollectionAssert.AreEqual(new[] { 7f, 9f }, ((SimpleScaler)members[1].Calculation).LevelValues, "with its values");
+                Assert.AreEqual(members[0].RelativeOperation, members[1].RelativeOperation, "and how it joins");
+                CollectionAssert.AreEqual(new[] { 7f, 9f }, ((SimpleScaler)members[0].Calculation).LevelValues, "the last member keeps its own");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// Two Group members holding one scaler each warn of it. Make a Separate Copy on one gives it a scaler of its own, with
+        /// the same values, and neither warns on: each warning was drawn once and never looked again, so the copy cleared
+        /// neither, and pressed on the other after, it found nothing shared to copy. Two conditions of a list, which share one
+        /// as a scaler does, do the same (FN-2).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_2_A_separate_copy_clears_both_elements_warnings()
+        {
+            var effect = WithAMember();
+            ((ScalerGroup)effect.DurationSpecification.DurationOperation.Scaler).AddMember(MemberOf(effect), ECalculationOperation.Add);
+            var condition = new LevelCondition();
+            effect.Conditions.Application.Add(condition);
+            effect.Conditions.Application.Add(condition);
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var serialized = new SerializedObject(effect);
+                var lists = new[]
+                {
+                    new[] { FirstMember, FirstMember.Replace("data[0]", "data[1]") },
+                    new[] { "Conditions.Application.Array.data[0]", "Conditions.Application.Array.data[1]" },
+                };
+                foreach (var paths in lists)
+                {
+                    // Each element on its own, as a list draws its elements only as a laid-out view needs them
+                    var elements = paths.Select(path => Draw(host, serialized, path)).ToArray();
+                    yield return Frames();
+                    Assume.That(elements.All(each => each.Q<HelpBox>("SharedSibling") != null), $"both of {paths[0]} and the next warn of what they share");
+
+                    Press(elements[1].Q<HelpBox>("SharedSibling").Q<Button>("MakeSeparateCopy"));
+                    yield return Frames();
+                    Assert.IsNull(elements[1].Q<HelpBox>("SharedSibling"), $"{paths[1]}, with a copy of its own, warns no more");
+                    Assert.IsNull(elements[0].Q<HelpBox>("SharedSibling"), $"nor does {paths[0]}");
+                    foreach (var each in elements) each.RemoveFromHierarchy();
+                }
+
+                var members = ((ScalerGroup)effect.DurationSpecification.DurationOperation.Scaler).Calculations;
+                Assert.AreNotSame(members[0].Calculation, members[1].Calculation, "the members hold a scaler each");
+                CollectionAssert.AreEqual(new[] { 7f, 9f }, ((SimpleScaler)members[1].Calculation).LevelValues, "with the same values");
+                Assert.AreNotSame(effect.Conditions.Application[0], effect.Conditions.Application[1], "and the conditions one each");
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(effect);
+            }
+        }
     }
 }
