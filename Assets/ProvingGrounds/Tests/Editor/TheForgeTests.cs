@@ -1094,6 +1094,95 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(Listed(forge), Has.Member(rules), "Crowd Control Rules too");
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-4: contexts matched exactly
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A picker took the tags of every context whose name held its own: an Impact field offered every retention group,
+        /// filed under "Impact Retention", and a tag picked in a field of several contexts, filed under all of them joined,
+        /// went to each one's pickers, so an effect's asset tag picked in a requirement was offered as a granted tag (TAG-4).
+        /// A context is matched exactly: a field of several contexts offers each one's tags and its own set's, and its pick
+        /// stays with its set.
+        /// </summary>
+        [Test]
+        public void TAG_4_A_context_is_matched_exactly()
+        {
+            var holder = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                ForgeTagRegistry.RefreshCache();
+                var retention = Tag.Generate("Test.TAG4.Retention");
+                var queried = Tag.Generate("Test.TAG4.Queried");
+                var granted = Tag.Generate("Test.TAG4.Granted");
+                var set = new[] { ForgeContext.AssetIdentifier, ForgeContext.Granted, ForgeContext.Required };
+                ForgeTagRegistry.RegisterTagUsage(retention, new[] { ForgeContext.RetentionGroup }, holder, "Retention");
+                ForgeTagRegistry.RegisterTagUsage(queried, set, holder, "Query");
+                ForgeTagRegistry.RegisterTagUsage(granted, new[] { ForgeContext.Granted }, holder, "Granted");
+
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Impact }, false), Has.No.Member(retention),
+                    "an Impact field doesn't offer a retention group, though \"Impact Retention\" holds \"Impact\"");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.RetentionGroup }, false), Has.Member(retention),
+                    "a retention group's field does");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.No.Member(queried),
+                    "a Granted field doesn't offer a tag picked in a field of several contexts");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(set, false), Has.Member(queried).And.Member(granted),
+                    "which offers its own set's picks, and each of its contexts' tags");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+                ForgeTagRegistry.MarkDirty();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-7: what the tag registry reads
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The tag registry read five asset types, and in them no field that holds its object by reference under an
+        /// interface or a base not marked serializable, so a tag used only in an item, a Requirement Template or an ability's
+        /// targeting left every picker at the next rescan (TAG-7). It reads every PlayForge asset type, and the object each
+        /// such field holds.
+        /// </summary>
+        [Test]
+        public void TAG_7_The_registry_reads_every_asset_type_and_what_its_fields_hold()
+        {
+            const string folder = "Assets/TAG-7 Scan";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "TAG-7 Scan");
+            try
+            {
+                var worn = Tag.Generate("Test.TAG7.Worn");
+                var item = ScriptableObject.CreateInstance<Item>();
+                item.Tags.PassiveGrantedTags = new List<Tag> { worn };
+                AssetDatabase.CreateAsset(item, $"{folder}/Item.asset");
+
+                var category = Tag.Generate("Test.TAG7.Category");
+                var template = ScriptableObject.CreateInstance<RequirementTemplate>();
+                template.Category = category;
+                AssetDatabase.CreateAsset(template, $"{folder}/Template.asset");
+
+                var key = Tag.Generate("Test.TAG7.SourceKey");
+                var ability = ScriptableObject.CreateInstance<Ability>();
+                ability.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = key };
+                AssetDatabase.CreateAsset(ability, $"{folder}/Ability.asset");
+                AssetDatabase.SaveAssets();
+
+                ForgeTagRegistry.RefreshCache();
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.Member(worn), "an item's granted tag");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.RequirementCategory }, false), Has.Member(category),
+                    "a Requirement Template's category");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Data }, false), Has.Member(key),
+                    "and the key an ability's targeting reads, in a field that holds its task by reference");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+                ForgeTagRegistry.MarkDirty();
+            }
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {
