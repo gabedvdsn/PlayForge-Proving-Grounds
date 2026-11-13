@@ -1115,13 +1115,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var retention = Tag.Generate("Test.TAG4.Retention");
                 var queried = Tag.Generate("Test.TAG4.Queried");
                 var granted = Tag.Generate("Test.TAG4.Granted");
-                var set = new[] { ForgeContext.AssetIdentifier, ForgeContext.Granted, ForgeContext.Required };
+                var set = new[] { ForgeContext.AssetTag, ForgeContext.Granted };
                 ForgeTagRegistry.RegisterTagUsage(retention, new[] { ForgeContext.RetentionGroup }, holder, "Retention");
                 ForgeTagRegistry.RegisterTagUsage(queried, set, holder, "Query");
                 ForgeTagRegistry.RegisterTagUsage(granted, new[] { ForgeContext.Granted }, holder, "Granted");
 
-                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Impact }, false), Has.No.Member(retention),
-                    "an Impact field doesn't offer a retention group, though \"Impact Retention\" holds \"Impact\"");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.ImpactType }, false), Has.No.Member(retention),
+                    "an Impact Type field doesn't offer a retention group");
                 Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.RetentionGroup }, false), Has.Member(retention),
                     "a retention group's field does");
                 Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.No.Member(queried),
@@ -1173,7 +1173,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.Member(worn), "an item's granted tag");
                 Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.RequirementCategory }, false), Has.Member(category),
                     "a Requirement Template's category");
-                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Data }, false), Has.Member(key),
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.DataKey }, false), Has.Member(key),
                     "and the key an ability's targeting reads, in a field that holds its task by reference");
             }
             finally
@@ -1205,10 +1205,92 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 ForgeTagRegistry.GetSystemDefaultTagsForContext(new[] { context }).Any(tag => tag.ToString() == text);
 
             Assert.IsTrue(InCode(ForgeContext.Granted, "Recipe.Enraged"), "a project's tag, a field it exposes, under its context");
-            Assert.IsTrue(Offers(ForgeContext.Data, "CB_IS_DISJOINTABLE"), "a packet key PlayForge exposes, a property no picker offered");
-            Assert.IsTrue(Offers(ForgeContext.Data, Tags.TARGETED_INTENT.ToString()), "a key of Tags itself, exposed now as every one of them is");
+            Assert.IsTrue(Offers(ForgeContext.DataKey, "CB_IS_DISJOINTABLE"), "a packet key PlayForge exposes, a property no picker offered");
+            Assert.IsTrue(Offers(ForgeContext.DataKey, Tags.TARGETED_INTENT.ToString()), "a key of Tags itself, exposed now as every one of them is");
             Assert.IsTrue(Offers(ForgeContext.Code, Tags.FAILED_TO_INITIALIZE.ToString()), "one exposed with no context, under Code");
             Assert.IsFalse(ForgeTagRegistry.GetAllTags().Any(tag => tag.ToString() == "CB_DISJOINT"), "and a code tag not exposed isn't offered");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-6: one context per kind of tag
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // The contexts, one per kind of tag (Decision 74)
+        private static readonly string[] KindsOfTag =
+        {
+            "Asset Tag", "Context Tag", "Granted", "Affiliation", "Impact Type", "Retention Group", "Event", "Attribute Role",
+            "Visibility", "Texture Slot", "Requirement Category", "Data Key", "Local Data Key", "Worker Key", "Set By Caller Key",
+            "Stage Flag", "Code", "Universal",
+        };
+
+        /// <summary>
+        /// There were 32 contexts: 18 no field named, some overlapping, two kinds mixed, what a tag is and where it's used,
+        /// and four whose constants read otherwise than their values, so a library entry typed "RetentionGroup" matched
+        /// nothing (TAG-6). There are 18, one per kind of tag, each constant its value without its spaces (Decision 74).
+        /// </summary>
+        [Test]
+        public void TAG_6_There_is_one_context_per_kind_of_tag()
+        {
+            var constants = typeof(ForgeContext).GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+                .ToDictionary(field => field.Name, field => (string)field.GetRawConstantValue());
+            Assert.That(constants.Values, Is.EquivalentTo(KindsOfTag), "the contexts are the kinds of tag");
+            foreach (var each in constants)
+                Assert.AreEqual(each.Value.Replace(" ", ""), each.Key, $"{each.Key} reads as its value, {each.Value}");
+        }
+
+        /// <summary>
+        /// A Tag Library keeps the contexts its tags are declared for as text, and a field may name one as text, so a
+        /// context renamed would leave them naming one nothing offers (TAG-6). An old context reads as its new one: a pass
+        /// moves a library's, Trigger to Event, Data to each kind of key it held, one dropped gone, and a field's in code
+        /// reads so too. No context of the project's own can take an old name.
+        /// </summary>
+        [Test]
+        public void TAG_6_An_old_context_reads_as_its_new_one()
+        {
+            const string folder = "Assets/TAG-6 Contexts";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "TAG-6 Contexts");
+            try
+            {
+                ForgeTagLibrary.Entry Declared(string name, params string[] contexts) =>
+                    new ForgeTagLibrary.Entry { Name = name, Contexts = contexts.ToList() };
+                var library = ScriptableObject.CreateInstance<ForgeTagLibrary>();
+                library.Entries = new List<ForgeTagLibrary.Entry>
+                {
+                    Declared("Test.TAG6.Event", "Trigger"),
+                    Declared("Test.TAG6.Group", "Impact Retention", "Granted"),
+                    Declared("Test.TAG6.Key", "Data"),
+                    Declared("Test.TAG6.Guessed", "Ability"),
+                    Declared("Test.TAG6.Required", "Required", "Granted"),
+                };
+                var path = $"{folder}/Tag Library.asset";
+                AssetDatabase.CreateAsset(library, path);
+                AssetDatabase.SaveAssets();
+
+                var migrate = EditorType("ForgeTagContexts").GetMethod("MigrateLibraries", AnyStatic);
+                Assert.IsNotNull(migrate, "a pass moves a library's old contexts to their new names");
+                migrate.Invoke(null, null);
+
+                List<string> Of(string name) => library.Entries.First(entry => entry.Name == name).Contexts;
+                Assert.That(Of("Test.TAG6.Event"), Is.EqualTo(new[] { "Event" }), "Trigger is Event");
+                Assert.That(Of("Test.TAG6.Group"), Is.EqualTo(new[] { "Retention Group", "Granted" }), "Impact Retention is Retention Group");
+                Assert.That(Of("Test.TAG6.Key"), Is.EquivalentTo(new[] { "Data Key", "Local Data Key", "Worker Key", "Set By Caller Key" }),
+                    "Data is each kind of key it held");
+                Assert.That(Of("Test.TAG6.Guessed"), Is.Empty, "a context dropped goes, which leaves its tag Universal");
+                Assert.That(Of("Test.TAG6.Required"), Is.EqualTo(new[] { "Granted" }), "and two that merged are one");
+                Assert.IsFalse(EditorUtility.IsDirty(library), "the pass saved the library");
+                StringAssert.Contains("Retention Group", System.IO.File.ReadAllText(path), "as it reads on disk");
+
+                Assert.That(new ForgeTagContext("Trigger", "Data Key").Context, Is.EqualTo(new[] { "Event", "Data Key" }),
+                    "a field naming an old context in code reads the new one");
+                var whyNot = (string)EditorType("ForgeTagContexts").GetMethod("WhyNotContext", AnyStatic).Invoke(null, new object[] { "Trigger" });
+                StringAssert.Contains("Event", whyNot ?? "", "and no context of the project's own takes an old name");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+                ForgeTagRegistry.MarkDirty();
+            }
         }
 
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
@@ -1433,7 +1515,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Toggle(field, ForgeContext.Granted);
                 yield return Frames(8);
                 Assert.IsTrue(Offers(ForgeContext.Granted, tag), "declared for Granted, a Granted field offers it");
-                Assert.IsTrue(Offers(ForgeContext.ContextIdentifier, tag), "as its use's context still does");
+                Assert.IsTrue(Offers(ForgeContext.ContextTag, tag), "as its use's context still does");
 
                 field = forge.rootVisualElement.Q("Detail").Q("TagContexts");
                 Assert.IsNotNull(field, "the detail, built again, still has them");
@@ -1444,13 +1526,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 // New Tag, from a field of the Context Identifier context, with Granted chosen as well
                 var newTag = EditorType("ForgeNewTagWindow");
                 var window = (EditorWindow)newTag.GetMethod("ShowFor", AnyStatic)
-                    .Invoke(null, new object[] { "Test.ED83.", new[] { ForgeContext.ContextIdentifier }, (System.Action<Tag>)(each => made = each) });
+                    .Invoke(null, new object[] { "Test.ED83.", new[] { ForgeContext.ContextTag }, (System.Action<Tag>)(each => made = each) });
                 yield return Frames();
                 // Batch mode may build a window's view only as it's shown
                 if (window.rootVisualElement.Q("TagPath") == null) newTag.GetMethod("CreateGUI", AnyInstance).Invoke(window, null);
                 var contexts = window.rootVisualElement.Q("TagContexts");
                 Assert.IsNotNull(contexts, "New Tag has the tag's contexts");
-                Assert.AreEqual(ForgeContext.ContextIdentifier, (contexts as BaseField<string>)?.value, "starting as its field's");
+                Assert.AreEqual(ForgeContext.ContextTag, (contexts as BaseField<string>)?.value, "starting as its field's");
                 Toggle(contexts, ForgeContext.Granted);
                 window.rootVisualElement.Q<TextField>("TagPath").value = "Test.ED83.Drenched";
                 newTag.GetMethod("Create", AnyInstance).Invoke(window, null);
