@@ -5,6 +5,7 @@ using FarEmerald.PlayForge.Lab;
 using FarEmerald.PlayForge.Lab.Editor;
 using NUnit.Framework;
 using UnityEditor;
+using Object = UnityEngine.Object;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
@@ -35,6 +36,79 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(library.Assets(LabAssetKind.Entities), Is.Not.Empty, "its entities");
             Assert.That(abilities, Is.Ordered.Using((System.Collections.IComparer)StringComparer.OrdinalIgnoreCase), "each kind by name");
             Assert.That(library.Assets(LabAssetKind.Effects).All(asset => asset is GameplayEffect), Is.True, "each under its own kind");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Forge Projects in the library (LAB-18)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private const System.Reflection.BindingFlags AnyStatic =
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+
+        private static readonly Type ForgeProjects =
+            typeof(FarEmerald.PlayForge.Extended.Editor.TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeProjects");
+
+        // The active project, as The Forge reads and sets it
+        private static Object ActiveProject
+        {
+            get => (Object)ForgeProjects.GetProperty("Active", AnyStatic).GetValue(null);
+            set => ForgeProjects.GetProperty("Active", AnyStatic).SetValue(null, value);
+        }
+
+        // A project in a folder of its own, with an attribute in it
+        private static (ForgeProject Project, Attribute Attribute) ProjectWith(string folder, string attributeName)
+        {
+            AssetDatabase.CreateFolder("Assets", folder);
+            var project = UnityEngine.ScriptableObject.CreateInstance<ForgeProject>();
+            AssetDatabase.CreateAsset(project, $"Assets/{folder}/{folder}.asset");
+            var attribute = UnityEngine.ScriptableObject.CreateInstance<Attribute>();
+            attribute.Name = attributeName;
+            AssetDatabase.CreateAsset(attribute, $"Assets/{folder}/{attributeName}.asset");
+            return (project, attribute);
+        }
+
+        /// <summary>
+        /// The editor's library plays the active Forge Project's assets, as The Forge's pickers offer them, and switches the
+        /// active project as The Forge does; switched there, it follows as it's read again.
+        /// </summary>
+        [Test]
+        public void LAB_18_The_editors_library_plays_the_active_projects_assets_and_switches_them()
+        {
+            var kept = ActiveProject;
+            try
+            {
+                var (arena, arenaHealth) = ProjectWith("LAB18 Arena", "LAB18 Arena Health");
+                var (dungeon, dungeonHealth) = ProjectWith("LAB18 Dungeon", "LAB18 Dungeon Health");
+                ActiveProject = arena;
+
+                var library = new EditorLabLibrary();
+                Assert.AreEqual(arena.name, library.Name, "it's named for the active project");
+                Assert.That(library.Assets(LabAssetKind.Attributes), Has.Member(arenaHealth).And.No.Member(dungeonHealth),
+                    "and plays its assets alone");
+                Assert.That(library.Projects, Does.Contain(arena.name).And.Contain(dungeon.name), "it offers each project");
+                Assert.AreEqual(library.Projects.ToList().IndexOf(arena.name), library.Project, "the active one chosen");
+
+                library.UseProject(library.Projects.ToList().IndexOf(dungeon.name));
+                Assert.AreSame(dungeon, ActiveProject, "switching it switches the active project, as The Forge does");
+                Assert.AreEqual(dungeon.name, library.Name);
+                Assert.That(library.Assets(LabAssetKind.Attributes), Has.Member(dungeonHealth).And.No.Member(arenaHealth),
+                    "and plays the other's assets");
+
+                ActiveProject = arena;
+                Assert.AreEqual(library.Projects.ToList().IndexOf(arena.name), library.Project, "switched in The Forge, it says so");
+                library.Refresh();
+                Assert.That(library.Assets(LabAssetKind.Attributes), Has.Member(arenaHealth), "and plays it as it's read again");
+
+                var folders = new EditorLabLibrary("Assets/LAB18 Dungeon");
+                Assert.IsEmpty(folders.Projects, "a library of folders offers no projects");
+                Assert.That(folders.Assets(LabAssetKind.Attributes), Has.Member(dungeonHealth), "and plays its folders' assets");
+            }
+            finally
+            {
+                ActiveProject = kept;
+                AssetDatabase.DeleteAsset("Assets/LAB18 Arena");
+                AssetDatabase.DeleteAsset("Assets/LAB18 Dungeon");
+            }
         }
     }
 }

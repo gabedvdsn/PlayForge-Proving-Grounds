@@ -137,6 +137,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private PressingInput pressing;
         private IForgeInput previousInput;
 
+        // A library of several projects, each its own assets, as the editor's offers the Forge Projects (LAB-18)
+        private sealed class ProjectsLibrary : ILabLibrary
+        {
+            private readonly (string Name, ScriptableObject[] Assets)[] projects;
+            public int Chosen;
+
+            public ProjectsLibrary(params (string Name, ScriptableObject[] Assets)[] projects) => this.projects = projects;
+
+            public string Name => projects[Chosen].Name;
+
+            public IReadOnlyList<ScriptableObject> Assets(LabAssetKind kind) =>
+                projects[Chosen].Assets.Where(asset => LabAssets.TryKindOf(asset, out var found) && found == kind).ToList();
+
+            public void Refresh() { }
+
+            public IReadOnlyList<string> Projects => projects.Select(project => project.Name).ToList();
+
+            public int Project => Chosen;
+
+            public void UseProject(int index) => Chosen = index;
+        }
+
         private PressingInput Press()
         {
             pressing = new PressingInput();
@@ -696,6 +718,86 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             lab.RemoveUnit(red);
             Assert.IsNull(lab.ControlledUnit, "a unit taken out is let go");
             Assert.IsNull(lab.View.Following, "and no longer followed");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Forge Projects in the library (LAB-18)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The library's header switches between the projects its library offers, and the library and its pickers follow;
+        /// a project switched elsewhere, the header follows too. A library of no projects shows no switch.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_18_The_library_switches_between_its_projects() => Live(async () =>
+        {
+            var strike = Make.Effect("Strike", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
+            var bolt = Make.Effect("Bolt", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
+            var projects = new ProjectsLibrary(("Arena", new ScriptableObject[] { strike, health, speed }), ("Dungeon", new ScriptableObject[] { bolt, health, speed }));
+            lab = CreatorLab.Create(projects, panels: true);
+            lab.Paused = true;
+            await Frames.Step(2);
+            var root = lab.Panels.Root;
+            var choice = root.Q<DropdownField>(name: "LibraryProject");
+            Assert.IsNotNull(choice, "the library's header has a project switch");
+            Assert.AreEqual(DisplayStyle.Flex, choice.style.display.value, "shown, as its library offers projects");
+            Assert.That(choice.choices, Is.EqualTo(new List<string> { "Arena", "Dungeon" }), "each one");
+            Assert.AreEqual("Arena", choice.value, "the one it plays chosen");
+            Assert.IsNotNull(root.Q(name: "Asset Strike"), "its assets listed");
+            Assert.IsNull(root.Q(name: "Asset Bolt"));
+
+            choice.value = "Dungeon";
+            await Frames.Step(2);
+            Assert.AreEqual(1, projects.Chosen, "switching it switches the library's project");
+            Assert.IsNotNull(root.Q(name: "Asset Bolt"), "and the library lists the other's assets");
+            Assert.IsNull(root.Q(name: "Asset Strike"));
+            Assert.AreEqual("Dungeon", root.Q<Label>(name: "LibraryName").text, "under its name");
+
+            // The panel looks again a few times a second of real time, which a test's frames go faster than
+            projects.Chosen = 0;
+            float until = Time.realtimeSinceStartup + 3f;
+            while (root.Q(name: "Asset Strike") == null && Time.realtimeSinceStartup < until) await Frames.Step();
+            Assert.IsNotNull(root.Q(name: "Asset Strike"), "switched elsewhere, as in The Forge, the library follows");
+            Assert.AreEqual("Arena", choice.value, "and the switch says so");
+
+            Object.DestroyImmediate(lab.gameObject);
+            Lab(true, strike);
+            await Frames.Step(2);
+            Assert.AreEqual(DisplayStyle.None, lab.Panels.Root.Q<DropdownField>(name: "LibraryProject").style.display.value,
+                "a library of no projects shows no switch");
+        });
+
+        /// <summary>
+        /// Where no editor gives the lab its library, as in a build, the lab plays what its game's Forge Project names: the
+        /// assets in its catalog, under its name.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_18_Without_the_editors_library_the_lab_plays_what_its_project_names() => Live(async () =>
+        {
+            var strike = Make.Effect("Strike", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.name = "Arena";
+            project.Add("strike", strike);
+            project.Add("health", health);
+            var editors = CreatorLab.DefaultLibrary;
+            var used = ForgeProject.Use(project);
+            try
+            {
+                CreatorLab.DefaultLibrary = null;
+                lab = CreatorLab.Create(panels: false);
+                lab.Paused = true;
+                await Frames.Step();
+                Assert.AreEqual("Arena", lab.Library.Name, "the lab plays its project's library");
+                Assert.That(lab.Library.Assets(LabAssetKind.Effects), Has.Member(strike), "the assets it names");
+                Assert.That(lab.Library.Assets(LabAssetKind.Attributes), Has.Member(health));
+                Assert.IsEmpty(lab.Library.Projects, "a build's library of one project offers no switch");
+            }
+            finally
+            {
+                CreatorLab.DefaultLibrary = editors;
+                ForgeProject.Use(used);
+                Object.DestroyImmediate(project);
+            }
         });
 
         /// <summary>The Lab panel's Your unit section: Put down, Take control, Release and Follow, and whom the author has.</summary>
