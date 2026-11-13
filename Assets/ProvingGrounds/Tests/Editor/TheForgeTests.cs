@@ -815,6 +815,63 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-2: a core tag's text in New Tag
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// New Tag made the very tag one of PlayForge's own is where its path was that tag's text, and said nothing, so a
+        /// designer's "Blocked" state was the core Blocked event (TAG-2, Decision 71). It says so as the path is typed, and
+        /// offers the core tag; Create makes nothing of that path.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TAG_2_New_Tag_warns_of_a_core_tags_text() => Guarded(TAG_2_New_Tag_warns_of_a_core_tags_textBody());
+
+        private IEnumerator TAG_2_New_Tag_warns_of_a_core_tags_textBody()
+        {
+            var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewTagWindow");
+            var given = new List<Tag>();
+            var window = (EditorWindow)type.GetMethod("Show", AnyStatic).Invoke(null, new object[] { "", (System.Action<Tag>)(tag => given.Add(tag)) });
+            try
+            {
+                yield return Frames();
+                // Batch mode may build a window's view only as it's shown
+                if (window.rootVisualElement.Q("TagPath") == null) type.GetMethod("CreateGUI", AnyInstance).Invoke(window, null);
+                var root = window.rootVisualElement;
+                var path = root.Q<TextField>("TagPath");
+                var core = root.Q<HelpBox>("CoreTag");
+                Assert.IsNotNull(path, "New Tag has its path");
+                Assert.IsNotNull(core, "and a word for a core tag's text");
+                Assert.IsTrue(core.ClassListContains("pf-hidden"), "hidden while the path is empty");
+
+                path.value = "TAG2.Own.Path";
+                yield return Frames();
+                Assert.IsTrue(core.ClassListContains("pf-hidden"), "and for a path of the project's own");
+
+                path.value = Tags.BLOCKED.ToString();
+                yield return Frames();
+                Assert.IsFalse(core.ClassListContains("pf-hidden"), "a core tag's text is called out as it's typed");
+                StringAssert.Contains(Tags.BLOCKED.ToString(), core.text, "by the core tag's name");
+
+                type.GetMethod("Create", AnyInstance).Invoke(window, null);
+                Assert.IsEmpty(given, "Create makes nothing of that path");
+
+                var use = core.Q<Button>("UseCoreTag");
+                Assert.IsNotNull(use, "it offers the core tag");
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    submit.target = use;
+                    use.SendEvent(submit);
+                }
+                yield return Frames();
+                Assert.That(given, Is.EqualTo(new[] { Tags.BLOCKED }), "which Use It gives the field");
+            }
+            finally
+            {
+                if (window != null) window.Close();
+            }
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {
