@@ -749,6 +749,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "New Project", Type = newProject,
                 Open = _ => newProject.GetMethod("Open", AnyStatic).Invoke(null, null),
             };
+            // Rename, from an asset's menu in The Forge or its header, on an asset the project has; closed, it renames
+            // nothing (FN-8)
+            yield return new Window
+            {
+                Name = "Rename", Type = typeof(ForgeRenameWindow),
+                Open = _ => ForgeRenameWindow.Show(AssetDatabase.LoadMainAssetAtPath(
+                    AssetDatabase.GUIDToAssetPath(AssetDatabase.FindAssets("t:Ability").First()))),
+            };
             // A sheet's import, from The Forge's Spreadsheets menu (TW-27)
             yield return new Window
             {

@@ -662,6 +662,159 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsFalse(ListOf(forge).columns["AssetTag"].visible, "the other stays hidden");
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-8: renaming
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        private const string RenameFolder = "Assets/FN-8 Rename";
+
+        // An asset of a type The Forge lists, saved in the test's folder, named as given where it has a name of its own
+        private static T Saved<T>(T asset, string file) where T : ScriptableObject
+        {
+            if (!AssetDatabase.IsValidFolder(RenameFolder)) AssetDatabase.CreateFolder("Assets", "FN-8 Rename");
+            AssetDatabase.CreateAsset(asset, $"{RenameFolder}/{file}.asset");
+            return asset;
+        }
+
+        private static string FileOf(Object asset) => System.IO.Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(asset));
+
+        /// <summary>
+        /// The Forge renamed nothing: an asset's name was its inspector's to change, where it had one, and a Requirement
+        /// template or a Scaler asset had none (FN-8). A row's menu, and an asset header's, offer Rename…, a dialog whose
+        /// Rename renames the asset as its inspector does: its name, the tag its name gives, and its file, which follows the
+        /// name back through an Undo.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_8_A_rows_menu_renames_its_asset() => Guarded(FN_8_A_rows_menu_renames_its_assetBody());
+
+        private IEnumerator FN_8_A_rows_menu_renames_its_assetBody()
+        {
+            try
+            {
+                var bolt = Saved(Ability("FN8 Bolt"), "FN8 Bolt");
+                var tagBefore = bolt.Tags.AssetTag.Name;
+                var forge = Open();
+                yield return Frames();
+                TheForge.OpenToAsset(bolt);
+                yield return Frames();
+
+                var row = new DropdownMenu();
+                typeof(TheForge).GetMethod("FillAssetMenu", AnyInstance).Invoke(forge, new object[] { row });
+                var rename = row.MenuItems().OfType<DropdownMenuAction>().FirstOrDefault(action => action.name == "Rename…");
+                Assert.IsNotNull(rename, "a row's menu offers Rename…");
+                var editor = UnityEditor.Editor.CreateEditor(bolt);
+                try
+                {
+                    var header = (GenericMenu)typeof(BasePlayForgeEditor).GetMethod("AssetMenu", AnyInstance).Invoke(editor, new object[] { new VisualElement() });
+                    Assert.That(ItemsOf(header), Has.Member("Rename…"), "and so does its header's");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(editor);
+                }
+
+                rename.Execute();
+                yield return Frames();
+                var dialog = Resources.FindObjectsOfTypeAll<ForgeRenameWindow>().SingleOrDefault();
+                Assert.IsNotNull(dialog, "which opens a dialog");
+                var field = dialog.rootVisualElement.Q<TextField>("NewName");
+                Assert.AreEqual("FN8 Bolt", field?.value, "with the asset's name to type over");
+                field.value = "FN8 Lightning";
+                var confirm = dialog.rootVisualElement.Q<Button>("Rename");
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    submit.target = confirm;
+                    confirm.SendEvent(submit);
+                }
+                yield return Frames();
+
+                Assert.AreEqual("FN8 Lightning", bolt.Definition.Name, "Rename renames the ability");
+                Assert.AreNotEqual(tagBefore, bolt.Tags.AssetTag.Name, "its tag follows its name");
+                // A file leaves out the name's spaces, as a new asset's file does
+                StringAssert.Contains("FN8Lightning", FileOf(bolt), "and its file");
+                Assert.IsEmpty(Resources.FindObjectsOfTypeAll<ForgeRenameWindow>(), "and the dialog closes");
+
+                Undo.PerformUndo();
+                yield return Frames();
+                Assert.AreEqual("FN8 Bolt", bolt.Definition.Name, "an Undo takes the name back");
+                // A tag with no name saves as an empty one
+                Assert.AreEqual(tagBefore ?? "", bolt.Tags.AssetTag.Name ?? "", "and the tag");
+                StringAssert.Contains("FN8Bolt", FileOf(bolt), "and the file follows");
+
+                // F2 on the list renames its selected asset, as in the Project window
+                var list = ListOf(forge);
+                list.SetSelection(Listed(forge).IndexOf(bolt));
+                yield return Frames();
+                using (var f2 = KeyDownEvent.GetPooled('\0', KeyCode.F2, EventModifiers.None))
+                {
+                    f2.target = list;
+                    list.SendEvent(f2);
+                }
+                yield return Frames();
+                var opened = Resources.FindObjectsOfTypeAll<ForgeRenameWindow>().SingleOrDefault();
+                Assert.IsNotNull(opened, "F2 on the list opens the dialog for its selected asset");
+                Assert.AreEqual("FN8 Bolt", opened.rootVisualElement.Q<TextField>("NewName")?.value, "with its name");
+                opened.Close();
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(RenameFolder);
+            }
+        }
+
+        /// <summary>
+        /// Each type The Forge lists renames: a PlayForge asset's own name, the attribute's among them; a Scaler asset's
+        /// scaler and a Requirement template's requirements, whose names its lists show; and an asset with no name of its
+        /// own, as a Value Pipeline, by its file (FN-8).
+        /// </summary>
+        [Test]
+        public void FN_8_Each_type_The_Forge_lists_renames()
+        {
+            try
+            {
+                var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+                effect.Definition.Name = "FN8 Burn";
+                var item = ScriptableObject.CreateInstance<Item>();
+                item.Definition.Name = "FN8 Sword";
+                var attribute = ScriptableObject.CreateInstance<Attribute>();
+                attribute.Name = "FN8 Grit";
+                var set = ScriptableObject.CreateInstance<AttributeSet>();
+                set.Name = "FN8 Hero Set";
+                var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+                entity.Name = "FN8 Hero";
+                var scaler = ScriptableObject.CreateInstance<ScalerAsset>();
+                scaler.Scaler = new SimpleScaler { Name = "FN8 Curve", LevelValues = new[] { 1f, 2f } };
+                var template = ScriptableObject.CreateInstance<RequirementTemplate>();
+                template.Requirements = new AvoidRequireTagGroup { Name = "FN8 Grounded" };
+                var pipeline = ScriptableObject.CreateInstance<ValuePipeline>();
+                var assets = new (ScriptableObject Asset, string File, string Renamed)[]
+                {
+                    (effect, "FN8 Burn", "FN8 Scorch"), (item, "FN8 Sword", "FN8 Blade"), (attribute, "FN8 Grit", "FN8 Nerve"),
+                    (set, "FN8 Hero Set", "FN8 Champion Set"), (entity, "FN8 Hero", "FN8 Champion"), (scaler, "FN8 Curve", "FN8 Ramp"),
+                    (template, "FN8 Grounded", "FN8 Rooted"), (pipeline, "FN8 Pipeline", "FN8 Flow"),
+                };
+                foreach (var (asset, file, _) in assets) Saved(asset, file);
+
+                foreach (var (asset, file, renamed) in assets)
+                {
+                    Assert.IsTrue(ForgeRenames.CanRename(asset), $"{file} can be renamed");
+                    ForgeRenames.Rename(asset, renamed);
+                    Assert.AreEqual(renamed, ForgeRenames.NameOf(asset), $"{file} is {renamed} now");
+                    // A file leaves out a name's spaces, as a new asset's file does, unless it's the asset's only name
+                    StringAssert.Contains(renamed.Replace(" ", ""), FileOf(asset).Replace(" ", ""), "and so is its file");
+                }
+                Assert.AreEqual("FN8 Flow", FileOf(pipeline), "a file that is its asset's only name keeps the name's spaces");
+                Assert.AreEqual("FN8 Scorch", effect.Definition.Name, "the effect by its own name");
+                Assert.AreEqual("FN8 Nerve", attribute.Name, "the attribute too");
+                Assert.AreEqual("FN8 Ramp", scaler.Scaler.Name, "a Scaler asset by its scaler's");
+                Assert.AreEqual("FN8 Rooted", template.Requirements.Name, "a template by its requirements'");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(RenameFolder);
+            }
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {
