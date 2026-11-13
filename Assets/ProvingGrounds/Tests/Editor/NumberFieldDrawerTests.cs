@@ -1056,5 +1056,63 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(fixture);
             }
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FN-1: a field with no scaler
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Whether a field shows its warning that, with no scaler, it reads 0 (FN-1)
+        private static bool WarnsOfNoScaler(VisualElement field) =>
+            field.Q<HelpBox>("NoScaler") is { } warning && Shown(warning) && warning.style.display.value != DisplayStyle.None;
+
+        /// <summary>
+        /// A field with no scaler warns that it reads 0 only where it does: its number multiplied by a scaler it hasn't got,
+        /// or giving way to it, as the Problems view says. One that reads its number alone, or adds its scaler, warns of
+        /// nothing. The field's kind already shows Constant, which choosing again changes nothing, so the warning's own
+        /// button makes it one, as the field's menu offers to; the number it had stays (FN-1).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_1_A_field_with_no_scaler_warns_only_where_it_reads_0()
+        {
+            var fixture = ScriptableObject.CreateInstance<NumberFieldFixture>();
+            var host = new Host();
+            try
+            {
+                yield return null;
+                foreach (var reads in new[] { EMagnitudeOperation.UseMagnitude, EMagnitudeOperation.AddScaler })
+                {
+                    fixture.Range = new ScalableFloat { Magnitude = 5f, RealMagnitude = reads };
+                    yield return Drawn(host, fixture, nameof(NumberFieldFixture.Range), (field, _) =>
+                        Assert.IsFalse(WarnsOfNoScaler(field), $"{reads} reads its number with no scaler, and warns of nothing"));
+                }
+
+                foreach (var reads in new[] { EMagnitudeOperation.MultiplyWithScaler, EMagnitudeOperation.UseScaler })
+                {
+                    fixture.Range = new ScalableFloat { Magnitude = 5f, RealMagnitude = reads };
+                    yield return Drawn(host, fixture, nameof(NumberFieldFixture.Range), (field, serialized) =>
+                    {
+                        Assert.IsTrue(WarnsOfNoScaler(field), $"{reads}, with no scaler, warns that it reads 0");
+                        Assert.IsTrue(ScalerActions.CanMakeConstant(serialized.FindProperty(nameof(NumberFieldFixture.Range))),
+                            "its menu offers Make Constant");
+                        var fix = field.Q<HelpBox>("NoScaler").Q<Button>("MakeConstant");
+                        Assert.IsNotNull(fix, "and its warning has a button that makes it one");
+                        using (var submit = NavigationSubmitEvent.GetPooled())
+                        {
+                            submit.target = fix;
+                            fix.SendEvent(submit);
+                        }
+                        serialized.Update();
+                        Assert.AreEqual(EMagnitudeOperation.UseMagnitude, fixture.Range.RealMagnitude, "which reads its number now");
+                        Assert.AreEqual(5f, fixture.Range.Magnitude, 0.0001f, "the number it had");
+                        Assert.IsFalse(WarnsOfNoScaler(field), "and warns of nothing");
+                    });
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                Object.DestroyImmediate(fixture);
+            }
+        }
     }
 }
