@@ -86,6 +86,9 @@ jobs:
       # its assets, which need its scripts
       - name: Import the Demo sample
         run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
+      # The Additional Content sample too: its own tests play its feedback components and its Sparring scene (AC-2)
+      - name: Import the Additional Content sample
+        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
@@ -173,6 +176,9 @@ jobs:
       # its assets, which need its scripts
       - name: Import the Demo sample
         run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
+      # The Additional Content sample too: its own tests play its feedback components and its Sparring scene (AC-2)
+      - name: Import the Additional Content sample
+        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library

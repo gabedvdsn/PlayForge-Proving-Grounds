@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using ForgeAttribute = FarEmerald.PlayForge.Attribute;
@@ -22,6 +23,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
         public ForgeAttribute MovementSpeed, Shield;
         public Ability MeleeAttack, Bolt;
         public GameplayEffect MeleeHit, MeleeCooldown, BoltHit, BoltCooldown, Slow, ShieldEffect;
+    }
+
+    /// <summary>The Additional Content sample's Sparring scene's dummy (AC-2, Decision 69).</summary>
+    public sealed class SparringSet
+    {
+        public AttributeSet Attributes;
+        public EntityIdentity Dummy;
     }
 
     /// <summary>
@@ -98,16 +106,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
 
             // A melee attack: 10 to the one it's cast at, once a second
             set.MeleeHit = maker.Keep("Melee Attack/Melee Hit", RecipeBook.Effect("Melee Hit", health, -10f, family: Family));
-            set.MeleeCooldown = maker.Keep("Melee Attack/Melee Cooldown",
-                RecipeBook.Effect("Melee Cooldown", null, 0f, EEffectDurationPolicy.Durational, duration: 1f, family: Family));
+            set.MeleeCooldown = maker.Keep("Melee Attack/Melee Cooldown", Hidden(
+                RecipeBook.Effect("Melee Cooldown", null, 0f, EEffectDurationPolicy.Durational, duration: 1f, family: Family)));
             var melee = RecipeBook.Ability(Family, "Melee Attack", new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { set.MeleeHit } });
             melee.Cooldown = set.MeleeCooldown;
             set.MeleeAttack = maker.Keep("Melee Attack/Melee Attack", melee);
 
             // A bolt: 25 to the one it's cast at, once in three seconds
-            set.BoltHit = maker.Keep("Bolt/Bolt Hit", RecipeBook.Effect("Bolt Hit", health, -25f, family: Family));
-            set.BoltCooldown = maker.Keep("Bolt/Bolt Cooldown",
-                RecipeBook.Effect("Bolt Cooldown", null, 0f, EEffectDurationPolicy.Durational, duration: 3f, family: Family));
+            var boltHit = RecipeBook.Effect("Bolt Hit", health, -25f, family: Family);
+            boltHit.Cues.Add(new CameraShakeCue { Strength = 0.6f, Duration = 0.2f });
+            AddSampleCue(boltHit, "FlashCue", ("Color", new Color(0.45f, 0.75f, 1f)));
+            set.BoltHit = maker.Keep("Bolt/Bolt Hit", boltHit);
+            set.BoltCooldown = maker.Keep("Bolt/Bolt Cooldown", Hidden(
+                RecipeBook.Effect("Bolt Cooldown", null, 0f, EEffectDurationPolicy.Durational, duration: 3f, family: Family)));
             var bolt = RecipeBook.Ability(Family, "Bolt", new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { set.BoltHit } });
             bolt.Cooldown = set.BoltCooldown;
             set.Bolt = maker.Keep("Bolt/Bolt", bolt);
@@ -115,6 +126,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             // A slow: 70% of its target's Movement Speed, for 3 seconds
             var slow = RecipeBook.Effect("Slow", set.MovementSpeed, 0.7f, EEffectDurationPolicy.Durational, duration: 3f, family: Family);
             slow.ImpactSpecification.ImpactOperation = ECalculationOperation.Multiply;
+            AddSampleCue(slow, "FloatingWordCue", ("Text", "Slowed"), ("Color", new Color(0.55f, 0.8f, 1f)));
             set.Slow = maker.Keep("Slow/Slow", slow);
 
             // A shield: 50 of it while it lasts, 5 seconds, which takes its holder's hits on Health first, as an Absorb stage
@@ -132,8 +144,84 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
                     },
                 },
             });
+            AddSampleCue(shield, "FloatingWordCue", ("Text", "Shielded"), ("Color", new Color(1f, 0.85f, 0.35f)));
             set.ShieldEffect = maker.Keep("Shield/Shield", shield);
             return set;
         }
+
+        // A cooldown shows on no status bar, as the Demo's don't: it's how the ability waits, not a state its holder's in
+        private static GameplayEffect Hidden(GameplayEffect effect)
+        {
+            effect.Definition.Visibility = Tags.NOT_VISIBLE;
+            return effect;
+        }
+
+        // One of the sample's own cues, its fields set, where the sample's scripts are in the project (AC-2): a floating
+        // word over each status, the bolt's blue flash. They're the sample's, not this assembly's, so the book reaches
+        // them by name; without them, as where only the books' tests run, the effect goes without
+        private static void AddSampleCue(GameplayEffect effect, string type, params (string Field, object Value)[] fields)
+        {
+            var cueType = Type.GetType($"FarEmerald.PlayForge.AdditionalContent.{type}, FarEmerald.PlayForge.AdditionalContent");
+            if (cueType == null) return;
+            var cue = (AbstractCueHandler)Activator.CreateInstance(cueType);
+            foreach (var (field, value) in fields)
+                (cueType.GetField(field) ?? throw new MissingFieldException(type, field)).SetValue(cue, value);
+            effect.Cues.Add(cue);
+        }
+    }
+
+    /// <summary>
+    /// The Additional Content sample's Sparring scene's dummy (AC-2, Decision 69): an identity that starts with the starter
+    /// set's melee attack and bolt, its attributes the recipes' Health, the starter set's Movement Speed and a Shield at 0
+    /// that its Shield fills. The scene itself is saved by the export, as it needs the sample's scripts.
+    /// </summary>
+    public static class SparringBook
+    {
+        private const string Family = "Starter";
+
+        public static SparringSet Build(IRecipeMaker maker, StarterSet starter, ForgeAttribute health)
+        {
+            var set = new SparringSet();
+            var attributes = ScriptableObject.CreateInstance<AttributeSet>();
+            attributes.Name = "Sparring Dummy";
+            attributes.AssetTag = Tag.Generate($"{Family}.Set.SparringDummy");
+            attributes.Attributes = new List<AttributeSetElement>
+            {
+                Element(health, 400f, EAttributeOverflowPolicy.ZeroToBase),
+                Element(starter.MovementSpeed, 5f, EAttributeOverflowPolicy.Unlimited),
+                Element(starter.Shield, 0f, EAttributeOverflowPolicy.ZeroToBase),
+            };
+            attributes.SubSets = new List<AttributeSet>();
+            set.Attributes = maker.Keep("Sparring Dummy Attributes", attributes);
+
+            var dummy = ScriptableObject.CreateInstance<EntityIdentity>();
+            dummy.Name = "Sparring Dummy";
+            dummy.Description = "A dummy that spars: the starter set's melee attack and bolt, and its own health, which mends";
+            dummy.Textures = new List<TextureItem>();
+            dummy.AssetTag = Tag.Generate($"{Family}.Entity.SparringDummy");
+            dummy.Affiliation = new List<Tag>();
+            dummy.GrantedTags = new List<Tag>();
+            dummy.ContextTags = new List<Tag>();
+            dummy.MaxLevel = 1;
+            dummy.MaxAbilitiesOperation = new ScalableInt { Magnitude = 8 };
+            dummy.MaxItemsOperation = new ScalableInt { Magnitude = 8 };
+            dummy.MaxEquippedItemsOperation = new ScalableInt { Magnitude = 8 };
+            dummy.StartingAbilities = new List<Ability> { starter.MeleeAttack, starter.Bolt };
+            dummy.StartingItems = new List<StartingItemContainer>();
+            dummy.AttributeSet = set.Attributes;
+            dummy.WorkerGroup = new StandardWorkerGroup();
+            set.Dummy = maker.Keep("Sparring Dummy", dummy);
+            return set;
+        }
+
+        private static AttributeSetElement Element(ForgeAttribute attribute, float value, EAttributeOverflowPolicy overflow) => new()
+        {
+            Attribute = attribute,
+            Current = new AttributeMagnitudeSpec { Magnitude = value, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            Base = new AttributeMagnitudeSpec { Magnitude = value, RealMagnitude = EMagnitudeOperation.UseMagnitude },
+            Overflow = new AttributeOverflowData { Policy = overflow },
+            RetentionGroup = Tags.DEFAULT,
+            Constraints = new AttributeConstraints { AutoClamp = true, RoundingMode = EAttributeRoundingPolicy.None },
+        };
     }
 }
