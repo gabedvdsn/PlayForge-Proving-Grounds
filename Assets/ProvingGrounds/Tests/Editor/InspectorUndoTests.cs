@@ -1444,6 +1444,61 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A Value Pipeline, Crowd Control Rules or Effect Modifier field is a reference as a PlayForge asset's is: New beside
+        /// it while it's empty, which makes one named for the asset and the field and uses it, and Open once it names one.
+        /// Unity's bare object field gave no way to make one in place (FN-11).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_11_A_pipeline_rules_or_modifier_field_has_New_and_Open()
+        {
+            const string folder = "Assets/FN-11 New";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "FN-11 New");
+            var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
+            goblin.Name = "FN11 Goblin";
+            AssetDatabase.CreateAsset(goblin, $"{folder}/Goblin.asset");
+            var bolt = ScriptableObject.CreateInstance<GameplayEffect>();
+            bolt.Definition.Name = "FN11 Bolt";
+            bolt.ImpactSpecification ??= new GameplayEffectImpact();
+            bolt.Modifiers.Add(new EffectModifierEntry());
+            AssetDatabase.CreateAsset(bolt, $"{folder}/Bolt.asset");
+            var host = new Host();
+            var made = new List<string>();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var fields = new (Object Holder, string Path, System.Func<Object> Read)[]
+                {
+                    (bolt, "ImpactSpecification.Pipeline", () => bolt.ImpactSpecification.Pipeline),
+                    (goblin, nameof(EntityIdentity.CrowdControl), () => goblin.CrowdControl),
+                    (bolt, "Modifiers.Array.data[0].Shared", () => bolt.Modifiers[0].Shared),
+                };
+                foreach (var (holder, path, read) in fields)
+                {
+                    var field = Draw(host, holder, path);
+                    yield return Frames();
+                    var action = field.Q<Button>("ReferenceAction");
+                    Assert.IsNotNull(action, $"{path} has New or Open beside it");
+                    Assert.AreEqual("New", action.text, $"{path}, empty, offers New");
+                    Press(action);
+                    yield return Frames();
+                    var asset = read();
+                    Assert.IsNotNull(asset, $"New makes an asset for {path} and uses it");
+                    made.Add(AssetDatabase.GetAssetPath(asset));
+                    Assert.IsNotEmpty(made[made.Count - 1], "saved in the project");
+                    Assert.AreEqual("Open", action.text, "and Open shows it now");
+                    field.RemoveFromHierarchy();
+                }
+            }
+            finally
+            {
+                host.Destroy();
+                foreach (var path in made) if (!string.IsNullOrEmpty(path)) AssetDatabase.DeleteAsset(path);
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        /// <summary>
         /// Setting an effect field asked in a dialog whether to link the effect to the asset that holds it, and again when
         /// it was linked elsewhere (ED-38). Setting it asks nothing: a line under the field says how the effect is linked
         /// and offers Link, which links it as one Undo step.
