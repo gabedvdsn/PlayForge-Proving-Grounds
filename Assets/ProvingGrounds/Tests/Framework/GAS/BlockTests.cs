@@ -10,7 +10,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// <summary>
     /// TW-12, Decision 52: block and evade. A Block or Evade stage in a hit's pipeline, or one an incoming modifier brings,
     /// rolls once as the effect lands, and on a roll that comes up nothing of the effect lands; the one hit hears Blocked or
-    /// Evaded, and the dealer Hit Blocked or Hit Evaded. A lasting effect's ticks aren't rolled again.
+    /// Evaded, and the dealer Hit Blocked or Hit Evaded. A lasting effect's ticks aren't rolled again. GAS-77: a stop stops
+    /// only an effect that lowers its attribute, unless it's set to stop any impact, so a block lets a heal land.
     /// </summary>
     public class BlockTests : ProvingGroundsTest
     {
@@ -155,6 +156,82 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.AreEqual(100f, Value(hero, health), 0.01f, "and lands nothing");
             Assert.IsTrue(World.Apply(hero, foe, Marking(30f)), "its holder's own hits aren't");
+        });
+
+        // An instant change to Health, by an operation
+        private GameplayEffect Change(float magnitude, ECalculationOperation op = ECalculationOperation.Add) =>
+            Make.Effect("Change", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = magnitude, Op = op });
+
+        private IGameplayAbilitySystem Hurt(Hub hub, string name) =>
+            World.Entity(hub, Make.Set(Make.Element(health, 50f, 100f, EAttributeOverflowPolicy.ZeroToBase)), name);
+
+        /// <summary>
+        /// An incoming modifier's Block stage blocks the hits landing on its holder and lets its heals land, unless it's set
+        /// to stop any impact; a heal isn't rolled for.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_77_An_incoming_block_stops_losses_and_lets_heals_land([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Hurt(hub, "Hero");
+            var foe = Fighter(hub, "Foe");
+            var block = new BlockStage { Chance = 0.5f };
+            var tougher = Make.Item("Tougher Times");
+            tougher.Modifiers.Add(new EffectModifierEntry
+            {
+                Rule = new EffectModifierRule
+                {
+                    Direction = EModifierDirection.Incoming,
+                    Changes = new List<AbstractEffectChange> { new ChangeImpactChange { Attribute = health, Stage = block } },
+                },
+            });
+            await Frames.Step();
+            Assert.That(hero.GetItemSystem().GiveAndEquipItem(tougher, out _), "it's equipped");
+            Assert.AreEqual(EStopImpacts.Losses, block.Stops, "a stop stops losses, unless it's set to");
+
+            var rolls = Rolls(0.1f);
+            Assert.IsFalse(World.Apply(foe, hero, Change(-30f)), "a hit is blocked");
+            Assert.IsTrue(World.Apply(foe, hero, Change(20f)), "a heal isn't");
+            await Frames.Step(2);
+            Assert.AreEqual(70f, Value(hero, health), 0.01f, "it lands");
+            Assert.AreEqual(1, rolls.Drawn, "and isn't rolled for");
+
+            block.Stops = EStopImpacts.AnyImpact;
+            Assert.IsFalse(World.Apply(foe, hero, Change(20f)), "set to stop any impact, it blocks the heal too");
+            await Frames.Step(2);
+            Assert.AreEqual(70f, Value(hero, health), 0.01f, "which lands nothing");
+            Assert.AreEqual(2, rolls.Drawn);
+        });
+
+        /// <summary>
+        /// A stop in an effect's own pipeline reads what the effect does to its attribute as it stands: a loss is an add
+        /// below 0, a multiplier below 1 or an override below where it is. Evade reads it as Block does.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_77_A_stop_reads_whether_its_effect_lowers_the_attribute([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Hurt(hub, "Hero");
+            var foe = Fighter(hub, "Foe");
+            await Frames.Step();
+
+            Assert.IsTrue(World.Apply(foe, hero, Piped(Change(20f), new EvadeStage { Chance = 1f })), "an evade lets a heal land");
+            await Frames.Step(2);
+            Assert.AreEqual(70f, Value(hero, health), 0.01f);
+            Assert.IsFalse(World.Apply(foe, hero, Piped(Change(20f), new EvadeStage { Chance = 1f, Stops = EStopImpacts.AnyImpact })),
+                "set to stop any impact, it evades it");
+
+            Assert.IsFalse(World.Apply(foe, hero, Piped(Change(0.5f, ECalculationOperation.Multiply), new BlockStage { Chance = 1f })),
+                "halving it is a loss: blocked");
+            Assert.IsTrue(World.Apply(foe, hero, Piped(Change(1.2f, ECalculationOperation.Multiply), new BlockStage { Chance = 1f })),
+                "raising it a fifth isn't");
+            await Frames.Step(2);
+            Assert.AreEqual(84f, Value(hero, health), 0.01f, "it lands");
+
+            Assert.IsFalse(World.Apply(foe, hero, Piped(Change(10f, ECalculationOperation.Override), new BlockStage { Chance = 1f })),
+                "setting it below where it is is a loss: blocked");
+            Assert.IsTrue(World.Apply(foe, hero, Piped(Change(95f, ECalculationOperation.Override), new BlockStage { Chance = 1f })),
+                "setting it above isn't");
+            await Frames.Step(2);
+            Assert.AreEqual(95f, Value(hero, health), 0.01f, "it lands");
         });
 
         /// <summary>A lasting effect rolls once as it lands, and its ticks aren't rolled again.</summary>
