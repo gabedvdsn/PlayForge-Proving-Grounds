@@ -1293,6 +1293,110 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TAG-3: each field's contexts
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // PlayForge's runtime and the lab's, whose tag fields designers fill
+        private static IEnumerable<System.Type> RuntimeTypes() => System.AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => assembly.GetName().Name is "FarEmerald.PlayForge" or "FarEmerald.PlayForge.Lab")
+            .SelectMany(assembly => assembly.GetTypes());
+
+        // Whether Unity keeps a type's fields: a Unity object, or a type marked serializable, or under one that is, as an
+        // ability task is, which an ability holds by reference
+        private static bool Kept(System.Type type)
+        {
+            if (typeof(Object).IsAssignableFrom(type)) return true;
+            for (var each = type; each != null && each.Assembly == type.Assembly; each = each.BaseType)
+                if (each.IsDefined(typeof(System.SerializableAttribute), false)) return true;
+            return false;
+        }
+
+        // The tag fields Unity keeps: a Tag, or a list or an array of them
+        private static IEnumerable<FieldInfo> SerializedTagFields() =>
+            from type in RuntimeTypes()
+            where Kept(type)
+            from field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+            where !field.IsInitOnly && !field.IsDefined(typeof(System.NonSerializedAttribute))
+                  && (field.IsPublic || field.IsDefined(typeof(SerializeField)) || field.IsDefined(typeof(SerializeReference)))
+            let held = field.FieldType.IsArray ? field.FieldType.GetElementType()
+                : field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>) ? field.FieldType.GetGenericArguments()[0]
+                : field.FieldType
+            where held == typeof(Tag)
+            select field;
+
+        // The tag fields no designer fills, which take no context: what the game sets as it runs, and a field that holds a
+        // tag as a value, of whatever kind (TAG-3)
+        private static readonly string[] Unauthored =
+        {
+            "DataWrapper.tagValue", "SetTagsTask.Tags",
+        };
+
+        // A field's contexts, by its type's name and its own
+        private static string[] ContextsOf(string type, string field)
+        {
+            var found = RuntimeTypes().Where(each => each.Name == type)
+                .Select(each => each.GetField(field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                .FirstOrDefault(each => each != null);
+            Assert.IsNotNull(found, $"{type}.{field} is a field");
+            return found.GetCustomAttribute<ForgeTagContext>()?.Context ?? new string[0];
+        }
+
+        /// <summary>
+        /// About 25 tag fields designers fill named no context, so each one's picker offered every tag, and the registry
+        /// guessed one from the field's name (TAG-3). Each names the kinds of tag it takes.
+        /// </summary>
+        [Test]
+        public void TAG_3_Every_authored_tag_field_names_its_contexts()
+        {
+            var unmarked = SerializedTagFields()
+                .Where(field => !field.IsDefined(typeof(ForgeTagContext)))
+                .Select(field => $"{field.DeclaringType.Name}.{field.Name}")
+                .Except(Unauthored)
+                .OrderBy(name => name, System.StringComparer.Ordinal)
+                .ToList();
+            Assert.IsEmpty(unmarked, "each names the kinds it takes, but: " + string.Join(", ", unmarked));
+        }
+
+        /// <summary>
+        /// The field that writes a kind of tag and the field that reads it named different contexts, or one none, so the
+        /// reader's picker didn't offer what the writer wrote: an asset's Local Data keys, a set-by-caller key, a project's
+        /// events, crowd control's states, a stage's flag; and a field that matches an effect or an ability by its tags named
+        /// fewer kinds than the match reads (TAG-3). Each pair shares its kind, and each match names every kind it reads.
+        /// </summary>
+        [Test]
+        public void TAG_3_The_writer_and_reader_of_a_kind_of_tag_share_its_context()
+        {
+            void Share(string context, params (string type, string field)[] fields)
+            {
+                foreach (var (type, field) in fields)
+                    Assert.That(ContextsOf(type, field), Has.Member(context), $"{type}.{field} takes {context}");
+            }
+
+            Share(ForgeContext.LocalDataKey, ("DataWrapper", "Key"), ("LocalDataKind", "Key"), ("AbstractTagValidationRule", "Tag"),
+                ("LabRules", "AttackRangeKey"), ("LabRules", "CastOrderKey"), ("LabRules", "CastWhenKey"), ("LabRules", "ReachKey"));
+            Share(ForgeContext.SetByCallerKey, ("ProcessAttribute", "Role"), ("TagAttributePair", "Key"), ("SetByCallerScaler", "Key"));
+            Share(ForgeContext.Event, ("ThresholdAnalysisWorker", "Event"), ("AbilityTrigger", "Tag"), ("CombatLogSettings", "Events"));
+            Share(ForgeContext.Granted, ("GameplayEffectTags", "GrantedTags"), ("CrowdControlRule", "Tag"), ("AbilityDefinition", "IgnoresCrowdControl"));
+            Share(ForgeContext.StageFlag, ("ApplyEffectsAbilityTask", "RecordLandedAs"), ("AbilityStageCondition", "Tag"));
+            Share(ForgeContext.DataKey, ("SetAssetsTask", "Tag"), ("CreateMonoProcessAbilityTask", "DataTag"), ("AbilityBehaviour", "ImplicitTag"));
+
+            // An effect matched by its tags, as a cleanse matches it: by its asset tag, a context tag or a tag it grants
+            foreach (var (type, field) in new[] { ("GameplayEffectTags", "RemovesEffectsTagged"), ("GameplayEffectTags", "BlocksEffectsTagged"),
+                         ("EntityDeath", "EndsEffectsTagged"), ("TrackedImpactKind", "Tagged"), ("AssetPartKind", "Tagged") })
+                Assert.That(ContextsOf(type, field), Is.SupersetOf(new[] { ForgeContext.AssetTag, ForgeContext.ContextTag, ForgeContext.Granted }),
+                    $"{type}.{field} reads an effect's asset tag, context tags and granted tags");
+            // An ability matched by its tags, and an effect by a modifier's rule: by its asset tag or a context tag
+            foreach (var (type, field) in new[] { ("AbilityBehaviour", "CancelledBy"), ("AbilityBehaviour", "Blocks"),
+                         ("AbilityTaskBehaviourStage", "CancelledBy"), ("AbilityTaskBehaviourStage", "Blocks"),
+                         ("CrowdControlRule", "AbilityTags"), ("EffectModifierRule", "EffectTags") })
+                Assert.That(ContextsOf(type, field), Is.SupersetOf(new[] { ForgeContext.AssetTag, ForgeContext.ContextTag }),
+                    $"{type}.{field} reads an asset tag and context tags");
+            // And a query asks what an entity carries: what it's granted, its asset tag and its side
+            Assert.That(ContextsOf("TagQuery", "Tag"), Is.SupersetOf(new[] { ForgeContext.Granted, ForgeContext.AssetTag, ForgeContext.Affiliation }),
+                "a tag query reads what an entity carries");
+        }
+
         // A window logs "No graphic device" as it opens and closes in batch mode, which this guard sets aside
         private sealed class WindowLog : System.IDisposable
         {
