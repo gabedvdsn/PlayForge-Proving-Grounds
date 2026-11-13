@@ -122,6 +122,60 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>
+        /// A tag New Tag makes is unique, its name padded with a hash, so a New-Tag "Status.Debuff.Burn" wasn't under a
+        /// New-Tag "Status.Debuff", and a query, crowd control or Removes Effects Tagged missed it (TAG-1). A unique tag's
+        /// hierarchy goes by its display path, what the designer sees, and mixes with plain tags of those paths; it is still
+        /// told apart from them by its name.
+        /// </summary>
+        [Test]
+        public void TAG_1_A_unique_tags_hierarchy_goes_by_its_display_path()
+        {
+            string root = Make.Unique("Unique");
+            var status = Tag.Generate(root);
+            var debuff = Tag.GenerateAsUnique(root + ".Debuff");
+            var burn = Tag.GenerateAsUnique(root + ".Debuff.Burn");
+            Assume.That(burn.Name.Length, Is.EqualTo(64), "a unique tag's name is padded");
+
+            Assert.IsTrue(burn.IsChildOf(debuff), "a unique tag is under the unique tag its path is under");
+            Assert.IsTrue(burn.IsDirectChildOf(debuff), "directly");
+            Assert.IsTrue(burn.IsChildOf(status), "and under a plain tag its path is under");
+            Assert.IsTrue(debuff.IsParentOf(burn), "its parent is its parent");
+            Assert.IsFalse(debuff.IsChildOf(burn), "not the other way");
+            Assert.IsFalse(Tag.GenerateAsUnique(root + ".DebuffX").IsChildOf(debuff), "a tag whose path only starts the same isn't under it");
+            Assert.IsTrue(burn.MatchesOrIsChildOf(Tag.Generate(root + ".Debuff")), "a plain tag of its parent's path is its parent too");
+            Assert.AreNotEqual(Tag.Generate(root + ".Debuff.Burn"), burn, "though a plain tag of its own path is another tag");
+
+            Assert.AreEqual(root + ".Debuff", burn.GetParentPath(), "its parent's path");
+            Assert.AreEqual("Burn", burn.GetLeafName(), "its leaf, without the padding");
+            Assert.AreEqual(3, burn.Depth, "its depth");
+            Assert.AreEqual(status, burn.GetRoot(), "its root");
+            Assert.IsTrue(burn.SharesAncestorWith(debuff), "a root it shares");
+            Assert.That(burn.GetSegments(), Is.EqualTo(new[] { root, "Debuff", "Burn" }), "its segments");
+            Assert.AreEqual(root + ".Debuff.Burn.Embers", burn.Child("Embers").ToString(), "and a child goes under its path");
+        }
+
+        /// <summary>
+        /// A query for a unique tag and the tags under it found none of its unique children, and a listener on a unique
+        /// tag heard none of them come (TAG-1).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TAG_1_A_query_and_a_listener_find_a_unique_tags_children() => Live(async () =>
+        {
+            string root = Make.Unique("Listened");
+            var debuff = Tag.GenerateAsUnique(root + ".Debuff");
+            var burn = Tag.GenerateAsUnique(root + ".Debuff.Burn");
+            var tags = World.Entity(Hub.Runtime, observed: false).GetTagCache();
+            var heard = new List<Tag>();
+            using var listener = tags.Listen(debuff, change => heard.Add(change.Tag));
+
+            tags.AddTag(burn);
+            await Frames.Step();
+
+            Assert.That(tags.HasTag(debuff, ETagMatchMode.IncludeChildren), "a query for it and the tags under it finds its child");
+            Assert.That(heard, Has.Member(burn), "and its listener hears the child come");
+        });
+
+        /// <summary>
         /// A same-root query cut each side's root out as a new string, and registered it as a tag, for every tag it
         /// compared. It now compares the roots in place and allocates nothing, and still finds what it found.
         /// </summary>
