@@ -1223,6 +1223,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// Assets → Create → PlayForge lists its assets in an order of its own (FN-13): the Forge Project; then the assets
+        /// The Forge lists first, in its order; then the numbers, rules and the tag library; then the lab's; then the Demo's
+        /// roster, each group apart from the next by a line. Its entries were in no order, each at Unity's default, and a
+        /// Templates submenu held one.
+        /// </summary>
+        [Test]
+        public void FN_13_The_Create_menu_is_in_PlayForges_order()
+        {
+            var entries = System.AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => assembly.GetName().Name.StartsWith("FarEmerald.PlayForge"))
+                .SelectMany(assembly => assembly.GetTypes())
+                .Select(type => type.GetCustomAttribute<CreateAssetMenuAttribute>())
+                .Where(menu => menu != null && menu.menuName.StartsWith("PlayForge/"))
+                .OrderBy(menu => menu.order)
+                .ToList();
+            var expected = new[]
+            {
+                "Forge Project", "|", "Ability", "Gameplay Effect", "Item", "Attribute", "Attribute Set", "Entity", "|",
+                "Scaler", "Requirement Template", "Value Pipeline", "Effect Modifier", "Crowd Control Rules", "Tag Library", "|",
+                "Lab Rules", "Lab Driver", "|", "Demo/Roster",
+            };
+            // A line where the next entry's order is more than 10 past the one before, as Unity draws the menu
+            var shown = new List<string>();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (i > 0 && entries[i].order - entries[i - 1].order > 10) shown.Add("|");
+                shown.Add(entries[i].menuName.Substring("PlayForge/".Length));
+            }
+            Assert.That(shown, Is.EqualTo(expected), string.Join(", ", shown));
+        }
+
         /// <summary>The Entity inspector's Allow Duplicate Equipped Items toggle opened showing Allow Duplicate Items' value.</summary>
         [Test]
         public void ED_29_Allow_Duplicate_Equipped_Items_shows_its_own_value()
