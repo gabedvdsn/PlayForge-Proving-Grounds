@@ -498,6 +498,42 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(1000f, far.Value(health), 0.01f, "and not at the far one");
         });
 
+        /// <summary>
+        /// The lab reads an ability's Cast Range (FN-14): a unit attacks from its attack's, and a bot casts an ability with
+        /// one only once its foe is within it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_14_The_lab_reads_an_abilitys_cast_range() => Live(async () =>
+        {
+            var strike = Strike(Hit("Blow", 0.1f));
+            strike.Components.Add(new CastRangeAbilityComponent { Range = 10f });
+            var bolt = Make.Ability("Bolt", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { Hit("Bolt Hit", 20f) } }));
+            bolt.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
+            bolt.Components.Add(new CastRangeAbilityComponent { Range = 3f });
+            var caster = Fighter("Caster", abilities: new[] { strike, bolt });
+            var target = Fighter("Target", hp: 1000f);
+            Lab(false, caster, target);
+            lab.SetMode(LabMode.Battle);
+            var bot = lab.AddBot(caster, LabSides.Blue, Vector3.zero);
+            var foe = lab.AddBot(target, LabSides.Red, new Vector3(6f, 0f, 0f)).Unit;
+            foe.GetComponent<LabBot>().Fighting = false;
+            await Frames.Step();
+            lab.Step(0.01f);
+            Assert.AreEqual(10f, bot.Unit.AttackRange, 0.01f, "a unit attacks from its attack's Cast Range");
+
+            lab.Play();
+            lab.Paused = true;
+            foe.GetComponent<LabBot>().Fighting = false;
+            Run(0.6f);
+            Assert.Less(foe.Value(health), 1000f, "it strikes");
+            Assert.Greater(foe.Value(health), 990f, "6 away, within its strike's 10 but beyond its bolt's 3: no bolt");
+            Assert.AreEqual(0f, bot.Unit.transform.position.x, 0.05f, "and it strikes from where it stands");
+
+            foe.transform.position = new Vector3(2f, 0f, 0f);
+            Run(0.6f);
+            Assert.Less(foe.Value(health), 985f, "2 away, within its bolt's 3, it casts it");
+        });
+
         /// <summary>A quick battle of two sides plays until one stands, and a reset puts every bot back, at full.</summary>
         [UnityTest]
         public IEnumerator LAB_9_A_quick_battle_plays_until_one_side_stands() => Live(async () =>
