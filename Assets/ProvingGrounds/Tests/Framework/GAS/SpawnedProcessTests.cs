@@ -194,6 +194,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(value.CurrentValue, Is.EqualTo(75f).Within(1e-3f), "for the heat it carries, over its caller's");
         });
 
+        /// <summary>
+        /// A mono process starts Synchronous, stepping in Update and LateUpdate, and a Synchronous process has no run. A
+        /// projectile's flight is its run, so one made in code never flew, and never landed or ended. A projectile starts
+        /// Self Terminating, with no step timing: it flies, lands and ends (PC-35).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PC_35_A_projectile_made_in_code_flies_lands_and_ends() => Live(async () =>
+        {
+            var plain = World.Template<LazyMonoProcess>("Plain");
+            Assert.That(plain.ProcessLifecycle, Is.EqualTo(EProcessLifecycle.Synchronous), "a mono process starts Synchronous");
+            Assert.That(plain.ProcessTiming, Is.EqualTo(EProcessStepTiming.UpdateAndLate), "stepping in Update and LateUpdate");
+
+            var health = Make.Attribute("Health");
+            var caster = World.MonoEntity(name: "Caster");
+            var target = World.MonoEntity(Make.Set(Make.Element(health, 100f, 100f)), "Target");
+            target.transform.position = new Vector3(0f, 0f, 3f);
+            var hit = Make.Effect("Hit", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f });
+
+            var arrow = World.Template<ProjectileMonoProcess>("Arrow");
+            Assert.That(arrow.ProcessLifecycle, Is.EqualTo(EProcessLifecycle.SelfTerminating), "a projectile starts Self Terminating");
+            Assert.That(arrow.ProcessTiming, Is.EqualTo(EProcessStepTiming.None), "with no step timing");
+            arrow.Effects = new List<GameplayEffect> { hit };
+            arrow.Attributes = new List<ProcessAttribute> { Speed(200f) };
+
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(Tags.TARGET_REAL, (ITarget)target);
+            data.SetPrimary(Tags.DERIVATION, IEffectOrigin.GenerateSourceDerivation(caster));
+            var shot = World.Spawn(arrow, data);
+
+            await Frames.Until(() => target.TryGetAttributeValue(health, out var now) && now.CurrentValue < 100f, 20, "it flies and lands");
+            target.TryGetAttributeValue(health, out var value);
+            Assert.That(value.CurrentValue, Is.EqualTo(90f).Within(1e-3f), "once");
+            await Frames.Until(() => shot == null, 5, "and ends as it lands, its object with it");
+        });
+
         // ═══════════════════════════════════════════════════════════════════════════
         // A projectile's own attributes (FEAT-24)
         // ═══════════════════════════════════════════════════════════════════════════

@@ -26,14 +26,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             public int FrameCount => UnityEngine.Time.frameCount;
         }
 
-        // Sets an ability's buffer window or priority, by reflection until the fields are in
-        private static void Definition(Ability ability, string field, object value)
-        {
-            var member = typeof(AbilityDefinition).GetField(field);
-            Assert.IsNotNull(member, $"an ability has a {field}");
-            member.SetValue(ability.Definition, value);
-        }
-
         // A request under the Queue policy, with a window of its own when one is given
         private static AbilitySystemComponent.AbilityActivationRequest Press(AbilitySystemComponent abilities, AbilitySpecContainer container,
             float window = -1f)
@@ -61,8 +53,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private Ability Quick(string name, float window, int priority = 0)
         {
             var ability = Make.Ability(name, Make.Stage(new ProbeAbilityTask(World, name + " Task", frames: 1)));
-            Definition(ability, "BufferWindow", window);
-            Definition(ability, "BufferPriority", priority);
+            // Buffer Priority is a Scalable whole number, which reflection couldn't set from an int (FN-19a)
+            ability.Definition.BufferWindow = window;
+            ability.Definition.BufferPriority = priority;
             return ability;
         }
 

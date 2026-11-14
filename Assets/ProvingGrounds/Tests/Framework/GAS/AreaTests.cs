@@ -143,6 +143,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// An area's Max Targets became a Scalable whole number with no value of its own, so an area made in code had none,
+        /// and landing one threw (FN-19a). It reads 0, every one it reaches, as a saved area's does.
+        /// </summary>
+        [Test]
+        public void FN_19a_An_area_made_in_code_takes_every_one_it_reaches()
+        {
+            var area = new EffectArea { Radius = 3f };
+            Assert.IsNotNull(area.MaxTargets, "an area made in code has a Max Targets");
+            Assert.IsTrue(area.MaxTargets.IsConstant, "a plain number");
+            Assert.AreEqual(0, area.MaxTargets.Constant, "of 0, every one it reaches");
+        }
+
+        /// <summary>
         /// An effect's Area lands it on each it takes near its target, as Storm Hammer stuns those near the one it hits: of
         /// the sides it takes, at most its most, the nearest first; and an effect that lands by an area spreads no further.
         /// </summary>

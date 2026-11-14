@@ -1142,6 +1142,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             // A scene's object, as a process is: Unity counts no change to one it doesn't save, so its bindings see none
             var owner = new GameObject("ED-61");
             var process = owner.AddComponent<CascadeProcess>();
+            // One that runs and doesn't step, which a mono process no longer starts as (PC-35)
+            process.ProcessLifecycle = EProcessLifecycle.SelfTerminating;
+            process.ProcessTiming = EProcessStepTiming.None;
             var editor = UnityEditor.Editor.CreateEditor(process);
             var settings = ScriptableObject.CreateInstance<PanelSettings>();
             var host = new GameObject("ED-61 Panel") { hideFlags = HideFlags.HideAndDontSave };
