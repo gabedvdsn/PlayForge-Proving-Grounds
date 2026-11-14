@@ -145,6 +145,48 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// Area Effect, the Demo's own task in the framework now (FN-24): its effects land on each of the sides it takes
+        /// within its radius of its caster, found by position on either hub, its caster left out.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_24_An_area_effect_lands_on_those_near_its_caster([Values] Hub hub) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, Vector3.zero);
+            var near = At(hub, "Near", blue, new Vector3(2f, 0f, 0f));
+            var friend = At(hub, "Friend", red, new Vector3(1f, 0f, 0f));
+            var far = At(hub, "Far", blue, new Vector3(8f, 0f, 0f));
+            await Frames.Step();
+
+            var shout = Make.Ability("Shout", Make.Stage(new AreaEffectTask
+            {
+                Radius = 3f, Around = EAreaCentre.Caster, Takes = EAffinityFilter.Enemies, Effects = new List<GameplayEffect> { Mark() },
+            }));
+            await Cast(caster, shout);
+            Assert.IsTrue(Marked(near), "an enemy within its radius");
+            Assert.IsFalse(Marked(friend), "not an ally");
+            Assert.IsFalse(Marked(far), "nor one beyond it");
+            Assert.IsFalse(Marked(caster), "nor its caster");
+        });
+
+        /// <summary>
+        /// Apply To Caster, the Demo's own task in the framework now (FN-24): its effects land on its caster, whatever its
+        /// ability targets.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_24_Apply_to_caster_lands_on_its_caster_whatever_it_targets([Values] Hub hub) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, Vector3.zero);
+            var enemy = At(hub, "Enemy", blue, new Vector3(2f, 0f, 0f));
+            await Frames.Step();
+
+            var empower = Make.Ability("Empower", Make.Stage(new ApplyToCasterTask { Effects = new List<GameplayEffect> { Mark() } }));
+            empower.Behaviour.Targeting = new AutoTargetByAffinityTask { AffinityFilter = EAffinityFilter.Enemies, Range = 5f, MaxTargets = 1, UseCastRange = false };
+            await Cast(caster, empower);
+            Assert.IsTrue(Marked(caster), "its caster");
+            Assert.IsFalse(Marked(enemy), "not the enemy it targets");
+        });
+
+        /// <summary>
         /// The targeting tasks drew headers between their fields, which the user's notes took out (FN-20): none has one, and
         /// each number of theirs is Scalable, but a pointer's button, which picks one of three (FN-19's rule).
         /// </summary>
