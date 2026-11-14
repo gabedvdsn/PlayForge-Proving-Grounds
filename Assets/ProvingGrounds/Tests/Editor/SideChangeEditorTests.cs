@@ -10,22 +10,24 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// TW-18 in the editor: an effect's Side Change sits in its Tags section after the abilities it lends; its fields show
-    /// while it changes sides, and the sides it names while it names them.
+    /// TW-18 in the editor, as FN-26 has it: an effect's side change is a component, Side Change, in its Components section,
+    /// one at most; a field of its own sat in its Tags section, with a switch. The sides it names show while it names them.
     /// </summary>
     public class SideChangeEditorTests
     {
         [Test]
-        public void TW_18_An_effects_side_change_is_in_its_Tags_section()
+        public void FN_26_An_effects_side_change_is_a_component()
         {
+            Assert.IsNull(typeof(GameplayEffect).GetField("SideChange"), "an effect has no side change field of its own");
+            Assert.IsFalse(new SideChangeEffectComponent().AllowsSeveral, "and holds one Side Change at most");
+
             var charm = ScriptableObject.CreateInstance<GameplayEffect>();
             var editor = UnityEditor.Editor.CreateEditor(charm);
             try
             {
                 var root = editor.CreateInspectorGUI();
                 var names = root.Q(name: "Tags_CONTAINER").Query<PropertyField>().ToList().Select(field => field.name).ToList();
-                Assert.That(names.IndexOf("SideChange"), Is.EqualTo(names.IndexOf("GrantedAbilities") + 1),
-                    $"after the abilities it lends: {string.Join(", ", names)}");
+                Assert.That(names, Has.No.Member("SideChange"), $"nor one in its Tags section: {string.Join(", ", names)}");
             }
             finally
             {
@@ -35,31 +37,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         [Test]
-        public void TW_18_A_side_changes_fields_show_as_it_changes_sides()
+        public void FN_26_A_side_changes_sides_show_as_it_names_them()
         {
-            var charm = ScriptableObject.CreateInstance<GameplayEffect>();
             var pacify = ScriptableObject.CreateInstance<GameplayEffect>();
-            pacify.SideChange = new SideChange { Changes = true, Source = ESideSource.Named };
+            var change = new SideChangeEffectComponent { Source = ESideSource.Named };
+            pacify.Components.Add(change);
             try
             {
-                VisualElement Row(GameplayEffect effect) =>
-                    new SideChangeDrawer().CreatePropertyGUI(new SerializedObject(effect).FindProperty(nameof(GameplayEffect.SideChange)));
+                VisualElement Drawn()
+                {
+                    var serialized = new SerializedObject(pacify);
+                    var component = serialized.FindProperty(nameof(GameplayEffect.Components)).GetArrayElementAtIndex(0);
+                    return new EffectComponentDrawer().CreatePropertyGUI(component);
+                }
 
-                var off = Row(charm);
-                Assert.IsNotNull(off.Q<Toggle>(nameof(SideChange.Changes)), "a switch");
-                Assert.AreEqual(DisplayStyle.None, off.Q("SideChangeFields").style.display.value, "and nothing more while it's off");
+                var named = Drawn().Q(name: nameof(SideChangeEffectComponent.Sides));
+                Assert.IsNotNull(named, "a side change has its sides");
+                Assert.IsFalse(named.ClassListContains("pf-hidden"), "which show where it names them");
 
-                var named = Row(pacify);
-                Assert.AreNotEqual(DisplayStyle.None, named.Q("SideChangeFields").style.display.value, "its fields while it's on");
-                Assert.AreNotEqual(DisplayStyle.None, named.Q(nameof(SideChange.Sides)).style.display.value, "with the sides it names");
-
-                pacify.SideChange.Source = ESideSource.Caster;
-                var casters = Row(pacify);
-                Assert.AreEqual(DisplayStyle.None, casters.Q(nameof(SideChange.Sides)).style.display.value, "and none where it gives its caster's");
+                change.Source = ESideSource.Caster;
+                Assert.IsTrue(Drawn().Q(name: nameof(SideChangeEffectComponent.Sides)).ClassListContains("pf-hidden"),
+                    "and hide where it gives its caster's");
             }
             finally
             {
-                Object.DestroyImmediate(charm);
                 Object.DestroyImmediate(pacify);
             }
         }

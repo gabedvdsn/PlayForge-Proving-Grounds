@@ -39,10 +39,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             bool interrupts = false, params Tag[] sides)
         {
             var effect = Make.Effect(name, new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = seconds, Target = null });
-            effect.SideChange = new SideChange
+            // A Side Change component, an effect's side change since FN-26
+            effect.Components.Add(new SideChangeEffectComponent
             {
-                Changes = true, Source = source, Sides = new List<Tag>(sides), Priority = priority, Interrupts = interrupts,
-            };
+                Source = source, Sides = new List<Tag>(sides), Priority = priority, Interrupts = interrupts,
+            });
             return effect;
         }
 
