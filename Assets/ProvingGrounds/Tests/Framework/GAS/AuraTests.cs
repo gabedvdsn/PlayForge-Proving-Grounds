@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -10,7 +11,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// <summary>
     /// TW-10, Decision 50: auras. An aura holds its effect on each it takes near its holder, of the sides it takes, its
     /// holder too where it says, and takes it off as they leave or as the aura goes: an item's while it's equipped, an
-    /// effect's while it lasts, an entity's as it lives. It checks who's near at its interval.
+    /// effect's while it lasts, an ability's while it's known, an entity's as it lives. It checks who's near at its
+    /// interval. Each is an Aura component of its asset (FN-14).
     /// </summary>
     public class AuraTests : ProvingGroundsTest
     {
@@ -56,7 +58,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 var identity = Make.RuntimeIdentity(name, set);
                 identity.Affiliation = new List<Tag> { side };
-                identity.Auras = new List<AuraEntry>(own);
+                identity.Components = own.Select(aura => (AbstractEntityComponent)new AuraEntityComponent { Aura = aura }).ToList();
                 var runtime = new RuntimeGameplayAbilitySystem(identity);
                 World.Register(runtime);
                 World.Invariants.Observe(runtime);
@@ -66,7 +68,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 var mono = World.NewMonoEntity(set, name);
                 mono.EntityData.Affiliation = new List<Tag> { side };
-                mono.EntityData.Auras = new List<AuraEntry>(own);
+                mono.EntityData.Components = own.Select(aura => (AbstractEntityComponent)new AuraEntityComponent { Aura = aura }).ToList();
                 World.Register(mono);
                 World.Invariants.Observe(mono);
                 gas = mono;
@@ -92,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var enemy = At(hub, "Enemy", blue, new Vector3(2f, 0f, 0f));
             var straggler = At(hub, "Straggler", red, new Vector3(9f, 0f, 0f));
             var banner = Make.Item("Banner");
-            banner.Auras.Add(Inspiring());
+            banner.Components.Add(new AuraItemComponent { Aura = Inspiring() });
             await Frames.Step();
 
             Assert.That(holder.GetItemSystem().GiveAndEquipItem(banner, out _), "the banner's equipped");
@@ -133,6 +135,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(Inspired(ally), "half a second on, it has");
         });
 
+        /// <summary>An ability's aura holds on its holder's allies near it while it's known, and comes off as it's forgotten (FN-14).</summary>
+        [UnityTest]
+        public IEnumerator FN_14_An_abilitys_aura_holds_while_its_holder_knows_it([Values] Hub hub) => Live(async () =>
+        {
+            var holder = At(hub, "Holder", red, Vector3.zero);
+            var ally = At(hub, "Ally", red, new Vector3(3f, 0f, 0f));
+            var command = Make.Ability("Command", Make.Stage());
+            command.Components.Add(new AuraAbilityComponent { Aura = Inspiring() });
+            await Frames.Step();
+
+            Assert.That(holder.GetAbilitySystem().GiveAbility(command, 1, out _), "the ability's known");
+            await Frames.Step(2);
+            Assert.IsTrue(Inspired(ally), "an ally near its holder takes its aura");
+            Assert.That(holder.GetAbilitySystem().RemoveAbility(command), "it's forgotten");
+            await Frames.Step(2);
+            Assert.IsFalse(Inspired(ally), "and the ally loses it");
+        });
+
         /// <summary>An effect's aura holds on those near the one it's on while it lasts.</summary>
         [UnityTest]
         public IEnumerator TW_10_An_effects_aura_holds_while_it_lasts([Values] Hub hub) => Live(async () =>
@@ -140,7 +160,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var holder = At(hub, "Holder", red, Vector3.zero);
             var ally = At(hub, "Ally", red, new Vector3(3f, 0f, 0f));
             var war = Make.Effect("War Cry", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
-            war.Auras.Add(Inspiring());
+            war.Components.Add(new AuraEffectComponent { Aura = Inspiring() });
             await Frames.Step();
 
             Assert.IsTrue(World.Apply(holder, holder, war), "the war cry's on its holder");

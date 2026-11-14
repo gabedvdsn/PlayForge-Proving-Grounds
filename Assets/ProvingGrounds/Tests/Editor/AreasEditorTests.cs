@@ -41,10 +41,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private static string Summary(VisualElement root, string section) =>
             root.Q(name: $"{section}_CONTAINER").Q<Label>(className: "pf-section__summary").text;
 
-        private static void AurasAfterModifiers(VisualElement root)
+        // Its auras are components, in the Components section above Workers, which holds none of them (FN-14)
+        private static void AurasAreComponents(VisualElement root, string line)
         {
-            var workers = Fields(root, "Workers");
-            Assert.That(workers.IndexOf("Auras"), Is.EqualTo(workers.IndexOf("Modifiers") + 1), $"Auras after Modifiers: {string.Join(", ", workers)}");
+            Assert.That(Fields(root, "Workers"), Has.No.Member("Auras"), "no Auras in Workers");
+            Assert.That(Summary(root, "Components"), Is.EqualTo(line), "the Components line counts them");
         }
 
         [Test]
@@ -56,29 +57,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var entity = ScriptableObject.CreateInstance<EntityIdentity>();
             try
             {
-                effect.Auras.Add(new AuraEntry());
+                effect.Components.Add(new AuraEffectComponent());
                 item.OnHit.Add(new OnHitEntry());
-                item.Auras.Add(new AuraEntry());
-                item.Auras.Add(new AuraEntry());
-                entity.Auras.Add(new AuraEntry());
+                item.Components.Add(new AuraItemComponent());
+                item.Components.Add(new AuraItemComponent());
+                entity.Components.Add(new AuraEntityComponent());
 
                 Inspect(effect, root =>
                 {
                     Assert.That(Fields(root, "Impact"), Does.Contain("Area"), "an effect's Area, in its Impact");
-                    AurasAfterModifiers(root);
-                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 aura"), "the line counts its auras");
+                    AurasAreComponents(root, "1 component");
                 });
                 Inspect(item, root =>
                 {
-                    AurasAfterModifiers(root);
-                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 on hit, 2 auras"));
+                    AurasAreComponents(root, "2 components");
+                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 on hit"), "and Workers counts no aura");
                 });
-                Inspect(ability, AurasAfterModifiers);
-                Inspect(entity, root =>
-                {
-                    AurasAfterModifiers(root);
-                    Assert.That(Summary(root, "Workers"), Is.EqualTo("1 aura"));
-                });
+                Inspect(ability, root => AurasAreComponents(root, "None"));
+                Inspect(entity, root => AurasAreComponents(root, "1 component"));
             }
             finally
             {

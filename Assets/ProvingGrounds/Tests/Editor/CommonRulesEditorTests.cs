@@ -46,7 +46,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Inspect(mask, root =>
                 {
                     var workers = Fields(root, "Workers");
-                    Assert.That(workers.IndexOf("Lifesteal"), Is.EqualTo(workers.IndexOf("Auras") + 1), $"after Auras: {string.Join(", ", workers)}");
+                    Assert.That(workers.IndexOf("Lifesteal"), Is.EqualTo(workers.IndexOf("Modifiers") + 1), $"after Modifiers, auras being components: {string.Join(", ", workers)}");
                     Assert.That(root.Q(name: "Workers_CONTAINER").Q<Label>(className: "pf-section__summary").text, Is.EqualTo("1 lifesteal"));
                 });
                 Inspect(strike, root => Assert.That(Fields(root, "Impact"), Does.Contain("Lifesteal"), "an effect's own, in its Impact"));

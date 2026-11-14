@@ -119,7 +119,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             var aura = Make<GameplayEffect>("Aura", "Command");
             Assert.AreEqual(EEffectDurationPolicy.Infinite, aura.DurationSpecification.DurationPolicy);
-            Assert.AreEqual(1, aura.Auras.Count, "an aura to fill in");
+            Assert.AreEqual(1, aura.Components.OfType<AuraEffectComponent>().Count(), "an Aura component to fill in");
         }
 
         /// <summary>The items: an On Hit to fill in; an ability of its own, with a cost and a cooldown.</summary>

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -65,7 +66,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 var identity = Make.RuntimeIdentity(name, set);
                 identity.Affiliation = new List<Tag> { side };
-                identity.Auras = new List<AuraEntry>(own);
+                identity.Components = own.Select(aura => (AbstractEntityComponent)new AuraEntityComponent { Aura = aura }).ToList();
                 var runtime = new RuntimeGameplayAbilitySystem(identity);
                 World.Register(runtime);
                 World.Invariants.Observe(runtime);
@@ -75,7 +76,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 var mono = World.NewMonoEntity(set, name);
                 mono.EntityData.Affiliation = new List<Tag> { side };
-                mono.EntityData.Auras = new List<AuraEntry>(own);
+                mono.EntityData.Components = own.Select(aura => (AbstractEntityComponent)new AuraEntityComponent { Aura = aura }).ToList();
                 World.Register(mono);
                 World.Invariants.Observe(mono);
                 gas = mono;
