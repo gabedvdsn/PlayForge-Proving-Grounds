@@ -1224,6 +1224,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// An entity's Death section held one field, its whole Death, which drew a foldout of its own inside the section,
+        /// so the section opened onto another to open (FN-17). Death's fields stand in the section, each by its name.
+        /// </summary>
+        [Test]
+        public void FN_17_An_entitys_death_fields_stand_in_its_section()
+        {
+            var entity = ScriptableObject.CreateInstance<EntityIdentity>();
+            try
+            {
+                Inspect(entity, root =>
+                {
+                    var container = root.Q(name: "Death_CONTAINER");
+                    Assert.IsNotNull(container, "the inspector has a Death section");
+                    var fields = container.Query<PropertyField>().ToList();
+                    Assert.IsFalse(fields.Any(field => field.bindingPath == nameof(EntityIdentity.Death)),
+                        "no field of Death's whole, which drew a foldout inside the section");
+                    foreach (var path in new[] { "Policy", "DiesAtZeroHealth", "EndsEffectsTagged", "OnDeath", "OnRevive", "Body" })
+                        Assert.IsTrue(fields.Any(field => field.bindingPath == $"{nameof(EntityIdentity.Death)}.{path}"),
+                            $"its {path} stands in the section");
+                });
+            }
+            finally
+            {
+                Object.DestroyImmediate(entity);
+            }
+        }
+
+        /// <summary>
         /// Assets → Create → PlayForge lists its assets in an order of its own (FN-13): the Forge Project; then the assets
         /// The Forge lists first, in its order; then the numbers, rules and the tag library; then the lab's; then the Demo's
         /// roster, each group apart from the next by a line. Its entries were in no order, each at Unity's default, and a
