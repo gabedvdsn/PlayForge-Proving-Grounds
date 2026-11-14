@@ -184,6 +184,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var section = host.Build(project);
                 yield return Frames();
                 Assert.IsNotNull(section.Q<PropertyField>("Workers"), "its workers, every entity's, on the page");
+                Assert.IsNotNull(section.Q<PropertyField>("PurgeLevels"), "and its Purge Levels (FN-16)");
 
                 var fill = section.Q<Button>("FillRolesByName");
                 using (var click = NavigationSubmitEvent.GetPooled())

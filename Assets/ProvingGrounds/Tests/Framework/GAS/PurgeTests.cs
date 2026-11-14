@@ -1,0 +1,261 @@
+using System.Collections;
+using System.Collections.Generic;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+using ForgeAttribute = FarEmerald.PlayForge.Attribute;
+
+namespace FarEmerald.PlayForge.ProvingGrounds.Tests
+{
+    /// <summary>
+    /// FN-16, Decisions 79 and 80: purging. A purge takes the effects at its strength's tier of the project's Purge Levels or
+    /// under it, an effect at no tier never; only the kinds it names, by their tags; only those applied by whom it says,
+    /// against the one purged; and only those its filters take. An effect's Purges purge its target as it lands. A dead
+    /// entity takes no one else's effects, only those of its own, as its death's and its revive's.
+    /// </summary>
+    public class PurgeTests : ProvingGroundsTest
+    {
+        private ForgeAttribute health;
+        private Tag marked, basic, strong, buff, debuff, stun, red, blue;
+        private ForgeProject project, was;
+
+        [SetUp]
+        public void Tags()
+        {
+            health = Make.Attribute("Health");
+            marked = Make.NewTag("Test.FN16.Marked");
+            basic = Make.NewTag("Test.FN16.Purge.Basic");
+            strong = Make.NewTag("Test.FN16.Purge.Strong");
+            buff = Make.NewTag("Test.FN16.Status.Buff");
+            debuff = Make.NewTag("Test.FN16.Status.Debuff");
+            stun = Make.NewTag("Test.FN16.Status.Debuff.Stun");
+            red = Make.NewTag("Test.FN16.Red");
+            blue = Make.NewTag("Test.FN16.Blue");
+            project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.PurgeLevels.Tiers.Add(new PurgeTier { Tag = basic });
+            project.Settings.PurgeLevels.Tiers.Add(new PurgeTier { Tag = strong });
+            was = ForgeProject.Use(project);
+        }
+
+        [TearDown]
+        public void PutBack()
+        {
+            ForgeProject.Use(was);
+            Object.DestroyImmediate(project);
+        }
+
+        // An entity of a side, on either hub
+        private IGameplayAbilitySystem Sided(Hub hub, string name, Tag side)
+        {
+            var set = Make.Set(Make.Element(health, 100f, 100f, EAttributeOverflowPolicy.ZeroToBase));
+            if (hub == Hub.Runtime)
+            {
+                var identity = Make.RuntimeIdentity(name, set);
+                identity.Affiliation = new List<Tag> { side };
+                var runtime = new RuntimeGameplayAbilitySystem(identity);
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, name);
+            mono.EntityData.Affiliation = new List<Tag> { side };
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        // A lasting effect carrying the context tags given
+        private GameplayEffect Tagged(string name, params Tag[] tags)
+        {
+            var effect = Make.Effect(name, new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 10f });
+            effect.Tags.ContextTags = new List<Tag>(tags);
+            return effect;
+        }
+
+        private static bool Holds(IGameplayAbilitySystem gas, GameplayEffect effect)
+        {
+            foreach (var container in gas.GetEffectSystem().Shelf)
+                if (container.Spec.Base == effect) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// A purge takes the effects at its strength's tier or under it: a Basic purge the Basic, a Strong one the Strong as
+        /// well; an effect at no tier stays through both (Decision 80).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_purge_takes_the_effects_at_or_under_its_strength([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Sided(hub, "Hero", blue);
+            var foe = Sided(hub, "Foe", red);
+            var weak = Tagged("Weak", basic);
+            var hard = Tagged("Hard", strong);
+            var plain = Tagged("Plain");
+            await Frames.Step();
+            foreach (var effect in new[] { weak, hard, plain }) Assert.IsTrue(World.Apply(foe, hero, effect), $"{effect.name} lands");
+            await Frames.Step();
+
+            Assert.AreEqual(1, ForgePurge.Purge(hero, basic), "a Basic purge takes one");
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, weak), "the Basic effect");
+            Assert.IsTrue(Holds(hero, hard), "not the Strong");
+
+            Assert.AreEqual(1, ForgePurge.Purge(hero, strong), "a Strong purge takes the Strong");
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, hard), "gone");
+            Assert.IsTrue(Holds(hero, plain), "and an effect at no tier is never purged");
+        });
+
+        /// <summary>A purge of kinds takes only the effects carrying one of them, as a cleanse of debuffs leaves a buff.</summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_purge_takes_only_the_kinds_it_names([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Sided(hub, "Hero", blue);
+            var foe = Sided(hub, "Foe", red);
+            var curse = Tagged("Curse", basic, debuff);
+            var boon = Tagged("Boon", basic, buff);
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(foe, hero, curse) && World.Apply(foe, hero, boon));
+            await Frames.Step();
+
+            ForgePurge.Purge(hero, new EffectPurge { Strength = basic, Kinds = new List<Tag> { debuff } });
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, curse), "the debuff goes");
+            Assert.IsTrue(Holds(hero, boon), "the buff stays");
+        });
+
+        /// <summary>
+        /// A purge takes by who applied each effect, against the one purged: its enemies' effects, its allies', or its own.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_purge_takes_by_who_applied_each([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Sided(hub, "Hero", blue);
+            var friend = Sided(hub, "Friend", blue);
+            var foe = Sided(hub, "Foe", red);
+            var curse = Tagged("Curse", basic);
+            var blessing = Tagged("Blessing", basic);
+            var focus = Tagged("Focus", basic);
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(foe, hero, curse) && World.Apply(friend, hero, blessing) && World.Apply(hero, hero, focus));
+            await Frames.Step();
+
+            ForgePurge.Purge(hero, new EffectPurge { Strength = basic, AppliedBy = EPurgeRelation.Enemies });
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, curse), "its enemy's goes");
+            Assert.IsTrue(Holds(hero, blessing) && Holds(hero, focus), "its ally's and its own stay");
+
+            ForgePurge.Purge(hero, new EffectPurge { Strength = basic, AppliedBy = EPurgeRelation.Allies });
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, blessing), "then its ally's");
+            Assert.IsTrue(Holds(hero, focus), "and its own stays");
+        });
+
+        /// <summary>A purge's filter of its own spares what it says: Except Tagged leaves a stun a debuff purge would take.</summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_purges_filters_spare_what_they_say([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Sided(hub, "Hero", blue);
+            var foe = Sided(hub, "Foe", red);
+            var slow = Tagged("Slow", basic, debuff);
+            var stunned = Tagged("Stunned", basic, stun);
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(foe, hero, slow) && World.Apply(foe, hero, stunned));
+            await Frames.Step();
+
+            ForgePurge.Purge(hero, new EffectPurge
+            {
+                Strength = basic, Kinds = new List<Tag> { debuff },
+                Filters = new List<AbstractPurgeFilter> { new ExceptTaggedPurgeFilter { Tags = new List<Tag> { stun } } },
+            });
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, slow), "the slow, a debuff, goes");
+            Assert.IsTrue(Holds(hero, stunned), "the stun, a debuff too, spared");
+        });
+
+        /// <summary>An effect's Purges purge its target as it lands: a friend's dispel of debuffs, Strong, takes both curses.</summary>
+        [UnityTest]
+        public IEnumerator FN_16_An_effects_purges_purge_its_target_as_it_lands([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Sided(hub, "Hero", blue);
+            var friend = Sided(hub, "Friend", blue);
+            var foe = Sided(hub, "Foe", red);
+            var weakCurse = Tagged("Weak Curse", basic, debuff);
+            var hardCurse = Tagged("Hard Curse", strong, debuff);
+            var boon = Tagged("Boon", basic, buff);
+            var dispel = Make.Effect("Dispel", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
+            dispel.Purges = new EffectPurge { Strength = strong, Kinds = new List<Tag> { debuff } };
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(foe, hero, weakCurse) && World.Apply(foe, hero, hardCurse) && World.Apply(friend, hero, boon));
+            await Frames.Step();
+
+            Assert.IsTrue(World.Apply(friend, hero, dispel), "the dispel lands");
+            await Frames.Step(2);
+            Assert.IsFalse(Holds(hero, weakCurse) || Holds(hero, hardCurse), "and both curses go");
+            Assert.IsTrue(Holds(hero, boon), "the boon stays");
+        });
+
+        // An entity on either hub that dies at 0 Health and stays, its revive mending it whole
+        private IGameplayAbilitySystem Mortal(Hub hub, string name)
+        {
+            var set = Make.Set(Make.Element(health, 100f, 100f, EAttributeOverflowPolicy.ZeroToBase));
+            set.WorkerGroup.AnalysisWorkers.Add(new DeathWatcherAnalysisWorker
+            {
+                Target = health, Threshold = 0f, Comparison = EThresholdComparison.LessThanOrEqual, TriggerOnce = true,
+            });
+            var death = new EntityDeath
+            {
+                Policy = EDeathPolicy.Stay,
+                OnRevive = new List<GameplayEffect> { Make.Effect("Mend", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = 1000f }) },
+            };
+            if (hub == Hub.Runtime)
+            {
+                var identity = Make.RuntimeIdentity(name, set);
+                identity.Death = death;
+                var runtime = new RuntimeGameplayAbilitySystem(identity);
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, name);
+            mono.EntityData.Death = death;
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        private async Cysharp.Threading.Tasks.UniTask Kill(IGameplayAbilitySystem killer, IGameplayAbilitySystem entity)
+        {
+            var blow = Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1000f });
+            Assert.IsTrue(World.Apply(killer, entity, blow), "a mortal blow");
+            await Frames.Until(() => entity.IsDead, 10, "it dies");
+            await Frames.Step(2);
+        }
+
+        private GameplayEffect Mark(string name) => Make.Effect(name, new EffectConfig
+        {
+            Policy = EEffectDurationPolicy.Durational, Duration = 10f, GrantedTags = new List<Tag> { marked },
+        });
+
+        /// <summary>
+        /// A dead entity takes no one else's effects, as the dead in the games are untargetable; its own still land, as its
+        /// death's respawn timer and its revive's mend do; and revived, it takes others' again.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_16_The_dead_take_no_one_elses_effects([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Mortal(hub, "Hero");
+            var foe = Mortal(hub, "Foe");
+            await Frames.Step();
+
+            await Kill(foe, hero);
+            Assert.IsFalse(World.Apply(foe, hero, Mark("Curse")), "dead, it takes no one else's effect");
+            Assert.IsTrue(World.Apply(hero, hero, Mark("Own")), "but its own");
+
+            Assert.IsTrue(hero.Revive(), "it revives");
+            await Frames.Step(2);
+            Assert.AreEqual(100f, hero.TryGetAttributeValue(health, out var now) ? now.CurrentValue : -1f, 0.01f, "its revive's mend landing");
+            Assert.IsTrue(World.Apply(foe, hero, Mark("Curse")), "and alive, it takes others' again");
+        });
+    }
+}
