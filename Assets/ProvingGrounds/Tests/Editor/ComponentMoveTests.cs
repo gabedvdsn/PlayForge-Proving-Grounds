@@ -67,6 +67,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         [Test]
+        public void FN_14_An_older_abilitys_charges_and_toggle_move_into_components_as_it_loads()
+        {
+            var shieldPath = $"{Folder}/Shield.asset";
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<GameplayEffect>(), shieldPath);
+            var path = $"{Folder}/Ability.asset";
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<Ability>(), path);
+            AssetDatabase.SaveAssets();
+            var text = File.ReadAllText(path);
+
+            // As a save before components wrote it: its charges, recharge and toggle under their old names, three charges and
+            // the shield toggled
+            AssetDatabase.DeleteAsset(path);
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"legacyCharges:\n(\s+)Magnitude: \d+", "Charges:\n$1Magnitude: 3");
+            text = text.Replace("legacyRecharge:", "Recharge:")
+                .Replace("legacyToggles: {fileID: 0}", $"Toggles: {{fileID: 11400000, guid: {AssetDatabase.AssetPathToGUID(shieldPath)}, type: 2}}");
+            Assert.That(text, Does.Contain("Charges:").And.Contain("Toggles: {fileID: 11400000"), "the file as an older save wrote it");
+            File.WriteAllText(path, text);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var ability = AssetDatabase.LoadAssetAtPath<Ability>(path);
+
+            var charges = ability.Components.OfType<ChargesAbilityComponent>().ToArray();
+            Assert.AreEqual(1, charges.Length, "its charges are a Charges component as it loads");
+            Assert.AreEqual(3, charges[0].Charges.Magnitude, "three of them");
+            var toggles = ability.Components.OfType<ToggleAbilityComponent>().ToArray();
+            Assert.AreEqual(1, toggles.Length, "its toggle a Toggle component");
+            Assert.AreEqual(AssetDatabase.LoadAssetAtPath<GameplayEffect>(shieldPath), toggles[0].Effect, "toggling the shield");
+            Assert.AreEqual(3, ability.Charges.Magnitude, "which the ability reads as its charges");
+            Assert.IsTrue(((IMovesToComponents)ability).MovedToComponents, "and it says it moved");
+        }
+
+        [Test]
         public void FN_14_Move_to_Components_saves_each_asset_that_moved()
         {
             var effect = SavedWithAnOldAura<GameplayEffect>("Effect");

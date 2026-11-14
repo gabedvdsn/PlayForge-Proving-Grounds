@@ -122,7 +122,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var gas = Caster(hub);
             var shrapnel = Quick("Shrapnel");
             shrapnel.Cooldown = Cooldown("Shrapnel Cooldown", 1f);
-            shrapnel.Charges = 3;
+            shrapnel.Components.Add(new ChargesAbilityComponent { Charges = 3 });
             await Frames.Step();
             Give(gas, shrapnel);
             Assert.AreEqual(3, InHand(gas, shrapnel), "three in hand");
@@ -149,8 +149,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var gas = Caster(hub);
             var cast = Quick("Cast");
             cast.Cooldown = Cooldown("Cast Cooldown", 1f);
-            cast.Charges = 2;
-            cast.Recharge = new AllAtOnceRecharge();
+            cast.Components.Add(new ChargesAbilityComponent { Charges = 2, Recharge = new AllAtOnceRecharge() });
             await Frames.Step();
             Give(gas, cast);
 
@@ -173,8 +172,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Stepping(0.1f);
             var gas = Caster(hub);
             var potion = Quick("Potion");
-            potion.Charges = 2;
-            potion.Recharge = new LimitedUses();
+            potion.Components.Add(new ChargesAbilityComponent { Charges = 2, Recharge = new LimitedUses() });
             await Frames.Step();
             Give(gas, potion);
 

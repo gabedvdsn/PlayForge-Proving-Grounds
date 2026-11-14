@@ -342,7 +342,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var charged = LinkedAbility();
                 made.Add(charged);
                 charged.LinkMode = EAbilityLinkMode.Standalone;
-                charged.Charges = 3;
+                charged.Components.Add(new ChargesAbilityComponent { Charges = 3 });
                 Assert.IsNull(ProblemOf(charged, "never run out").Fix, "a problem that needs a choice has no quick fix");
             }
             finally

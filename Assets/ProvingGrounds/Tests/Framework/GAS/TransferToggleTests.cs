@@ -185,13 +185,36 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// A toggle puts its effect on as it's used, paying its cost, and takes it off as it's used again, paying nothing and
         /// asking no cost, and starting its cooldown.
         /// </summary>
+        /// <summary>
+        /// A toggle's effect comes off as its holder forgets the ability: it stayed on, though nothing could turn it off
+        /// (FN-14, the toggle a component whose Removed hears it).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_14_A_toggles_effect_comes_off_as_its_ability_is_forgotten([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Hero(hub, "Hero", manaValue: 15f);
+            var shield = Make.Effect("Mana Shield", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, GrantedTags = new List<Tag> { shielded } });
+            var toggle = Make.Ability("Mana Shield", Make.Stage(new ProbeAbilityTask(World, "Mana Shield")));
+            toggle.Components.Add(new ToggleAbilityComponent { Effect = shield });
+            await Frames.Step();
+            var abilities = hero.GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(toggle, 1, out _));
+
+            Assert.IsTrue(abilities.TryActivateAbility(toggle, out _), "it turns on");
+            await Frames.Step(2);
+            Assert.That(hero.GetTagCache().GetWeight(shielded), Is.GreaterThan(0), "its effect is on");
+            Assert.IsTrue(abilities.RemoveAbility(toggle), "the ability's forgotten");
+            await Frames.Step(2);
+            Assert.That(hero.GetTagCache().GetWeight(shielded), Is.LessThanOrEqualTo(0), "and its effect comes off with it");
+        });
+
         [UnityTest]
         public IEnumerator TW_20_A_toggle_turns_its_effect_on_and_off([Values] Hub hub) => Live(async () =>
         {
             var hero = Hero(hub, "Hero", manaValue: 15f);
             var shield = Make.Effect("Mana Shield", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, GrantedTags = new List<Tag> { shielded } });
             var toggle = Make.Ability("Mana Shield", Make.Stage(new ProbeAbilityTask(World, "Mana Shield")));
-            toggle.Toggles = shield;
+            toggle.Components.Add(new ToggleAbilityComponent { Effect = shield });
             toggle.AttributeCosts.Add(new AttributeCost { Attribute = mana, Amount = 10f });
             toggle.Cooldown = Make.Effect("Mana Shield Cooldown", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 0.3f });
             await Frames.Step();

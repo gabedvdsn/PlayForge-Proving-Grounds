@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 steal.Transfers.Add(Transfer(EImpactDelivery.OnApply, agility, null));
                 Assert.That(Messages(steal), Has.Some.StartsWith("Transfer 3: It names no attribute"), "nor one with nothing to get");
 
-                shield.Toggles = steal;
+                shield.Components.Add(new ToggleAbilityComponent { Effect = steal });
                 Assert.That(Messages(shield), Has.Some.Contains("toggles an Instant effect"), "an Instant effect is never on");
                 steal.DurationSpecification.DurationPolicy = EEffectDurationPolicy.Infinite;
                 Assert.That(Messages(shield), Has.None.Contains("toggles an Instant effect"), "a lasting one toggles");
@@ -82,8 +82,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 var impact = Fields(steal, "Impact");
                 Assert.That(impact.IndexOf("Transfers"), Is.EqualTo(impact.IndexOf("Lifesteal") + 1), $"Transfers after Lifesteal: {string.Join(", ", impact)}");
-                var activation = Fields(shield, "Activation");
-                Assert.That(activation, Does.Contain("Toggles"), $"an ability's Toggles: {string.Join(", ", activation)}");
+                Assert.That(Fields(shield, "Activation"), Has.No.Member("Toggles"), "an ability's toggle isn't in Activation");
+                shield.Components.Add(new ToggleAbilityComponent());
+                Assert.That(Fields(shield, "Components"), Does.Contain("Components"), "but in its Components section");
+                // A component's fields, as its drawer lays them out under its kind
+                var drawn = new AbilityComponentDrawer().CreatePropertyGUI(new SerializedObject(shield).FindProperty("Components.Array.data[0]"))
+                    .Query<PropertyField>().ToList().Select(field => field.name).ToList();
+                Assert.That(drawn, Does.Contain("Effect"), $"a Toggle component, its effect: {string.Join(", ", drawn)}");
             }
             finally
             {
