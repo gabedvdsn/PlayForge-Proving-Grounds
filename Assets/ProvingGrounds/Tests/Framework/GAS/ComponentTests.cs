@@ -30,6 +30,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             public override void Tick(EffectComponentContext ctx) => Heard.Add("Tick");
             public override void Hit(EffectComponentContext ctx) => Heard.Add("Hit");
             public override void End(EffectComponentContext ctx) => Heard.Add("End");
+            public override void Death(EffectComponentContext ctx) => Heard.Add("Death");
         }
 
         private sealed class HearingAbility : AbstractAbilityComponent
@@ -160,6 +161,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual("Land", Heard.First(), "an instant effect's component hears it land");
             Assert.That(Heard, Has.Member("End"), "and end at once");
             Assert.That(Heard, Has.No.Member("Tick"), "with no tick");
+        });
+
+        /// <summary>An effect's components hear the one it's on die, while it's on them, as Spread does (FN-14).</summary>
+        [UnityTest]
+        public IEnumerator FN_14_An_effects_components_hear_the_one_its_on_die([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Entity(hub, new EntityDeath { Policy = EDeathPolicy.Stay });
+            var mark = Make.Effect("Mark", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
+            mark.Components.Add(new HearingEffect());
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(hero, hero, mark), "a lasting mark lands");
+            await Frames.Step();
+            Assert.That(Heard, Has.No.Member("Death"), "nothing has died");
+
+            await Kill(hero);
+            Assert.That(Heard, Has.Member("Death"), "its component hears the one it's on die");
         });
 
         [UnityTest]
