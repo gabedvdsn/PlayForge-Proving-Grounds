@@ -237,6 +237,107 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Policy = EEffectDurationPolicy.Durational, Duration = 10f, GrantedTags = new List<Tag> { marked },
         });
 
+        // A staying entity of a side, its death as given, mortal and mended as it revives
+        private IGameplayAbilitySystem Dying(Hub hub, string name, Tag side, EntityDeath death)
+        {
+            var set = Make.Set(Make.Element(health, 100f, 100f, EAttributeOverflowPolicy.ZeroToBase));
+            set.WorkerGroup.AnalysisWorkers.Add(new DeathWatcherAnalysisWorker
+            {
+                Target = health, Threshold = 0f, Comparison = EThresholdComparison.LessThanOrEqual, TriggerOnce = true,
+            });
+            death.Policy = EDeathPolicy.Stay;
+            if (hub == Hub.Runtime)
+            {
+                var identity = Make.RuntimeIdentity(name, set);
+                identity.Affiliation = new List<Tag> { side };
+                identity.Death = death;
+                var runtime = new RuntimeGameplayAbilitySystem(identity);
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, name);
+            mono.EntityData.Affiliation = new List<Tag> { side };
+            mono.EntityData.Death = death;
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        // A hero holding each kind of effect a death reads: its ability's cooldown, an item's lent effect, a foe's Basic
+        // curse, a foe's Strong hex, a foe's mark at no tier, and a focus of its own at no tier
+        private async Cysharp.Threading.Tasks.UniTask<(GameplayEffect Cooldown, GameplayEffect Lent, GameplayEffect Curse, GameplayEffect Hex,
+            GameplayEffect Mark, GameplayEffect Focus)> Holding(IGameplayAbilitySystem hero, IGameplayAbilitySystem foe)
+        {
+            var cooldown = Make.Effect("Strike Cooldown", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 60f });
+            var strike = Make.Ability("Strike", Make.Stage());
+            strike.Cooldown = cooldown;
+            var lent = Make.Effect("Ward", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
+            var amulet = Make.Item("Amulet");
+            amulet.GrantedEffects.Add(lent);
+            var curse = Tagged("Curse", basic);
+            var hex = Tagged("Hex", strong);
+            var mark = Tagged("Mark");
+            var focus = Tagged("Focus");
+            await Frames.Step();
+
+            var abilities = hero.GetAbilitySystem();
+            Assert.That(abilities.GiveAbility(strike, 1, out int index), "it knows Strike");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "and uses it");
+            Assert.IsTrue(hero.GetItemSystem().GiveAndEquipItem(amulet, out _), "it wears the amulet");
+            Assert.IsTrue(World.Apply(foe, hero, curse) && World.Apply(foe, hero, hex) && World.Apply(foe, hero, mark), "a foe's curse, hex and mark");
+            Assert.IsTrue(World.Apply(hero, hero, focus), "and a focus of its own");
+            await Frames.Until(() => Holds(hero, cooldown), 20, "Strike's on its cooldown");
+            return (cooldown, lent, curse, hex, mark, focus);
+        }
+
+        /// <summary>
+        /// A death purges all but what it keeps: the categories its project keeps, a cooldown and a lent effect, whatever
+        /// their tiers; the tiers its project keeps, as a Strong hex; and nothing at no tier, as a foe's mark and its own focus.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_death_purges_all_but_what_it_keeps([Values] Hub hub) => Live(async () =>
+        {
+            project.Settings.PurgeLevels.Tiers[1].KeptOnDeath = true;
+            var hero = Dying(hub, "Hero", blue, new EntityDeath());
+            var foe = Sided(hub, "Foe", red);
+            var held = await Holding(hero, foe);
+
+            await Kill(foe, hero);
+            Assert.IsTrue(Holds(hero, held.Cooldown), "its cooldown, a category its project keeps, stays");
+            Assert.IsTrue(Holds(hero, held.Lent), "and its amulet's ward, lent");
+            Assert.IsTrue(Holds(hero, held.Hex), "and the Strong hex, at a tier its project keeps");
+            Assert.IsFalse(Holds(hero, held.Curse), "the Basic curse goes");
+            Assert.IsFalse(Holds(hero, held.Mark), "and the mark, at no tier");
+            Assert.IsFalse(Holds(hero, held.Focus), "and its own focus, its own not kept");
+        });
+
+        /// <summary>
+        /// A death keeps what it says of its own: here not its project's, but its own effects and the Basic tier; and a death
+        /// that doesn't purge keeps all.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_16_A_death_keeps_what_it_says([Values] Hub hub) => Live(async () =>
+        {
+            var hero = Dying(hub, "Hero", blue, new EntityDeath
+            {
+                KeepsAsProject = false, KeepsCategories = EEffectCategory.Own, KeepsTiers = new List<Tag> { basic },
+            });
+            var foe = Sided(hub, "Foe", red);
+            var held = await Holding(hero, foe);
+
+            await Kill(foe, hero);
+            Assert.IsTrue(Holds(hero, held.Focus), "its own focus, a category it keeps");
+            Assert.IsTrue(Holds(hero, held.Curse), "the Basic curse, a tier it keeps");
+            Assert.IsFalse(Holds(hero, held.Cooldown), "its cooldown, not kept, goes");
+            Assert.IsFalse(Holds(hero, held.Hex), "and the Strong hex");
+
+            var keeper = Dying(hub, "Keeper", blue, new EntityDeath { Purges = false });
+            var kept = await Holding(keeper, foe);
+            await Kill(foe, keeper);
+            Assert.IsTrue(Holds(keeper, kept.Mark) && Holds(keeper, kept.Curse) && Holds(keeper, kept.Focus), "a death that doesn't purge keeps all");
+        });
+
         /// <summary>
         /// A dead entity takes no one else's effects, as the dead in the games are untargetable; its own still land, as its
         /// death's respawn timer and its revive's mend do; and revived, it takes others' again.

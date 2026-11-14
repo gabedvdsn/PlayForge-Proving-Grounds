@@ -1383,7 +1383,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             // An effect matched by its tags, as a cleanse matches it: by its asset tag, a context tag or a tag it grants
             foreach (var (type, field) in new[] { ("GameplayEffectTags", "RemovesEffectsTagged"), ("GameplayEffectTags", "BlocksEffectsTagged"),
-                         ("EntityDeath", "EndsEffectsTagged"), ("TrackedImpactKind", "Tagged"), ("AssetPartKind", "Tagged") })
+                         ("TrackedImpactKind", "Tagged"), ("AssetPartKind", "Tagged") })
                 Assert.That(ContextsOf(type, field), Is.SupersetOf(new[] { ForgeContext.AssetTag, ForgeContext.ContextTag, ForgeContext.Granted }),
                     $"{type}.{field} reads an effect's asset tag, context tags and granted tags");
             // An ability matched by its tags, and an effect by a modifier's rule: by its asset tag or a context tag

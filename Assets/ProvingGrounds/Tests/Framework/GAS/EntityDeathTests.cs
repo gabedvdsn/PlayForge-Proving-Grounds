@@ -96,26 +96,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>
-        /// A staying entity dies and stays: registered, dead, its buffs ended by their tag, its cooldown going on, its
-        /// abilities refused.
+        /// A staying entity dies and stays: registered, dead, its buff purged, its ability's cooldown going on, as a death
+        /// keeps cooldowns (FN-16; its buffs ended by their tag before), its abilities refused.
         /// </summary>
         [UnityTest]
         public IEnumerator TW_4_A_staying_entity_dies_and_stays([Values] Hub hub) => Live(async () =>
         {
             buffs = Make.NewTag("Test.TW4.Buff");
-            var hero = Entity(hub, new EntityDeath { Policy = EDeathPolicy.Stay, EndsEffectsTagged = new List<Tag> { buffs } });
+            var hero = Entity(hub, new EntityDeath { Policy = EDeathPolicy.Stay });
             var buff = Make.Effect("Buff", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, GrantedTags = new List<Tag> { buffs } });
             var cooldown = Make.Effect("Cooldown", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 60f });
             var ability = Make.Ability("Strike", Make.Stage());
+            ability.Cooldown = cooldown;
             await Frames.Step();
-            Assert.IsTrue(World.Apply(hero, hero, buff) && World.Apply(hero, hero, cooldown), "a buff and a cooldown");
+            Assert.IsTrue(World.Apply(hero, hero, buff), "a buff");
             Assert.That(hero.GetAbilitySystem().GiveAbility(ability, 1, out int index), "and an ability");
+            Assert.IsTrue(hero.GetAbilitySystem().TryActivateAbility(hero.GetAbilitySystem().CreateActivationRequest(index)), "used");
+            await Frames.Until(() => Has(hero, cooldown), 20, "and on its cooldown");
 
             await Kill(hero);
 
             Assert.IsTrue(hero.IsDead, "dead");
             Assert.That(ForgeEntities.Live, NUnit.Framework.Has.Member(hero), "and still here");
-            Assert.IsFalse(Has(hero, buff), "its buff ended, by its tag");
+            Assert.IsFalse(Has(hero, buff), "its buff purged");
             Assert.IsTrue(Has(hero, cooldown), "its cooldown going on");
             Assert.IsFalse(hero.GetAbilitySystem().TryActivateAbility(hero.GetAbilitySystem().CreateActivationRequest(index)),
                 "its abilities refused");

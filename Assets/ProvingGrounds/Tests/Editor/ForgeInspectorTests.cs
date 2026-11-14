@@ -1240,7 +1240,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var fields = container.Query<PropertyField>().ToList();
                     Assert.IsFalse(fields.Any(field => field.bindingPath == nameof(EntityIdentity.Death)),
                         "no field of Death's whole, which drew a foldout inside the section");
-                    foreach (var path in new[] { "Policy", "DiesAtZeroHealth", "EndsEffectsTagged", "OnDeath", "OnRevive", "Body" })
+                    foreach (var path in new[] { "Policy", "DiesAtZeroHealth", "Purges", "KeepsAsProject", "KeepsTiers", "KeepsCategories", "OnDeath", "OnRevive", "Body" })
                         Assert.IsTrue(fields.Any(field => field.bindingPath == $"{nameof(EntityIdentity.Death)}.{path}"),
                             $"its {path} stands in the section");
                 });
