@@ -48,7 +48,34 @@ MonoBehaviour:
         RealMagnitude: 2
         Scaler:
           rid: -2
+      ChanceRoll:
+        PseudoRandom: 0
+        OwnLuck: 0
+        Luck:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
       Target: 0
+    ChanceToActivate:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    ActivationRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
+    ProcCoefficient:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    IgnoresCrowdControl: []
     Textures: []
   Tags:
     AssetTag:
@@ -112,6 +139,7 @@ MonoBehaviour:
   MaxLevel: 4
   IgnoreWhenLevelZero: 1
   Cost: {fileID: 0}
+  AttributeCosts: []
   Cooldown: {fileID: 0}
   WorkerGroup:
     Name: Workers
@@ -120,6 +148,8 @@ MonoBehaviour:
     TagWorkers: []
     AnalysisWorkers: []
   OnHit: []
+  Modifiers: []
+  Components: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -150,9 +180,14 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
+        UseCastRange: 1
         DetectionLayers:
           serializedVersion: 2
           m_Bits: 4294967295
+        Around: 0
+        Flat: 1
+        UsePhysics: 0
+        IncludeSelf: 0
         ExcludeDead: 1
     - rid: 2403794372806049879
       type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
@@ -171,6 +206,7 @@ MonoBehaviour:
         RecordLandedAs:
           Name: 
           DisplayName: 
+        UseResolveOrder: 1
     - rid: 2403794372806049881
       type: {class: CooldownValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data: 

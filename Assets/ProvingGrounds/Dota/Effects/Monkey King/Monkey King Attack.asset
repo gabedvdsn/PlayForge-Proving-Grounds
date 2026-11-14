@@ -19,12 +19,16 @@ MonoBehaviour:
   Definition:
     Name: Monkey King Attack
     Description: 'Monkey King''s attack: his Attack Damage, and 80 more while he
-      has charged hits, each spending a charge; Jingu Mastery Lifesteal heals him 30%
-      of what each deals. An uncharged hit adds a Jingu Mastery counter.'
+      has charged hits, each spending a charge; Jingu Mastery Lifesteal heals him
+      30% of what each deals. An uncharged hit adds a Jingu Mastery counter.'
     Visibility:
       Name: 
       DisplayName: 
     Textures: []
+    InheritFromOrigin: 0
+    OriginTexture:
+      Name: PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc
+      DisplayName: Primary
     RetentionGroup:
       Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
       DisplayName: Ignore
@@ -36,28 +40,16 @@ MonoBehaviour:
     GrantedTags: []
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
+  Purges:
+    Strength:
+      Name: 
+      DisplayName: 
+    Kinds: []
+    AppliedBy: 7
+    Filters: []
   GrantedAbilities: []
-  SideChange:
-    Changes: 0
-    Source: 0
-    Sides: []
-    Priority: 0
-    Interrupts: 0
   OnHit: []
   Modifiers: []
-  Auras: []
-  Area:
-    Radius:
-      Magnitude: 0
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-    Flat: 1
-    Takes: 1
-    IncludeCaster: 0
-    MaxTargets: 0
-    UseResolveOrder: 1
-  Transfers: []
   OwnProcCoefficient: 0
   ProcCoefficient:
     Magnitude: 1
@@ -142,6 +134,7 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  Components: []
   WorkerGroup:
     Name: Workers
     AttributeWorkers: []
@@ -333,21 +326,6 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
-        legacyCondition: -1
-        legacyTagQuery:
-          Tag:
-            Name: 
-            DisplayName: 
-          Operator: 5
-          Magnitude: 0
-          MatchMode: 0
-        legacyAttribute: {fileID: 0}
-        legacyThreshold: NaN
-        legacyComparison: 0
-        TrueScaler:
-          rid: -2
-        FalseScaler:
-          rid: -2
     - rid: 2403794368834043936
       type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:

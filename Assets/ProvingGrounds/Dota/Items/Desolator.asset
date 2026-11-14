@@ -60,6 +60,8 @@ MonoBehaviour:
       DisplayName: Damage.Dota.Attack
     When:
       rid: -2
+  Modifiers: []
+  Components: []
   references:
     version: 2
     RefIds:

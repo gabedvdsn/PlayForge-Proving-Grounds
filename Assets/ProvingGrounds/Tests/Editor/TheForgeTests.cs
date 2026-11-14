@@ -1239,60 +1239,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(each.Value.Replace(" ", ""), each.Key, $"{each.Key} reads as its value, {each.Value}");
         }
 
-        /// <summary>
-        /// A Tag Library keeps the contexts its tags are declared for as text, and a field may name one as text, so a
-        /// context renamed would leave them naming one nothing offers (TAG-6). An old context reads as its new one: a pass
-        /// moves a library's, Trigger to Event, Data to each kind of key it held, one dropped gone, and a field's in code
-        /// reads so too. No context of the project's own can take an old name.
-        /// </summary>
-        [Test]
-        public void TAG_6_An_old_context_reads_as_its_new_one()
-        {
-            const string folder = "Assets/TAG-6 Contexts";
-            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "TAG-6 Contexts");
-            try
-            {
-                ForgeTagLibrary.Entry Declared(string name, params string[] contexts) =>
-                    new ForgeTagLibrary.Entry { Name = name, Contexts = contexts.ToList() };
-                var library = ScriptableObject.CreateInstance<ForgeTagLibrary>();
-                library.Entries = new List<ForgeTagLibrary.Entry>
-                {
-                    Declared("Test.TAG6.Event", "Trigger"),
-                    Declared("Test.TAG6.Group", "Impact Retention", "Granted"),
-                    Declared("Test.TAG6.Key", "Data"),
-                    Declared("Test.TAG6.Guessed", "Ability"),
-                    Declared("Test.TAG6.Required", "Required", "Granted"),
-                };
-                var path = $"{folder}/Tag Library.asset";
-                AssetDatabase.CreateAsset(library, path);
-                AssetDatabase.SaveAssets();
-
-                var migrate = EditorType("ForgeTagContexts").GetMethod("MigrateLibraries", AnyStatic);
-                Assert.IsNotNull(migrate, "a pass moves a library's old contexts to their new names");
-                migrate.Invoke(null, null);
-
-                List<string> Of(string name) => library.Entries.First(entry => entry.Name == name).Contexts;
-                Assert.That(Of("Test.TAG6.Event"), Is.EqualTo(new[] { "Event" }), "Trigger is Event");
-                Assert.That(Of("Test.TAG6.Group"), Is.EqualTo(new[] { "Retention Group", "Granted" }), "Impact Retention is Retention Group");
-                Assert.That(Of("Test.TAG6.Key"), Is.EquivalentTo(new[] { "Data Key", "Local Data Key", "Worker Key", "Set By Caller Key" }),
-                    "Data is each kind of key it held");
-                Assert.That(Of("Test.TAG6.Guessed"), Is.Empty, "a context dropped goes, which leaves its tag Universal");
-                Assert.That(Of("Test.TAG6.Required"), Is.EqualTo(new[] { "Granted" }), "and two that merged are one");
-                Assert.IsFalse(EditorUtility.IsDirty(library), "the pass saved the library");
-                StringAssert.Contains("Retention Group", System.IO.File.ReadAllText(path), "as it reads on disk");
-
-                Assert.That(new ForgeTagContext("Trigger", "Data Key").Context, Is.EqualTo(new[] { "Event", "Data Key" }),
-                    "a field naming an old context in code reads the new one");
-                var whyNot = (string)EditorType("ForgeTagContexts").GetMethod("WhyNotContext", AnyStatic).Invoke(null, new object[] { "Trigger" });
-                StringAssert.Contains("Event", whyNot ?? "", "and no context of the project's own takes an old name");
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(folder);
-                ForgeTagRegistry.MarkDirty();
-            }
-        }
-
         // ═══════════════════════════════════════════════════════════════════════════
         // TAG-3: each field's contexts
         // ═══════════════════════════════════════════════════════════════════════════

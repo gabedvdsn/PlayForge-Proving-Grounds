@@ -24,6 +24,10 @@ MonoBehaviour:
       Name: 
       DisplayName: 
     Textures: []
+    InheritFromOrigin: 0
+    OriginTexture:
+      Name: PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc
+      DisplayName: Primary
     RetentionGroup:
       Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
       DisplayName: Ignore
@@ -35,12 +39,29 @@ MonoBehaviour:
     GrantedTags: []
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
+  Purges:
+    Strength:
+      Name: 
+      DisplayName: 
+    Kinds: []
+    AppliedBy: 7
+    Filters: []
   GrantedAbilities: []
+  OnHit: []
+  Modifiers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 0}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -49,6 +70,14 @@ MonoBehaviour:
       RealMagnitude: 3
       Scaler:
         rid: 2403794368834043904
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -99,6 +128,13 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  Components: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -140,6 +176,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -194,21 +234,6 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
-        legacyCondition: -1
-        legacyTagQuery:
-          Tag:
-            Name: 
-            DisplayName: 
-          Operator: 5
-          Magnitude: 0
-          MatchMode: 0
-        legacyAttribute: {fileID: 0}
-        legacyThreshold: NaN
-        legacyComparison: 0
-        TrueScaler:
-          rid: -2
-        FalseScaler:
-          rid: -2
     - rid: 2403794368834043905
       type: {class: StackBoundsConfig, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -270,6 +295,7 @@ MonoBehaviour:
         OnMaxPolicy: 0
         OverflowEffects:
         - {fileID: 11400000, guid: cf152c0992d80ca4ebca4767a2a0f063, type: 2}
+        OverflowLandsOn: 0
         DenyRefreshOnOverflow: 0
         ClearStacksOnOverflow: 1
     - rid: 2403794368834043906
@@ -278,6 +304,9 @@ MonoBehaviour:
         On: 0
         Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
         What: 0
+        Groups:
+          Read: 0
+          Groups: []
         Comparison: 5
         Value:
           Magnitude: 0

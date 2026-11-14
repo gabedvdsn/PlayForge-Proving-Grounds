@@ -85,25 +85,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         }
 
         /// <summary>
-        /// The magnitude classes are the number types now. Their old names stay a version as obsolete subclasses, so code
-        /// that names them compiles and reads as it did (NUM-1).
+        /// A number keeps the fields it's saved by, which every asset's numbers are written in (NUM-1). The magnitude
+        /// classes' old names, which stayed a version as obsolete subclasses, went with the legacy code (FN-21).
         /// </summary>
         [Test]
-        public void NUM_1_The_magnitude_classes_old_names_still_read()
+        public void NUM_1_A_number_keeps_the_fields_it_is_saved_by()
         {
-#pragma warning disable CS0618
-            Assert.IsTrue(typeof(ScalerMagnitudeOperation).IsSubclassOf(typeof(ScalableFloat)), "the float magnitude is a ScalableFloat");
-            Assert.IsTrue(typeof(ScalerIntegerMagnitudeOperation).IsSubclassOf(typeof(ScalableInt)), "the whole one a ScalableInt");
-            Assert.IsNotNull(System.Attribute.GetCustomAttribute(typeof(ScalerMagnitudeOperation), typeof(ObsoleteAttribute)), "and both are obsolete");
-            Assert.IsNotNull(System.Attribute.GetCustomAttribute(typeof(ScalerIntegerMagnitudeOperation), typeof(ObsoleteAttribute)));
-
-            ScalableFloat old = new ScalerMagnitudeOperation
-            {
-                Magnitude = 2f, RealMagnitude = EMagnitudeOperation.MultiplyWithScaler, Scaler = new ConstantScaler { Value = 3f },
-            };
-#pragma warning restore CS0618
-            Assert.AreEqual(6f, old.Evaluate(default(NumberContext)), "one made by its old name reads as it did");
-
             foreach (var name in new[] { "Magnitude", "RealMagnitude", "Scaler" })
                 Assert.IsNotNull(typeof(ScalableFloat).GetField(name), $"a number keeps the magnitude's saved {name}");
             foreach (var name in new[] { "Magnitude", "RealMagnitude", "Scaler", "Rounding" })

@@ -13,7 +13,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
     /// TW-15 in the inspectors: a holder's lifesteal its Lifesteal attribute, with no list of its own (FN-15), and an effect
-    /// with no lifesteal of its own (FN-22); and an attribute's Gains Scaled By. The Problems view names an older save's list.
+    /// with no lifesteal of its own (FN-22); and an attribute's Gains Scaled By.
     /// </summary>
     public class CommonRulesEditorTests
     {
@@ -79,40 +79,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(mask);
                 Object.DestroyImmediate(strike);
                 Object.DestroyImmediate(health);
-            }
-        }
-
-        /// <summary>
-        /// An older save's Lifesteal list heals no more, a holder's lifesteal being its Lifesteal: kept, hidden, under its
-        /// name, and the Problems view says where one is, on an item, an ability or an entity (FN-15).
-        /// </summary>
-        [Test]
-        public void FN_15_Problems_say_where_an_older_lifesteal_list_heals_no_more()
-        {
-            foreach (var holder in new ScriptableObject[]
-                     {
-                         ScriptableObject.CreateInstance<Item>(), ScriptableObject.CreateInstance<Ability>(), ScriptableObject.CreateInstance<EntityIdentity>(),
-                     })
-            {
-                try
-                {
-                    var messages = ForgeValidator.Check(holder).Select(problem => problem.Message).ToList();
-                    Assert.That(messages, Has.None.Contains("older save's Lifesteal"), $"a {holder.GetType().Name} with none is no problem");
-
-                    // As an older save left it: an entry in its list, under the list's name
-                    var serialized = new SerializedObject(holder);
-                    var list = serialized.FindProperty("Lifesteal") ?? serialized.FindProperty("legacyLifesteal");
-                    Assert.IsNotNull(list, $"a {holder.GetType().Name} keeps an older save's list");
-                    list.arraySize = 1;
-                    serialized.ApplyModifiedPropertiesWithoutUndo();
-
-                    messages = ForgeValidator.Check(holder).Select(problem => problem.Message).ToList();
-                    Assert.That(messages, Has.Some.Contains("older save's Lifesteal"), $"one with an entry: {string.Join(" | ", messages)}");
-                }
-                finally
-                {
-                    Object.DestroyImmediate(holder);
-                }
             }
         }
     }

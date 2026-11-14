@@ -24,6 +24,10 @@ MonoBehaviour:
       Name: 
       DisplayName: 
     Textures: []
+    InheritFromOrigin: 0
+    OriginTexture:
+      Name: PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc
+      DisplayName: Primary
     RetentionGroup:
       Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
       DisplayName: Ignore
@@ -35,12 +39,29 @@ MonoBehaviour:
     GrantedTags: []
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
+  Purges:
+    Strength:
+      Name: 
+      DisplayName: 
+    Kinds: []
+    AppliedBy: 7
+    Filters: []
   GrantedAbilities: []
+  OnHit: []
+  Modifiers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     TargetImpact: 0
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -49,6 +70,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -60,6 +89,7 @@ MonoBehaviour:
     Packets:
     - Policy: 0
       ContainedEffect: {fileID: 11400000, guid: b4ef142c5b1b73b49b70b60d51660f7a, type: 2}
+      LandsOn: 0
   DurationSpecification:
     DurationPolicy: 0
     DurationOperation:
@@ -100,6 +130,13 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  Components: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -141,6 +178,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -230,6 +271,10 @@ MonoBehaviour:
         CaptureFrom: 1
         CaptureWhen: 1
         CaptureWhat: 0
+        Groups:
+          Read: 0
+          Groups: []
+        ReadAs: 0
     - rid: 2403794368834043914
       type: {class: ScalerGroup, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:

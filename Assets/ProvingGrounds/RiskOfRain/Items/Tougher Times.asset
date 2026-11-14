@@ -58,8 +58,7 @@ MonoBehaviour:
         rid: -2
       Changes:
       - rid: 2403794399030411265
-  Auras: []
-  Lifesteal: []
+  Components: []
   references:
     version: 2
     RefIds:
@@ -138,6 +137,7 @@ MonoBehaviour:
             RealMagnitude: 2
             Scaler:
               rid: -2
+        Stops: 0
     - rid: 2403794399030411282
       type: {class: StackingCurveKind, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:

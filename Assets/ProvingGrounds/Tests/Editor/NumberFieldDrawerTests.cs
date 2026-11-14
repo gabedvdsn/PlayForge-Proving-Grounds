@@ -13,9 +13,9 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// FEAT-29's number field in the inspector, its Problems rule and its migration: the kind menu by category, offering
-    /// only the kinds the field's context resolves; the one-line summary; percent fields; a kind found where its field
-    /// can't resolve it; and a float saved before its field became a number.
+    /// FEAT-29's number field in the inspector and its Problems rule: the kind menu by category, offering only the kinds
+    /// the field's context resolves; the one-line summary; percent fields; and a kind found where its field can't resolve
+    /// it.
     /// </summary>
     public class NumberFieldDrawerTests
     {
@@ -254,7 +254,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.That(picker.choices, Is.SupersetOf(new[] { "Range", "Share", "Threshold", "PlainCap" }), "the object's other number fields");
                     Assert.That(picker.choices, Has.No.Member("High"), "not itself");
                     Assert.That(picker.choices, Has.No.Member("Low"), "nor a field that reads it back");
-                    Assert.That(picker.choices, Has.No.Member("legacyThreshold"), "nor a hidden one");
                     Assert.AreEqual("Plain Cap", picker.formatListItemCallback("PlainCap"), "each by its name as the inspector writes it");
 
                     picker.value = "PlainCap";
@@ -694,234 +693,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // NUM-7: migration
-        // ═══════════════════════════════════════════════════════════════════════════
-
-        private const string Folder = "Assets/NumberFieldTests";
-
-        private static string ScriptGuid()
-        {
-            var made = ScriptableObject.CreateInstance<NumberFieldFixture>();
-            try
-            {
-                return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(made)));
-            }
-            finally
-            {
-                Object.DestroyImmediate(made);
-            }
-        }
-
-        // An asset as Unity writes one, of the fixture's class, with the fields given
-        private static string Yaml(string guid, string name, string fields) =>
-            "%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!114 &11400000\nMonoBehaviour:\n" +
-            "  m_ObjectHideFlags: 0\n  m_CorrespondingSourceObject: {fileID: 0}\n  m_PrefabInstance: {fileID: 0}\n" +
-            "  m_PrefabAsset: {fileID: 0}\n  m_GameObject: {fileID: 0}\n  m_Enabled: 1\n  m_EditorHideFlags: 0\n" +
-            $"  m_Script: {{fileID: 11500000, guid: {guid}, type: 3}}\n  m_Name: {name}\n  m_EditorClassIdentifier: \n" + fields;
-
-        /// <summary>
-        /// A float saved before its field became a number loads into the number, through the hidden legacy field the
-        /// owner moves on load; the upgrade command re-saves the asset in the new form, and it loads the same again (NUM-7).
-        /// </summary>
-        [Test]
-        public void NUM_7_A_float_saved_before_its_field_became_a_number_loads_into_it()
-        {
-            var path = $"{Folder}/Legacy.asset";
-            try
-            {
-                Directory.CreateDirectory(Folder);
-                File.WriteAllText(path, Yaml(ScriptGuid(), "Legacy", "  Threshold: 0.3\n"));
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
-
-                var loaded = AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path);
-                Assert.IsNotNull(loaded, "the old asset loads");
-                Assert.IsTrue(loaded.Threshold.IsConstant, "its float became a constant");
-                Assert.AreEqual(0.3f, loaded.Threshold.Constant, 0.0001f, "of the value it saved");
-
-                Assert.That(ForgeUpgrade.AssetsToUpgrade(Folder), Has.Member(path), "the upgrade command finds it");
-                Assert.AreEqual(1, ForgeUpgrade.Resave(new[] { path }), "and re-saves it");
-                var text = File.ReadAllText(path);
-                StringAssert.DoesNotContain("Threshold: 0.3", text, "the float is gone");
-                StringAssert.Contains("Magnitude: 0.3", text, "for the number's");
-
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
-                var again = AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path);
-                Assert.AreEqual(0.3f, again.Threshold.Constant, 0.0001f, "and it loads the same in the new form");
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(Folder);
-            }
-        }
-
-        /// <summary>
-        /// The upgrade command finds the assets that hold PlayForge data, by their class or the classes inside them, and
-        /// leaves others alone (NUM-7).
-        /// </summary>
-        [Test]
-        public void NUM_7_The_upgrade_command_finds_the_assets_that_hold_PlayForge_data()
-        {
-            try
-            {
-                Directory.CreateDirectory(Folder);
-                AssetDatabase.Refresh();
-                var fixture = ScriptableObject.CreateInstance<NumberFieldFixture>();
-                AssetDatabase.CreateAsset(fixture, $"{Folder}/Fixture.asset");
-                var effect = ScriptableObject.CreateInstance<GameplayEffect>();
-                AssetDatabase.CreateAsset(effect, $"{Folder}/Effect.asset");
-                var other = new Material(Shader.Find("Hidden/InternalErrorShader"));
-                AssetDatabase.CreateAsset(other, $"{Folder}/Other.mat");
-                AssetDatabase.SaveAssets();
-
-                var found = ForgeUpgrade.AssetsToUpgrade(Folder);
-                Assert.That(found, Has.Member($"{Folder}/Fixture.asset"), "an asset whose class holds PlayForge's numbers");
-                Assert.That(found, Has.Member($"{Folder}/Effect.asset"), "a PlayForge asset");
-                Assert.That(found, Has.No.Member($"{Folder}/Other.mat"), "and nothing else");
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(Folder);
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // NUM-23: scalers saved before their parameters were numbers
-        // ═══════════════════════════════════════════════════════════════════════════
-
-        private static string TypeOf(string name) => $"{{class: {name}, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}}";
-
-        private static string Reads(int rid) => $"    Magnitude: 1\n    RealMagnitude: 3\n    Scaler:\n      rid: {rid}\n";
-
-        // Six scalers as phase 2 saved them: the user's Culling Blade's Conditional, a Conditional with a scaler in each
-        // branch, a Clamped with nothing to clamp, a Randomized, a Set By Caller and a Threshold
-        private static readonly string OldScalers =
-            "  Range:\n" + Reads(101) + "  Share:\n" + Reads(102) + "  Low:\n" + Reads(103) +
-            "  High:\n" + Reads(104) + "  Floor:\n" + Reads(105) + "  Ceiling:\n" + Reads(106) +
-            "  references:\n    version: 2\n    RefIds:\n" +
-            "    - rid: -2\n      type: {class: , ns: , asm: }\n" +
-            $"    - rid: 101\n      type: {TypeOf("ConditionalScaler")}\n      data:\n" +
-            "        Name: \n        Configuration: 0\n        MaxLevel: 20\n        LevelValues:\n        - 300\n" +
-            "        Interpolation: 1\n        StretchOverLevels: 0\n        Behaviours: []\n        Condition: 3\n" +
-            "        TagCondition:\n          Tag:\n            Name: \n            DisplayName: \n" +
-            "          Operator: 5\n          Magnitude: 0\n          MatchMode: 0\n" +
-            "        CheckAttribute: {fileID: 0}\n        ThresholdValue: 300\n        Comparison: 1\n" +
-            "        TrueScaler:\n          rid: -2\n        FalseScaler:\n          rid: -2\n" +
-            $"    - rid: 102\n      type: {TypeOf("ConditionalScaler")}\n      data:\n" +
-            "        Condition: 0\n        TagCondition:\n          Tag:\n            Name: NUM23.Marked\n            DisplayName: \n" +
-            "          Operator: 5\n          Magnitude: 0\n          MatchMode: 0\n" +
-            "        CheckAttribute: {fileID: 0}\n        ThresholdValue: 50\n        Comparison: 5\n" +
-            "        TrueScaler:\n          rid: 107\n        FalseScaler:\n          rid: 108\n" +
-            $"    - rid: 103\n      type: {TypeOf("ClampedScaler")}\n      data:\n" +
-            "        LevelValues:\n        - 5\n        - 30\n        - 80\n        StretchOverLevels: 0\n" +
-            "        MinValue: 10\n        MaxValue: 50\n        Inner:\n          rid: -2\n" +
-            $"    - rid: 104\n      type: {TypeOf("RandomizedScaler")}\n      data:\n" +
-            "        LevelValues:\n        - 100\n        StretchOverLevels: 0\n        VarianceMode: 2\n" +
-            "        Variance: 0.25\n        MinMultiplier: 0.5\n        MaxMultiplier: 2\n        RollOncePerSpec: 1\n" +
-            $"    - rid: 105\n      type: {TypeOf("SetByCallerScaler")}\n      data:\n" +
-            "        Key:\n          Name: NUM23.Power\n          DisplayName: \n        Default: 7\n" +
-            $"    - rid: 106\n      type: {TypeOf("ThresholdScaler")}\n      data:\n" +
-            "        Thresholds:\n        - Level: 1\n          Value: 4\n          TierName: Bronze\n" +
-            "        - Level: 5\n          Value: 9\n          TierName: Silver\n        DefaultValue: 2\n" +
-            $"    - rid: 107\n      type: {TypeOf("ConstantScaler")}\n      data:\n        Value: 1.2\n" +
-            $"    - rid: 108\n      type: {TypeOf("SimpleScaler")}\n      data:\n        LevelValues:\n        - 5\n        StretchOverLevels: 0\n";
-
-        private static float At(AbstractScaler scaler, int level, int top = 5) =>
-            new ScalableFloat(scaler, 1f, EMagnitudeOperation.UseScaler).Evaluate(NumberContext.For(null, null, level, top));
-
-        // What each old scaler read, read from the asset as it loaded
-        private static void AssertReadsAsItWas(NumberFieldFixture loaded, string when)
-        {
-            var culling = loaded.Range.Scaler as ConditionalScaler;
-            Assert.IsNotNull(culling, $"{when}: a Conditional loads as one");
-            var below = culling.When as AttributeCondition;
-            Assert.IsNotNull(below, $"{when}: Target Attribute Threshold is an Attribute condition");
-            Assert.AreEqual(NumberSide.Target, below.On, $"{when}: on the target");
-            Assert.AreEqual(EComparisonOperator.LessOrEqual, below.Comparison, $"{when}: with its comparison");
-            Assert.AreEqual(300f, below.Value.Constant, $"{when}: against its threshold");
-            var own = culling.TrueValue.Scaler as SimpleScaler;
-            Assert.IsNotNull(own, $"{when}: with no True scaler, True reads the scaler's own values, by level");
-            Assert.AreEqual(new[] { 300f }, own.LevelValues, $"{when}: its values");
-            Assert.AreEqual(20, own.MaxLevel, $"{when}: over its levels");
-            Assert.AreEqual(EMagnitudeOperation.UseScaler, culling.TrueValue.RealMagnitude, $"{when}: as they are");
-            Assert.IsTrue(culling.FalseValue.IsConstant, $"{when}: with no False scaler, False reads 0");
-            Assert.AreEqual(0f, culling.FalseValue.Constant, $"{when}: 0");
-
-            var tagged = loaded.Share.Scaler as ConditionalScaler;
-            var tag = tagged?.When as TagCondition;
-            Assert.IsNotNull(tag, $"{when}: Source Tag is a Tag condition");
-            Assert.AreEqual(NumberSide.Caster, tag.On, $"{when}: on the caster");
-            Assert.AreEqual("NUM23.Marked", tag.Query.Tag.Name, $"{when}: of its tag");
-            Assert.AreEqual(1.2f, At(tagged.TrueValue.Scaler, 1), 0.0001f, $"{when}: a True scaler is the True number's kind");
-            Assert.AreEqual(5f, At(tagged.FalseValue.Scaler, 1), $"{when}: and a False one the False number's");
-
-            var clamped = loaded.Low.Scaler as ClampedScaler;
-            Assert.IsNotNull(clamped, $"{when}: a Clamped loads as one");
-            Assert.AreEqual(10f, clamped.MinValue.Constant, $"{when}: its floor");
-            Assert.AreEqual(50f, clamped.MaxValue.Constant, $"{when}: and its ceiling");
-            Assert.AreEqual(10f, At(clamped, 1, 3), $"{when}: with nothing to clamp, it clamps its own values: 5 raised to 10");
-            Assert.AreEqual(30f, At(clamped, 2, 3), $"{when}: 30 as it is");
-            Assert.AreEqual(50f, At(clamped, 3, 3), $"{when}: and 80 capped at 50");
-
-            var randomized = loaded.High.Scaler as RandomizedScaler;
-            Assert.IsNotNull(randomized, $"{when}: a Randomized loads as one");
-            Assert.AreEqual(0.25f, randomized.Variance.Constant, 0.0001f, $"{when}: its variance");
-            Assert.AreEqual(0.5f, randomized.MinMultiplier.Constant, 0.0001f, $"{when}: its least multiplier");
-            Assert.AreEqual(2f, randomized.MaxMultiplier.Constant, 0.0001f, $"{when}: and its most");
-
-            var caller = loaded.Floor.Scaler as SetByCallerScaler;
-            Assert.IsNotNull(caller, $"{when}: a Set By Caller loads as one");
-            Assert.AreEqual("NUM23.Power", caller.Key.Name, $"{when}: its key");
-            Assert.AreEqual(7f, caller.Default.Constant, $"{when}: and its default");
-
-            var threshold = loaded.Ceiling.Scaler as ThresholdScaler;
-            Assert.IsNotNull(threshold, $"{when}: a Threshold loads as one");
-            Assert.AreEqual(2, threshold.Thresholds.Length, $"{when}: with its tiers");
-            Assert.AreEqual(4f, threshold.Thresholds[0].Value.Constant, $"{when}: each tier's value");
-            Assert.AreEqual(9f, threshold.Thresholds[1].Value.Constant, $"{when}: the second's");
-            Assert.AreEqual("Silver", threshold.Thresholds[1].TierName, $"{when}: with its name");
-            Assert.AreEqual(2f, threshold.DefaultValue.Constant, $"{when}: and its default");
-            Assert.AreEqual(4f, At(threshold, 3), $"{when}: it reads the tier it's in");
-            Assert.AreEqual(9f, At(threshold, 5), $"{when}: and the next from its level");
-        }
-
-        /// <summary>
-        /// Scalers saved before their parameters were numbers load as they read (NUM-23): a Conditional's numbered
-        /// condition becomes a condition of the class it named, with its tag, attribute, comparison and threshold, and
-        /// each branch scaler becomes its number's kind, or, with no True scaler, a number of its own values by level, as
-        /// the user's Culling Blade has; a Clamped's bounds and what it clamped; a Randomized's variance and multipliers;
-        /// Set By Caller's default; and a Threshold's tiers and default. The upgrade command re-saves them in the new
-        /// form, which loads the same.
-        /// </summary>
-        [Test]
-        public void NUM_23_Scalers_saved_before_their_numbers_load_as_they_read()
-        {
-            var path = $"{Folder}/OldScalers.asset";
-            try
-            {
-                Directory.CreateDirectory(Folder);
-                File.WriteAllText(path, Yaml(ScriptGuid(), "OldScalers", OldScalers));
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
-
-                var loaded = AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path);
-                Assert.IsNotNull(loaded, "the old asset loads");
-                AssertReadsAsItWas(loaded, "loaded");
-
-                Assert.AreEqual(1, ForgeUpgrade.Resave(new[] { path }), "the upgrade command re-saves it");
-                var text = File.ReadAllText(path);
-                StringAssert.DoesNotContain("ThresholdValue:", text, "the Conditional's threshold is gone");
-                StringAssert.DoesNotContain("Condition: 3", text, "and its numbered condition");
-                StringAssert.Contains("class: AttributeCondition", text, "for a condition of its own");
-
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
-                AssertReadsAsItWas(AssetDatabase.LoadAssetAtPath<NumberFieldFixture>(path), "re-saved");
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(Folder);
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════════
         // NUM-24: the inspector for scalers' numbers
         // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1008,7 +779,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.That(picker.choices, Has.No.Member("MaxValue"), "not itself");
                     Assert.That(picker.choices, Has.No.Member("Share"), "nor the outer object's fields");
                     Assert.That(picker.choices, Has.No.Member("MaxLevel"), "nor those every scaler has");
-                    Assert.That(picker.choices, Has.No.Member("legacyMinValue"), "nor a hidden one");
                     Assert.That(field.Q<PropertyField>("MinValue").Q<PopupField<string>>("Kind").choices, Has.No.Member("Reach"),
                         "a bound offers only the kinds the outer field resolves, which has no target");
                 });

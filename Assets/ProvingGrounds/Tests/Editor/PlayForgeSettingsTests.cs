@@ -31,16 +31,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private ForgeProject previousProject;
         private string SettingsFile => AssetDatabase.GetAssetPath(project);
         private const string Prefix = "PlayForge_";
-        private static string ProjectTemplatesKey => Prefix + "TemplateRegistry_" + PlayerSettings.productGUID.ToString("N");
-
-        // A template whose asset is in another project, so no GUID here resolves it
-        private const string ForeignGuid = "0123456789abcdef0123456789abcdef";
 
         // The EditorPrefs entries the tests touch, by kind
         private static readonly string[] StringKeys =
         {
-            Prefix + "Path_Ability", Prefix + "Prefix_Ability", Prefix + "Postfix_Ability", Prefix + "TemplateRegistry",
-            Prefix + "EffectTemplate_Cost", Prefix + "EffectTemplate_Cooldown", Prefix + "LastTypeFilter",
             // The tables' column widths (ED-48), and the columns they hide (FN-7), which Use Defaults forgets
             Prefix + "Columns_Debugger.Entities", Prefix + "Columns_Debugger.Processes", Prefix + "Columns_Debugger.Tags",
             Prefix + "Columns_Debugger.Timeline", Prefix + "Columns_Forge.Assets", Prefix + "Columns_Forge.Tags", Prefix + "Columns_Problems",
@@ -50,26 +44,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         };
         private static readonly string[] BoolKeys =
         {
-            Prefix + "ShowFullTagPath", Prefix + "GroupTagsByRoot", Prefix + "RememberTypeFilter", Prefix + "ShowFileNames",
-            Prefix + "DoubleClickVisualize", Prefix + "AutoRefresh", Prefix + "ShowNotifications",
+            Prefix + "ShowFullTagPath", Prefix + "GroupTagsByRoot",
         };
-        private static readonly string[] IntKeys = { Prefix + "RecentlyCreatedRows", Prefix + "ForgeLogMinLevel" };
+        private static readonly string[] IntKeys = { Prefix + "ForgeLogMinLevel" };
 
         private readonly Dictionary<string, object> kept = new();
-        private string keptSettings;
         private readonly List<string> made = new();
 
         [SetUp]
         public void Keep()
         {
             kept.Clear();
-            foreach (var key in StringKeys.Append(ProjectTemplatesKey)) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetString(key) : null;
+            foreach (var key in StringKeys) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetString(key) : null;
             foreach (var key in BoolKeys) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetBool(key) : null;
             foreach (var key in IntKeys) kept[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetInt(key) : null;
-            keptSettings = EditorJsonUtility.ToJson(PlayForgeSettings.instance);
-
-            // ProjectSettings/PlayForgeSettings.asset's settings handed on already, so the project starts afresh
-            typeof(PlayForgeSettings).GetField("movedToProject", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(PlayForgeSettings.instance, true);
             Assume.That(AssetDatabase.IsValidFolder(ProjectFolder), Is.False, "the project's folder is free");
             AssetDatabase.CreateFolder("Assets", "ED-21 Project");
             project = ScriptableObject.CreateInstance<ForgeProject>();
@@ -91,8 +79,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 }
             }
             ForgeLog.MinimumLevel = ForgeLogSettingsBridge.CurrentLevel;
-            EditorJsonUtility.FromJsonOverwrite(keptSettings, PlayForgeSettings.instance);
-            PlayForgeSettings.instance.SaveSettings();
             PlayForgeSettings.UseProject(previousProject);
             AssetDatabase.DeleteAsset(ProjectFolder);
             foreach (var path in made) AssetDatabase.DeleteAsset(path);
@@ -159,44 +145,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual(machine, EditorPrefs.GetString(Prefix + "Path_Ability", "unset"), "the machine's EditorPrefs stay as they were");
             Assert.IsTrue(File.Exists(SettingsFile), "the project's asset keeps its settings");
             StringAssert.Contains("ED-21 Abilities", File.ReadAllText(SettingsFile), "which holds the folder");
-        }
-
-        /// <summary>
-        /// A project's first use takes the settings The Forge kept in EditorPrefs: each type's folder and file names, the
-        /// templates the project registered, which become its defaults, and the Cost and Cooldown templates. A template
-        /// whose asset is in another project is left out, and the entry every project shared stays as it was (ED-21, ED-22).
-        /// </summary>
-        [Test]
-        public void ED_21_A_project_takes_the_settings_it_kept_in_EditorPrefs()
-        {
-            var ability = Make<Ability>("Assets/ED-21 Template.asset");
-            var cost = Make<GameplayEffect>("Assets/ED-21 Cost.asset");
-            var abilityGuid = AssetDatabase.AssetPathToGUID("Assets/ED-21 Template.asset");
-            EditorPrefs.SetString(Prefix + "Path_Ability", "Assets/ED-21 Old");
-            EditorPrefs.SetString(Prefix + "Prefix_Ability", "Old_");
-            EditorPrefs.SetString(Prefix + "Postfix_Ability", "_1");
-            EditorPrefs.SetString(Prefix + "EffectTemplate_Cost", AssetDatabase.AssetPathToGUID("Assets/ED-21 Cost.asset"));
-            EditorPrefs.DeleteKey(Prefix + "EffectTemplate_Cooldown");
-            EditorPrefs.SetString(ProjectTemplatesKey,
-                "{\"Tags\":[],\"Collections\":[{\"TypeName\":\"Ability\",\"Templates\":[" +
-                $"{{\"AssetGUID\":\"{abilityGuid}\",\"TemplateTagName\":\"\",\"IsDefault\":true,\"DisplayName\":\"Here\"}}," +
-                $"{{\"AssetGUID\":\"{ForeignGuid}\",\"TemplateTagName\":\"\",\"IsDefault\":false,\"DisplayName\":\"Elsewhere\"}}]}}]}}");
-            const string shared = "{\"Collections\":[]}";
-            EditorPrefs.SetString(Prefix + "TemplateRegistry", shared);
-
-            var data = new PlayForgeSettingsData();
-            typeof(PlayForgeSettings).GetMethod("TakeMachineSettings", AnyStatic).Invoke(null, new object[] { data });
-
-            var abilities = data.NewAssets.Single(entry => entry.Type == nameof(Ability));
-            Assert.AreEqual("Assets/ED-21 Old", abilities.Folder, "the folder");
-            Assert.AreEqual("Old_", abilities.Prefix, "the prefix");
-            Assert.AreEqual("_1", abilities.Suffix, "the suffix");
-            var defaults = data.Defaults.Single(entry => entry.Type == nameof(Ability));
-            Assert.AreSame(ability, defaults.NewAsset, "the default template is the type's New Asset default");
-            Assert.That(defaults.Import, Is.EqualTo(new[] { ability }), "its templates are its Import defaults, without another project's");
-            Assert.AreSame(cost, data.CostEffect, "the Cost template");
-            Assert.IsNull(data.CooldownEffect, "and no Cooldown template, as none was set");
-            Assert.AreEqual(shared, EditorPrefs.GetString(Prefix + "TemplateRegistry"), "the shared entry stays for the other projects");
         }
 
         /// <summary>
@@ -270,8 +218,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 fullPaths.value = true;
                 Assert.IsTrue(EditorPrefs.GetBool(Prefix + "ShowFullTagPath", false), "a toggle sets its preference");
                 foreach (var key in BoolKeys) EditorPrefs.SetBool(key, !EditorPrefs.GetBool(key, true));
-                EditorPrefs.SetInt(Prefix + "RecentlyCreatedRows", 3);
-                EditorPrefs.SetString(Prefix + "LastTypeFilter", nameof(Ability));
                 EditorPrefs.SetString(Prefix + "Columns_Forge.Assets", "Type=120");
                 EditorPrefs.SetString(Prefix + "HiddenColumns_Forge.Assets", "Type");
                 ForgeLogSettingsBridge.SetLevel(ForgeLog.ELevel.Error);
@@ -283,7 +229,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     useDefaults.SendEvent(submit);
                 }
 
-                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "LastTypeFilter").Append(Prefix + "Columns_Forge.Assets")
+                Assert.That(BoolKeys.Concat(IntKeys).Append(Prefix + "Columns_Forge.Assets")
                         .Append(Prefix + "HiddenColumns_Forge.Assets").Where(EditorPrefs.HasKey),
                     Is.Empty, "Use Defaults leaves no preference set, a table's column widths and hidden columns among them (FN-7)");
                 Assert.IsFalse(fullPaths.value, "and the page shows the defaults");

@@ -48,6 +48,9 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit: []
+  Modifiers: []
+  Components: []
   references:
     version: 2
     RefIds:

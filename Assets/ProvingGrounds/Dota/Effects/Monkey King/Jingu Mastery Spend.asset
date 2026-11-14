@@ -23,6 +23,10 @@ MonoBehaviour:
       Name: 
       DisplayName: 
     Textures: []
+    InheritFromOrigin: 0
+    OriginTexture:
+      Name: PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc
+      DisplayName: Primary
     RetentionGroup:
       Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
       DisplayName: Ignore
@@ -34,37 +38,16 @@ MonoBehaviour:
     GrantedTags: []
     RemovesEffectsTagged: []
     BlocksEffectsTagged: []
+  Purges:
+    Strength:
+      Name: 
+      DisplayName: 
+    Kinds: []
+    AppliedBy: 7
+    Filters: []
   GrantedAbilities: []
-  SideChange:
-    Changes: 0
-    Source: 0
-    Sides: []
-    Priority: 0
-    Interrupts: 0
   OnHit: []
   Modifiers: []
-  Auras: []
-  Area:
-    Radius:
-      Magnitude: 0
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-    Flat: 1
-    Takes: 1
-    IncludeCaster: 0
-    MaxTargets: 0
-    UseResolveOrder: 1
-  Lifesteal:
-    Share:
-      Magnitude: 0
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-    Attribute: {fileID: 0}
-    When:
-      rid: -2
-  Transfers: []
   OwnProcCoefficient: 0
   ProcCoefficient:
     Magnitude: 1
@@ -143,6 +126,7 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  Components: []
   WorkerGroup:
     Name: Workers
     AttributeWorkers: []

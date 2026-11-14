@@ -20,3 +20,18 @@ MonoBehaviour:
   Abbreviation: DR
   Description: The share of each blow it takes off, as 0.2 for 20%
   Textures: []
+  Role: 0
+  AbsorbsFor: {fileID: 0}
+  DecayPerSecond:
+    Magnitude: 0
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
+  DecayAsShareOfBase: 0
+  FadesWithEffect: 0
+  GainsScaledBy: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }

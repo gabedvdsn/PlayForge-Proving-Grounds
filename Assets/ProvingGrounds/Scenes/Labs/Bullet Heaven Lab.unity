@@ -153,6 +153,9 @@ MonoBehaviour:
   SecondsBetweenRounds: 2
   Hub: 1
   Loop: 0
+  ShowBodies: 1
+  ShowCards: 1
+  Framing: 2.4
 --- !u!4 &1267880027
 Transform:
   m_ObjectHideFlags: 0

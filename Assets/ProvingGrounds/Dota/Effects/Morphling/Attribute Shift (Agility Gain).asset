@@ -24,6 +24,10 @@ MonoBehaviour:
       Name: 
       DisplayName: 
     Textures: []
+    InheritFromOrigin: 0
+    OriginTexture:
+      Name: PrimaryYKmcVmH4Jn9iqWqQsYjmr_mmcquW7EYPYKmcVmH4Jn9iqWqQsYjmr_mmc
+      DisplayName: Primary
     RetentionGroup:
       Name: IgnoreaQ90wcmjZGnP0AQuPovNalcismrHWacbaQ90wcmjZGnP0AQuPovNalcism
       DisplayName: Ignore
@@ -39,12 +43,29 @@ MonoBehaviour:
     - Name: Ability.Dota.AttributeShift.Strength
       DisplayName: Ability.Dota.AttributeShift.Strength
     BlocksEffectsTagged: []
+  Purges:
+    Strength:
+      Name: 
+      DisplayName: 
+    Kinds: []
+    AppliedBy: 7
+    Filters: []
   GrantedAbilities: []
+  OnHit: []
+  Modifiers: []
+  OwnProcCoefficient: 0
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 6f766d3e18661064da99def7ba3026d9, type: 2}
     TargetImpact: 2
     ImpactOperation: 0
     MultiplyBehaviour: 0
+    AddBehaviour: 0
+    Pipeline: {fileID: 0}
     AffiliationPolicy: 3
     AffiliationComparison: 0
     Affiliations: []
@@ -53,6 +74,14 @@ MonoBehaviour:
       RealMagnitude: 2
       Scaler:
         rid: -2
+    ChanceRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
     ImpactTypes: []
     ReverseImpactOnRemoval: 0
     MagnitudeOperation:
@@ -66,6 +95,8 @@ MonoBehaviour:
       TargetSlot: 2
       Operation: 0
       MultiplyBehaviour: 0
+      AddBehaviour: 0
+      Pipeline: {fileID: 0}
       SortOrder: 0
       Magnitude:
         Magnitude: -1
@@ -117,6 +148,13 @@ MonoBehaviour:
         rid: -2
       Rounding: 0
   Workers: []
+  Components: []
+  WorkerGroup:
+    Name: Workers
+    AttributeWorkers: []
+    ImpactWorkers: []
+    TagWorkers: []
+    AnalysisWorkers: []
   Cues: []
   SourceRequirements:
     Name: 
@@ -158,6 +196,10 @@ MonoBehaviour:
       SyncWithTemplate: 0
       AvoidTags: []
       RequireTags: []
+  Conditions:
+    Application: []
+    Ongoing: []
+    Removal: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -212,21 +254,6 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
-        legacyCondition: -1
-        legacyTagQuery:
-          Tag:
-            Name: 
-            DisplayName: 
-          Operator: 5
-          Magnitude: 0
-          MatchMode: 0
-        legacyAttribute: {fileID: 0}
-        legacyThreshold: NaN
-        legacyComparison: 0
-        TrueScaler:
-          rid: -2
-        FalseScaler:
-          rid: -2
     - rid: 2403794368834043926
       type: {class: ConditionalScaler, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -274,27 +301,15 @@ MonoBehaviour:
           RealMagnitude: 2
           Scaler:
             rid: -2
-        legacyCondition: -1
-        legacyTagQuery:
-          Tag:
-            Name: 
-            DisplayName: 
-          Operator: 5
-          Magnitude: 0
-          MatchMode: 0
-        legacyAttribute: {fileID: 0}
-        legacyThreshold: NaN
-        legacyComparison: 0
-        TrueScaler:
-          rid: -2
-        FalseScaler:
-          rid: -2
     - rid: 2403794368834043927
       type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
         On: 1
         Attribute: {fileID: 11400000, guid: 457c569f183907f49bbdf8385e163797, type: 2}
         What: 0
+        Groups:
+          Read: 0
+          Groups: []
         Comparison: 5
         Value:
           Magnitude: 1
@@ -307,6 +322,9 @@ MonoBehaviour:
         On: 1
         Attribute: {fileID: 11400000, guid: 457c569f183907f49bbdf8385e163797, type: 2}
         What: 0
+        Groups:
+          Read: 0
+          Groups: []
         Comparison: 5
         Value:
           Magnitude: 1

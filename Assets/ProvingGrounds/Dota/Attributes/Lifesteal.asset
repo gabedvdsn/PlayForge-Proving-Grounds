@@ -18,7 +18,8 @@ MonoBehaviour:
   _templateListSnapshots: []
   Name: Lifesteal
   Abbreviation: LS
-  Description: The share of each loss a hero deals another that heals it, as 0.3 for 30%
+  Description: The share of each loss a hero deals another that heals it, as 0.3
+    for 30%
   Textures: []
   Role: 0
   AbsorbsFor: {fileID: 0}

@@ -33,6 +33,25 @@ MonoBehaviour:
       Rounding: 0
     ActivateImmediately: 0
     Triggers: []
+    ChanceToActivate:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    ActivationRoll:
+      PseudoRandom: 0
+      OwnLuck: 0
+      Luck:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
+    ProcCoefficient:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    IgnoresCrowdControl: []
     Textures: []
   Tags:
     AssetTag:
@@ -102,6 +121,7 @@ MonoBehaviour:
   MaxLevel: 1
   IgnoreWhenLevelZero: 1
   Cost: {fileID: 0}
+  AttributeCosts: []
   Cooldown: {fileID: 11400000, guid: 9018237e69e20a04ba3c434091d9f393, type: 2}
   WorkerGroup:
     Name: Workers
@@ -109,6 +129,9 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  OnHit: []
+  Modifiers: []
+  Components: []
   LinkMode: 0
   _linkedSource: {fileID: 0}
   references:
@@ -143,6 +166,7 @@ MonoBehaviour:
         RecordLandedAs:
           Name: 
           DisplayName: 
+        UseResolveOrder: 1
     - rid: 2403794372806049855
       type: {class: CooldownValidation, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data: 

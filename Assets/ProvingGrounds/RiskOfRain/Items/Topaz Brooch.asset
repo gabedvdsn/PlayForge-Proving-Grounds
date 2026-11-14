@@ -57,6 +57,8 @@ MonoBehaviour:
     ImpactTypes: []
     When:
       rid: -2
+  Modifiers: []
+  Components: []
   references:
     version: 2
     RefIds:

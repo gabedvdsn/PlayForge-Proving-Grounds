@@ -64,9 +64,16 @@ MonoBehaviour:
     ImpactWorkers: []
     TagWorkers: []
     AnalysisWorkers: []
+  Modifiers: []
+  Components: []
+  CrowdControl: {fileID: 0}
   Death:
     Policy: 0
-    EndsEffectsTagged: []
+    DiesAtZeroHealth: 1
+    Purges: 1
+    KeepsAsProject: 1
+    KeepsTiers: []
+    KeepsCategories: 0
     OnDeath: []
     OnRevive: []
     Body: {fileID: 0}
