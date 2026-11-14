@@ -124,14 +124,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator TW_23_Lifesteal_heals_its_caster_half_the_blow([Values] Hub hub) => Live(async () =>
         {
-            var caster = Fighter(hub, "Caster", 50f);
-            var target = Fighter(hub, "Target");
-            await Frames.Step();
+            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = recipes.Health });
+            var was = ForgeProject.Use(project);
+            try
+            {
+                var caster = Fighter(hub, "Caster", 50f);
+                var target = Fighter(hub, "Target");
+                await Frames.Step();
 
-            Assert.IsTrue(World.Apply(caster, target, recipes.VampiricStrike));
-            await Frames.Step(2);
-            Assert.AreEqual(80f, HealthOf(target), 0.01f, "it deals 20");
-            Assert.AreEqual(60f, HealthOf(caster), 0.01f, "and heals its caster 10");
+                Assert.IsTrue(World.Apply(caster, target, recipes.VampiricStrike));
+                await Frames.Step(2);
+                Assert.AreEqual(80f, HealthOf(target), 0.01f, "it deals 20");
+                Assert.AreEqual(60f, HealthOf(caster), 0.01f, "and heals its caster 10");
+            }
+            finally
+            {
+                ForgeProject.Use(was);
+                Object.DestroyImmediate(project);
+            }
         });
 
         /// <summary>Damage return: Thorns sends half of each blow its holder takes back to the one who dealt it.</summary>

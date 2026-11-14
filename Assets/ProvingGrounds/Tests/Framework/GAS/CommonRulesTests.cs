@@ -72,16 +72,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator TW_15_An_effects_lifesteal_heals_its_caster([Values] Hub hub) => Live(async () =>
         {
-            var caster = Fighter(hub, "Caster", 50f);
-            var target = Fighter(hub, "Target");
-            var strike = Change(-20f);
-            strike.Lifesteal = new EffectLifesteal { Share = 0.5f, Attribute = health };
-            await Frames.Step();
+            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = health });
+            var was = ForgeProject.Use(project);
+            try
+            {
+                var caster = Fighter(hub, "Caster", 50f);
+                var target = Fighter(hub, "Target");
+                var strike = Change(-20f);
+                strike.Lifesteal = new EffectLifesteal { Share = 0.5f };
+                await Frames.Step();
 
-            Assert.IsTrue(World.Apply(caster, target, strike));
-            await Frames.Step(3);
-            Assert.AreEqual(80f, Value(target, health), 0.01f, "the strike's 20");
-            Assert.AreEqual(60f, Value(caster, health), 0.01f, "and half of it heals its caster");
+                Assert.IsTrue(World.Apply(caster, target, strike));
+                await Frames.Step(3);
+                Assert.AreEqual(80f, Value(target, health), 0.01f, "the strike's 20");
+                Assert.AreEqual(60f, Value(caster, health), 0.01f, "and half of it heals its caster");
+            }
+            finally
+            {
+                ForgeProject.Use(was);
+                Object.DestroyImmediate(project);
+            }
         });
 
         /// <summary>A holder's lifesteal heals it a share of each loss it deals, while it's equipped.</summary>

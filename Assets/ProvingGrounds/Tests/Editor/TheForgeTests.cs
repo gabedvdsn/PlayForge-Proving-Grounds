@@ -1433,6 +1433,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ("ROLE_HEALTH", "Health", "HealthwlgkU1_U0ptONBlYz9jTuP8r1wWU2j5gwlgkU1_U0ptONBlYz9jTuP8r1w", new[] { ForgeContext.AttributeRole }),
             ("ROLE_LUCK", "Luck", "Luck4U3MdI9kV7Zf8eHFAoSRTm75F7mRIuXU4U3MdI9kV7Zf8eHFAoSRTm75F7mR", new[] { ForgeContext.AttributeRole }),
             ("ROLE_MOVEMENT_SPEED", "Movement Speed", "Movement Speed6s1trn1l70Ski32tSaE4xLdx8JUs69_46s1trn1l70Ski32tSa", new[] { ForgeContext.AttributeRole }),
+            ("ROLE_LIFESTEAL", "Lifesteal", "LifestealaP_5bEKT84QGY5De9bmK0ZlJLbdT4SP0aP_5bEKT84QGY5De9bmK0Zl", new[] { ForgeContext.AttributeRole }),
             ("IMPACT_DEALT", "Impact Dealt", "Impact DealtFTN8KO5Jf5YqWEIbR3YbUgsyJ3zS1bEwFTN8KO5Jf5YqWEIbR3Yb", new[] { ForgeContext.Event }),
             ("IMPACT_TAKEN", "Impact Taken", "Impact TakenCxbKO7Cc9k6c8dHrg_t58gAhmogDGfsFCxbKO7Cc9k6c8dHrg_t5", new[] { ForgeContext.Event }),
             ("KILL", "Kill", "KillXZxDDyRbFpGHEI9eIFJzb2LZnQ8YXRfXXZxDDyRbFpGHEI9eIFJzb2LZnQ8Y", new[] { ForgeContext.Event }),

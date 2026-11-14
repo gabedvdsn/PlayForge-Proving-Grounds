@@ -142,40 +142,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator Jingu_mastery_charges_monkey_king_on_the_fourth_hit([Values] Hub hub) => Live(async () =>
         {
-            var monkeyKing = Hero(hub, "Monkey King", health: 1000f, healthNow: 500f, more: new[] { ("Jingu Charges", 0f, 4f) });
-            var target = Hero(hub, "Target", health: 5000f);
-            var attack = Effect("Monkey King", "Monkey King Attack");
-            var counter = Effect("Monkey King", "Jingu Mastery Counter");
-            var charges = Attribute("Jingu Charges");
-            await Frames.Step();
-
-            for (int hit = 1; hit <= 3; hit++)
+            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = Health });
+            var was = ForgeProject.Use(project);
+            try
             {
-                Assert.IsTrue(World.Apply(monkeyKing, target, attack), $"hit {hit} lands");
+                var monkeyKing = Hero(hub, "Monkey King", health: 1000f, healthNow: 500f, more: new[] { ("Jingu Charges", 0f, 4f) });
+                var target = Hero(hub, "Target", health: 5000f);
+                var attack = Effect("Monkey King", "Monkey King Attack");
+                var counter = Effect("Monkey King", "Jingu Mastery Counter");
+                var charges = Attribute("Jingu Charges");
                 await Frames.Step();
-                Assert.AreEqual(hit, Stacks(target, counter), $"hit {hit} adds a counter");
-            }
-            Assert.IsTrue(World.Apply(monkeyKing, target, attack), "the fourth hit lands");
-            await Frames.Step(2);
-            Assert.AreEqual(4f, Value(monkeyKing, charges), "and gives four charged hits");
-            Assert.IsFalse(Has(target, counter), "its counter spent");
-            Assert.AreEqual(5000f - 4 * 100f, Value(target, Health), "four uncharged hits of 100");
-            Assert.AreEqual(500f, Value(monkeyKing, Health), "which heal nothing");
 
-            for (int hit = 1; hit <= 4; hit++)
+                for (int hit = 1; hit <= 3; hit++)
+                {
+                    Assert.IsTrue(World.Apply(monkeyKing, target, attack), $"hit {hit} lands");
+                    await Frames.Step();
+                    Assert.AreEqual(hit, Stacks(target, counter), $"hit {hit} adds a counter");
+                }
+                Assert.IsTrue(World.Apply(monkeyKing, target, attack), "the fourth hit lands");
+                await Frames.Step(2);
+                Assert.AreEqual(4f, Value(monkeyKing, charges), "and gives four charged hits");
+                Assert.IsFalse(Has(target, counter), "its counter spent");
+                Assert.AreEqual(5000f - 4 * 100f, Value(target, Health), "four uncharged hits of 100");
+                Assert.AreEqual(500f, Value(monkeyKing, Health), "which heal nothing");
+
+                for (int hit = 1; hit <= 4; hit++)
+                {
+                    Assert.IsTrue(World.Apply(monkeyKing, target, attack), $"charged hit {hit} lands");
+                    await Frames.Step();
+                    Assert.AreEqual(4f - hit, Value(monkeyKing, charges), $"and spends a charge");
+                }
+                Assert.AreEqual(5000f - 400f - 4 * 180f, Value(target, Health), 0.01f, "four charged hits of 100 + 80");
+                Assert.AreEqual(500f + 4 * 0.3f * 180f, Value(monkeyKing, Health), 0.01f, "each healing 30% of its 180");
+                Assert.IsFalse(Has(target, counter), "and none added a counter");
+
+                Assert.IsTrue(World.Apply(monkeyKing, target, attack), "the next hit lands");
+                await Frames.Step();
+                Assert.AreEqual(1, Stacks(target, counter), "uncharged, and counting again");
+                Assert.AreEqual(5000f - 400f - 720f - 100f, Value(target, Health), 0.01f, "for 100");
+            }
+            finally
             {
-                Assert.IsTrue(World.Apply(monkeyKing, target, attack), $"charged hit {hit} lands");
-                await Frames.Step();
-                Assert.AreEqual(4f - hit, Value(monkeyKing, charges), $"and spends a charge");
+                ForgeProject.Use(was);
+                Object.DestroyImmediate(project);
             }
-            Assert.AreEqual(5000f - 400f - 4 * 180f, Value(target, Health), 0.01f, "four charged hits of 100 + 80");
-            Assert.AreEqual(500f + 4 * 0.3f * 180f, Value(monkeyKing, Health), 0.01f, "each healing 30% of its 180");
-            Assert.IsFalse(Has(target, counter), "and none added a counter");
-
-            Assert.IsTrue(World.Apply(monkeyKing, target, attack), "the next hit lands");
-            await Frames.Step();
-            Assert.AreEqual(1, Stacks(target, counter), "uncharged, and counting again");
-            Assert.AreEqual(5000f - 400f - 720f - 100f, Value(target, Health), 0.01f, "for 100");
         });
 
         /// <summary>

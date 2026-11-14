@@ -164,6 +164,42 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// The page holds the project's Workers, which every entity in it has, the Lifesteal worker among them as a project
+        /// starts; and Fill Roles by Name fills the Lifesteal role (FN-15).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_15_The_settings_page_holds_the_projects_workers()
+        {
+            var project = MakeProject();
+            var lifesteal = NamedAttribute("Lifesteal");
+            AssetDatabase.SaveAssets();
+            Assert.That(project.Settings.Workers.ImpactWorkers, Has.Some.InstanceOf<LifestealImpactWorker>(), "a project starts with the Lifesteal worker");
+
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var section = host.Build(project);
+                yield return Frames();
+                Assert.IsNotNull(section.Q<PropertyField>("Workers"), "its workers, every entity's, on the page");
+
+                var fill = section.Q<Button>("FillRolesByName");
+                using (var click = NavigationSubmitEvent.GetPooled())
+                {
+                    click.target = fill;
+                    fill.SendEvent(click);
+                }
+                yield return Frames();
+                Assert.AreSame(lifesteal, project.Settings.AttributeFor(Tags.ROLE_LIFESTEAL), "the Lifesteal role, filled by the attribute of its name");
+            }
+            finally
+            {
+                host.Destroy();
+            }
+        }
+
         /// <summary>An attribute says the roles it plays in its project; one that plays none says nothing.</summary>
         [Test]
         public void TW_29_An_attributes_inspector_says_the_roles_it_plays()

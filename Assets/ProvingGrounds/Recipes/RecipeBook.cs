@@ -125,7 +125,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
 
             // Lifesteal: the effect's own, half of what it deals
             var vampiric = Effect("Vampiric Strike", health, -20f);
-            vampiric.Lifesteal = new EffectLifesteal { Share = 0.5f, Attribute = health };
+            vampiric.Lifesteal = new EffectLifesteal { Share = 0.5f };
             set.VampiricStrike = maker.Keep("Lifesteal/Vampiric Strike", vampiric);
 
             // Damage return: a lasting effect whose worker group returns half of each loss to its dealer
