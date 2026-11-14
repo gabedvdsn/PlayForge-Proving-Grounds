@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
@@ -140,6 +142,65 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsTrue(Marked(ally), "its allies");
             Assert.IsTrue(Marked(caster), "and its caster, which it asked for");
             Assert.IsFalse(Marked(enemy), "not an enemy");
+        });
+
+        /// <summary>
+        /// The targeting tasks drew headers between their fields, which the user's notes took out (FN-20): none has one, and
+        /// each number of theirs is Scalable, but a pointer's button, which picks one of three (FN-19's rule).
+        /// </summary>
+        [Test]
+        public void FN_20_The_targeting_tasks_have_no_headers_and_Scalable_numbers()
+        {
+            var tasks = typeof(AbstractTargetingAbilityTask).Assembly.GetTypes()
+                .Where(type => !type.IsAbstract && typeof(AbstractTargetingAbilityTask).IsAssignableFrom(type)).ToList();
+            Assert.That(tasks, Is.Not.Empty, "there are targeting tasks");
+            foreach (var task in tasks)
+            {
+                foreach (var field in task.GetFields(BindingFlags.Instance | BindingFlags.Public))
+                {
+                    Assert.IsNull(field.GetCustomAttribute<HeaderAttribute>(), $"{task.Name}.{field.Name} has no header");
+                    if (field.Name == "MouseButton") continue;
+                    Assert.That(field.FieldType != typeof(float) && field.FieldType != typeof(int), $"{task.Name}.{field.Name} is a Scalable number");
+                }
+            }
+            Assert.AreEqual(typeof(ScalableFloat), typeof(TargetAttributeCondition).GetField(nameof(TargetAttributeCondition.CompareValue))?.FieldType,
+                "and an attribute condition's value");
+        }
+
+        /// <summary>
+        /// A search's Range is a Scalable number, read for its activation at its ability's level (FN-20): a Range of 5 at level
+        /// 1 and 10 after reaches the far one only at level 2.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_20_A_searchs_range_reads_at_its_abilitys_level([Values] Hub hub) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, Vector3.zero);
+            var near = At(hub, "Near", blue, new Vector3(3f, 0f, 0f));
+            var far = At(hub, "Far", blue, new Vector3(7f, 0f, 0f));
+            await Frames.Step();
+
+            AutoTargetByAffinityTask Search()
+            {
+                var search = new AutoTargetByAffinityTask { AffinityFilter = EAffinityFilter.Enemies, MaxTargets = 0, UseCastRange = false };
+                // Its Range by its level, set by name, as a number of any kind
+                var range = typeof(AutoTargetByAffinityTask).GetField(nameof(AutoTargetByAffinityTask.Range));
+                range.SetValue(search, new ScalableFloat(new SimpleScaler { LevelValues = new[] { 5f, 10f, 10f, 10f }, MaxLevel = 4, StretchOverLevels = false }, 1f));
+                return search;
+            }
+
+            var abilities = caster.GetAbilitySystem();
+            var low = Searching("Shout", Search());
+            Assert.That(abilities.GiveAbility(low, 1, out _), "Shout is known at level 1");
+            Assert.IsTrue(abilities.TryActivateAbility(low, out _, null), "and cast");
+            await Frames.Step(4);
+            Assert.IsTrue(Marked(near), "at level 1, its Range of 5 reaches the near one");
+            Assert.IsFalse(Marked(far), "and not the far one");
+
+            var high = Searching("Bellow", Search());
+            Assert.That(abilities.GiveAbility(high, 2, out _), "Bellow is known at level 2");
+            Assert.IsTrue(abilities.TryActivateAbility(high, out _, null), "and cast");
+            await Frames.Step(4);
+            Assert.IsTrue(Marked(far), "at level 2, its Range of 10 reaches the far one");
         });
 
         /// <summary>

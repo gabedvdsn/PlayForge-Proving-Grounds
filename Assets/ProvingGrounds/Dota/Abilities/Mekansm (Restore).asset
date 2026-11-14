@@ -100,6 +100,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 2403794372806049886
       type: {class: AutoTargetByAffinityTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -112,8 +114,17 @@ MonoBehaviour:
           RequireTags: []
         AffinityFilter: 0
         Mode: 0
-        MaxTargets: 0
-        Range: 15
+        MaxTargets:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
+        Range:
+          Magnitude: 15
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
         DetectionLayers:
           serializedVersion: 2
           m_Bits: 4294967295

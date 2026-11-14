@@ -168,6 +168,33 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// A search's Detection Layers are its physics', so they show under Use Physics alone, a kind field drawing its
+        /// object's fields as their [ShownWhen] says (FN-20).
+        /// </summary>
+        [Test]
+        public void FN_20_A_searchs_Detection_Layers_shows_under_Use_Physics()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                var search = new AutoTargetTask();
+                ability.Behaviour.Targeting = search;
+                var serialized = new SerializedObject(ability);
+                var path = $"{nameof(Ability.Behaviour)}.{nameof(AbilityBehaviour.Targeting)}";
+                Assert.IsTrue(Hidden(new TargetingTaskDrawer().CreatePropertyGUI(serialized.FindProperty(path)), "DetectionLayers"),
+                    "a search by position has no layers");
+                search.UsePhysics = true;
+                serialized.Update();
+                Assert.IsFalse(Hidden(new TargetingTaskDrawer().CreatePropertyGUI(serialized.FindProperty(path)), "DetectionLayers"),
+                    "one by physics shows them");
+            }
+            finally
+            {
+                Object.DestroyImmediate(ability);
+            }
+        }
+
         /// <summary>A hidden field shows again as the field it reads changes, from outside the inspector as an Undo does.</summary>
         [UnityTest]
         public IEnumerator FN_23_A_hidden_field_shows_as_what_it_reads_changes()
