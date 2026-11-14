@@ -19,8 +19,8 @@ MonoBehaviour:
   Definition:
     Name: Monkey King Attack
     Description: 'Monkey King''s attack: his Attack Damage, and 80 more while he
-      has charged hits, each healing him 30% of what it deals and spending a charge.
-      An uncharged hit adds a Jingu Mastery counter.'
+      has charged hits, each spending a charge; Jingu Mastery Lifesteal heals him 30%
+      of what each deals. An uncharged hit adds a Jingu Mastery counter.'
     Visibility:
       Name: 
       DisplayName: 
@@ -57,15 +57,6 @@ MonoBehaviour:
     IncludeCaster: 0
     MaxTargets: 0
     UseResolveOrder: 1
-  Lifesteal:
-    Share:
-      Magnitude: 0.3
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-    Attribute: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
-    When:
-      rid: 2403794368834043934
   Transfers: []
   OwnProcCoefficient: 0
   ProcCoefficient: 1
@@ -353,21 +344,6 @@ MonoBehaviour:
           rid: -2
         FalseScaler:
           rid: -2
-    - rid: 2403794368834043934
-      type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
-      data:
-        On: 0
-        Attribute: {fileID: 11400000, guid: b0839e92ec19d9c4fb508baddc035151, type: 2}
-        What: 0
-        Groups:
-          Read: 0
-          Groups: []
-        Comparison: 5
-        Value:
-          Magnitude: 0
-          RealMagnitude: 2
-          Scaler:
-            rid: -2
     - rid: 2403794368834043936
       type: {class: AttributeCondition, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:

@@ -18,7 +18,8 @@ MonoBehaviour:
   _templateListSnapshots: []
   Definition:
     Name: Jingu Mastery Charges
-    Description: Gives Monkey King four charged hits.
+    Description: Gives Monkey King four charged hits, and Jingu Mastery Lifesteal while
+      he has them.
     Visibility:
       Name: 
       DisplayName: 
@@ -56,7 +57,10 @@ MonoBehaviour:
       Scaler:
         rid: -2
     AdditionalImpacts: []
-    Packets: []
+    Packets:
+    - Policy: 0
+      ContainedEffect: {fileID: 11400000, guid: a61056b75fdc4ff4b44c14648673bd0a, type: 2}
+      LandsOn: 0
   DurationSpecification:
     DurationPolicy: 0
     DurationOperation:

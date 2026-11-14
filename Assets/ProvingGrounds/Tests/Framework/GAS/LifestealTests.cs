@@ -10,8 +10,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// <summary>
     /// FN-15, Decision 78: lifesteal is an attribute the Lifesteal worker reads. Every entity has the worker through its
     /// project's Workers, or through its own; it heals its holder its Lifesteal's share of each loss it deals another, of the
-    /// impact types it names; an effect's own Lifesteal adds to its caster's for that effect's hits alone, as though the
-    /// attribute rose for the hit and went back; and two of the worker heal a hit once.
+    /// impact types it names; an effect has no lifesteal of its own, its hits healing by its caster's (FN-22); and two of
+    /// the worker heal a hit once.
     /// </summary>
     public class LifestealTests : ProvingGroundsTest
     {
@@ -94,26 +94,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
-        /// An effect's own Lifesteal adds to its caster's for that effect's hits alone: a strike of its own 0.5, from a caster
-        /// of 0.25, heals three quarters of what it deals, a plain bite a quarter, and the caster's Lifesteal stays as it was.
+        /// An effect has no lifesteal of its own: its hits heal its caster by the caster's Lifesteal alone, which an effect on
+        /// the caster raises while it should (FN-22). An effect's own Lifesteal raised its caster's for that effect's hits
+        /// alone (Decision 78), which the user's notes took out.
         /// </summary>
         [UnityTest]
-        public IEnumerator FN_15_An_effects_own_lifesteal_adds_to_its_casters_for_its_hits([Values] Hub hub) => Live(async () =>
+        public IEnumerator FN_22_An_effects_hits_heal_by_its_casters_Lifesteal_alone([Values] Hub hub) => Live(async () =>
         {
+            Assert.IsNull(typeof(GameplayEffect).GetField("Lifesteal"), "an effect has no Lifesteal of its own");
+            Assert.IsNull(typeof(GameplayEffect).Assembly.GetType("FarEmerald.PlayForge.EffectLifesteal"), "nor the kind it held");
+
             var caster = Fighter(hub, "Caster", healthNow: 50f, share: 0.25f);
             var target = Fighter(hub, "Target");
-            var strike = Blow("Vampiric Strike", 20f);
-            strike.Lifesteal = new EffectLifesteal { Share = 0.5f };
             await Frames.Step();
-
-            Assert.IsTrue(World.Apply(caster, target, strike));
+            Assert.IsTrue(World.Apply(caster, target, Blow("Strike", 20f)));
             await Frames.Step(3);
-            Assert.AreEqual(65f, Value(caster, health), 0.01f, "three quarters of the strike's 20");
-            Assert.AreEqual(0.25f, Value(caster, lifesteal), 0.001f, "its Lifesteal as it was");
+            Assert.AreEqual(55f, Value(caster, health), 0.01f, "a quarter of the strike's 20, its Lifesteal's share");
 
-            Assert.IsTrue(World.Apply(caster, target, Blow("Bite", 20f)));
+            var frenzy = Make.Effect("Frenzy", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = lifesteal, Magnitude = 0.5f });
+            Assert.IsTrue(World.Apply(caster, caster, frenzy));
+            await Frames.Step();
+            Assert.IsTrue(World.Apply(caster, target, Blow("Strike", 20f)));
             await Frames.Step(3);
-            Assert.AreEqual(70f, Value(caster, health), 0.01f, "and a plain bite a quarter of its 20");
+            Assert.AreEqual(70f, Value(caster, health), 0.01f, "and three quarters while an effect raises it by 0.5");
         });
 
         /// <summary>The worker heals only the impact types it names, as attacks; with none named, any.</summary>

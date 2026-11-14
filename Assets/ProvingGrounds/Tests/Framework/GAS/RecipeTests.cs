@@ -120,21 +120,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(35f, HealthOf(high), 0.01f, "where it leaves 35, it's a hit of 15");
         });
 
-        /// <summary>Lifesteal: Vampiric Strike heals its caster half of what it deals.</summary>
+        /// <summary>
+        /// Lifesteal: Vampirism raises its holder's Lifesteal by half, so each blow it deals heals it half of what it deals.
+        /// An effect has no lifesteal of its own (FN-22): Vampiric Strike, a blow with its own, became Vampirism.
+        /// </summary>
         [UnityTest]
         public IEnumerator TW_23_Lifesteal_heals_its_caster_half_the_blow([Values] Hub hub) => Live(async () =>
         {
-            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
+            // Through the Lifesteal worker its project gives every entity, by the Lifesteal role's attribute, healing the
+            // Health role's (FN-15)
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = recipes.Health });
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = recipes.Lifesteal });
             var was = ForgeProject.Use(project);
             try
             {
-                var caster = Fighter(hub, "Caster", 50f);
+                var caster = World.Entity(hub, Make.Set(
+                    Make.Element(recipes.Health, 50f, 100f, EAttributeOverflowPolicy.ZeroToBase),
+                    Make.Element(recipes.Lifesteal, 0f, 0f)), "Caster");
                 var target = Fighter(hub, "Target");
                 await Frames.Step();
 
-                Assert.IsTrue(World.Apply(caster, target, recipes.VampiricStrike));
+                Assert.IsTrue(World.Apply(caster, caster, recipes.Vampirism));
+                await Frames.Step();
+                Assert.IsTrue(World.Apply(caster, target, Blow(-20f)));
                 await Frames.Step(2);
                 Assert.AreEqual(80f, HealthOf(target), 0.01f, "it deals 20");
                 Assert.AreEqual(60f, HealthOf(caster), 0.01f, "and heals its caster 10");

@@ -68,33 +68,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(50f, Value(halved, health), 0.01f, "a loss, all of it");
         });
 
-        /// <summary>An effect's own lifesteal heals its caster a share of each loss it deals.</summary>
-        [UnityTest]
-        public IEnumerator TW_15_An_effects_lifesteal_heals_its_caster([Values] Hub hub) => Live(async () =>
-        {
-            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
-            var project = ScriptableObject.CreateInstance<ForgeProject>();
-            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = health });
-            var was = ForgeProject.Use(project);
-            try
-            {
-                var caster = Fighter(hub, "Caster", 50f);
-                var target = Fighter(hub, "Target");
-                var strike = Change(-20f);
-                strike.Lifesteal = new EffectLifesteal { Share = 0.5f };
-                await Frames.Step();
-
-                Assert.IsTrue(World.Apply(caster, target, strike));
-                await Frames.Step(3);
-                Assert.AreEqual(80f, Value(target, health), 0.01f, "the strike's 20");
-                Assert.AreEqual(60f, Value(caster, health), 0.01f, "and half of it heals its caster");
-            }
-            finally
-            {
-                ForgeProject.Use(was);
-                Object.DestroyImmediate(project);
-            }
-        });
+        // An effect's own lifesteal is gone, its hits healing by its caster's Lifesteal alone, which the holder's test below
+        // raises by an item's effect (FN-22)
 
         /// <summary>
         /// A holder's lifesteal is its Lifesteal, which an item raises by an effect while it's equipped and the Lifesteal

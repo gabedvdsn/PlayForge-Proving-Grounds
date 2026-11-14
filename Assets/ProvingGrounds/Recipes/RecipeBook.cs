@@ -51,8 +51,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
         public ValuePipeline Execute;
         public GameplayEffect CullingBlow;
 
-        // Lifesteal
-        public GameplayEffect VampiricStrike;
+        // Lifesteal: the attribute the Lifesteal worker heals by, and an effect that raises it (FN-22)
+        public ForgeAttribute Lifesteal;
+        public GameplayEffect Vampirism;
 
         // Damage return
         public GameplayEffect Thorns;
@@ -123,10 +124,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             culling.ImpactSpecification.Pipeline = set.Execute;
             set.CullingBlow = maker.Keep("Execute/Culling Blow", culling);
 
-            // Lifesteal: the effect's own, half of what it deals
-            var vampiric = Effect("Vampiric Strike", health, -20f);
-            vampiric.Lifesteal = new EffectLifesteal { Share = 0.5f };
-            set.VampiricStrike = maker.Keep("Lifesteal/Vampiric Strike", vampiric);
+            // Lifesteal: an effect that raises its holder's Lifesteal by half, so the Lifesteal worker heals it half of each
+            // loss it deals another while it lasts. An effect has no lifesteal of its own (FN-22)
+            var lifesteal = set.Lifesteal = maker.Keep("Attributes/Lifesteal", Attribute("Lifesteal"));
+            set.Vampirism = maker.Keep("Lifesteal/Vampirism", Effect("Vampirism", lifesteal, 0.5f, EEffectDurationPolicy.Infinite));
 
             // Damage return: a lasting effect whose worker group returns half of each loss to its dealer
             var thorns = Effect("Thorns", null, 0f, EEffectDurationPolicy.Infinite);

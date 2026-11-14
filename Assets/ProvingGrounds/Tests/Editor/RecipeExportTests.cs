@@ -29,7 +29,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void AC_5_The_formulas_and_the_starter_set_save_beside_the_recipes()
         {
-            Assert.AreEqual(18 + 7 + 10, RecipeExport.SaveAll(Root, Formulas, Starter), "the recipes, seven formula assets and ten starter assets");
+            Assert.AreEqual(19 + 7 + 10, RecipeExport.SaveAll(Root, Formulas, Starter), "the recipes, seven formula assets and ten starter assets");
 
             string boltPath = $"{Starter}/Bolt/Bolt Hit.asset";
             string boltGuid = AssetDatabase.AssetPathToGUID(boltPath);
@@ -41,14 +41,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var shield = AssetDatabase.LoadAssetAtPath<GameplayEffect>($"{Starter}/Shield/Shield.asset");
             Assert.That(shield.Modifiers[0].Rule.Changes[0], Is.InstanceOf<ChangeImpactChange>(), "the shield's absorb is saved");
 
-            Assert.AreEqual(35, RecipeExport.SaveAll(Root, Formulas, Starter), "a rebuild saves them again");
+            Assert.AreEqual(36, RecipeExport.SaveAll(Root, Formulas, Starter), "a rebuild saves them again");
             Assert.AreEqual(boltGuid, AssetDatabase.AssetPathToGUID(boltPath), "keeping their GUIDs");
         }
 
         [Test]
         public void TW_23_The_recipes_save_as_assets_and_keep_their_GUIDs()
         {
-            Assert.AreEqual(18, RecipeExport.Save(Root), "eighteen assets");
+            // Nineteen since the Lifesteal recipe's Lifesteal attribute, beside Vampirism (FN-22)
+            Assert.AreEqual(19, RecipeExport.Save(Root), "nineteen assets");
 
             string cursePath = $"{Root}/Bursting Curse/Curse.asset";
             string curseGuid = AssetDatabase.AssetPathToGUID(cursePath);
@@ -62,7 +63,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var boss = AssetDatabase.LoadAssetAtPath<AttributeSet>($"{Root}/Phase/Boss.asset");
             Assert.That(boss.WorkerGroup.AnalysisWorkers[0], Is.InstanceOf<ThresholdAnalysisWorker>(), "the boss watches its Health");
 
-            Assert.AreEqual(18, RecipeExport.Save(Root), "a rebuild saves them again");
+            Assert.AreEqual(19, RecipeExport.Save(Root), "a rebuild saves them again");
             Assert.AreEqual(curseGuid, AssetDatabase.AssetPathToGUID(cursePath), "keeping the curse's GUID");
             Assert.AreSame(curse, AssetDatabase.LoadAssetAtPath<GameplayEffect>(cursePath), "in the asset itself");
             Assert.AreSame(AssetDatabase.LoadAssetAtPath<GameplayEffect>($"{Root}/Bursting Curse/Curse Burst.asset"),

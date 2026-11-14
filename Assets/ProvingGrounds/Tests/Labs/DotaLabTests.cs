@@ -137,18 +137,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         /// <summary>
         /// Jingu Mastery: Monkey King's fourth hit on a target gives him four charged hits, each dealing 80 more and healing
-        /// him 30% of what it deals. A charged hit adds no counter, and the hit after the last starts counting again.
+        /// him 30% of what it deals. A charged hit adds no counter, and the hit after the last starts counting again. His
+        /// lifesteal is his Lifesteal, which Jingu Mastery's buff raises by 0.3 while he has charges, an effect having no
+        /// lifesteal of its own (FN-22).
         /// </summary>
         [UnityTest]
         public IEnumerator Jingu_mastery_charges_monkey_king_on_the_fourth_hit([Values] Hub hub) => Live(async () =>
         {
-            // Through the Lifesteal worker its project gives every entity, healing the Health role's attribute (FN-15)
+            // Through the Lifesteal worker its project gives every entity, by the Lifesteal role's attribute, healing the
+            // Health role's (FN-15)
+            var lifesteal = Attribute("Lifesteal");
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = Health });
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = lifesteal });
             var was = ForgeProject.Use(project);
             try
             {
-                var monkeyKing = Hero(hub, "Monkey King", health: 1000f, healthNow: 500f, more: new[] { ("Jingu Charges", 0f, 4f) });
+                var monkeyKing = Hero(hub, "Monkey King", health: 1000f, healthNow: 500f, more: new[] { ("Jingu Charges", 0f, 4f), ("Lifesteal", 0f, 0f) });
                 var target = Hero(hub, "Target", health: 5000f);
                 var attack = Effect("Monkey King", "Monkey King Attack");
                 var counter = Effect("Monkey King", "Jingu Mastery Counter");
@@ -167,6 +172,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Assert.IsFalse(Has(target, counter), "its counter spent");
                 Assert.AreEqual(5000f - 4 * 100f, Value(target, Health), "four uncharged hits of 100");
                 Assert.AreEqual(500f, Value(monkeyKing, Health), "which heal nothing");
+                Assert.AreEqual(0.3f, Value(monkeyKing, lifesteal), 0.001f, "and his charges raise his Lifesteal by 0.3");
 
                 for (int hit = 1; hit <= 4; hit++)
                 {
@@ -177,6 +183,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Assert.AreEqual(5000f - 400f - 4 * 180f, Value(target, Health), 0.01f, "four charged hits of 100 + 80");
                 Assert.AreEqual(500f + 4 * 0.3f * 180f, Value(monkeyKing, Health), 0.01f, "each healing 30% of its 180");
                 Assert.IsFalse(Has(target, counter), "and none added a counter");
+                await Frames.Step();
+                Assert.AreEqual(0f, Value(monkeyKing, lifesteal), 0.001f, "his last charge spent, his Lifesteal falls back");
 
                 Assert.IsTrue(World.Apply(monkeyKing, target, attack), "the next hit lands");
                 await Frames.Step();
