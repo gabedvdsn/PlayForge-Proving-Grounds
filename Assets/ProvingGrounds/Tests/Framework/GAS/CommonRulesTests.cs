@@ -96,20 +96,39 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         });
 
-        /// <summary>A holder's lifesteal heals it a share of each loss it deals, while it's equipped.</summary>
+        /// <summary>
+        /// A holder's lifesteal is its Lifesteal, which an item raises by an effect while it's equipped and the Lifesteal
+        /// worker heals by; its Lifesteal list is gone (FN-15).
+        /// </summary>
         [UnityTest]
         public IEnumerator TW_15_A_holders_lifesteal_heals_it_for_its_hits([Values] Hub hub) => Live(async () =>
         {
-            var holder = Fighter(hub, "Holder", 50f);
-            var target = Fighter(hub, "Target");
-            var mask = Make.Item("Vampiric Mask");
-            mask.Lifesteal.Add(new LifestealEntry { Share = 0.25f, Attribute = health });
-            await Frames.Step();
-            Assert.That(holder.GetItemSystem().GiveAndEquipItem(mask, out _), "the mask's equipped");
+            var lifesteal = Make.Attribute("Lifesteal");
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = health });
+            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = lifesteal });
+            var was = ForgeProject.Use(project);
+            try
+            {
+                var holder = World.Entity(hub, Make.Set(
+                    Make.Element(health, 50f, 100f, EAttributeOverflowPolicy.ZeroToBase), Make.Element(lifesteal, 0f, 0f)), "Holder");
+                var target = Fighter(hub, "Target");
+                var mask = Make.Item("Vampiric Mask");
+                mask.GrantedEffects.Add(Make.Effect("Vampirism", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = lifesteal, Magnitude = 0.25f }));
+                await Frames.Step();
+                Assert.That(holder.GetItemSystem().GiveAndEquipItem(mask, out _), "the mask's equipped");
+                await Frames.Step();
+                Assert.AreEqual(0.25f, Value(holder, lifesteal), 0.001f, "and raises its holder's Lifesteal");
 
-            Assert.IsTrue(World.Apply(holder, target, Change(-40f)));
-            await Frames.Step(3);
-            Assert.AreEqual(60f, Value(holder, health), 0.01f, "a quarter of the 40 it dealt");
+                Assert.IsTrue(World.Apply(holder, target, Change(-40f)));
+                await Frames.Step(3);
+                Assert.AreEqual(60f, Value(holder, health), 0.01f, "a quarter of the 40 it dealt");
+            }
+            finally
+            {
+                ForgeProject.Use(was);
+                Object.DestroyImmediate(project);
+            }
         });
 
         /// <summary>An execute takes the rest of a hit that would leave less than its share of the base.</summary>

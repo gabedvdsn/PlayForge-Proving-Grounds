@@ -139,13 +139,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Effect("Strike", EEffectDurationPolicy.Instant, new ScalableFloat(-10f), dealing: attack);
             var dagger = ScriptableObject.CreateInstance<Item>();
             dagger.OnHit.Add(new OnHitEntry { ImpactTypes = new List<Tag> { attack, spell } });
-            dagger.Lifesteal.Add(new LifestealEntry { ImpactTypes = new List<Tag> { spell } });
+            dagger.WorkerGroup ??= new StandardWorkerGroup();
+            dagger.WorkerGroup.ImpactWorkers.Add(new LifestealImpactWorker { ImpactTypes = new List<Tag> { spell } });
             Saved(dagger, "Dagger");
 
             var problems = Problems(dagger, "no effect in the project deals");
             Assert.AreEqual(2, problems.Count, $"the On Hit's and the lifesteal's Spell, and not their Attack: {string.Join(" | ", problems)}");
             var onHit = problems.Single(problem => problem.PropertyPath.StartsWith(nameof(Item.OnHit)));
-            var lifesteal = problems.Single(problem => problem.PropertyPath.StartsWith(nameof(Item.Lifesteal)));
+            var lifesteal = problems.Single(problem => problem.PropertyPath.StartsWith(nameof(Item.WorkerGroup)));
             Assert.IsNotNull(onHit.Fix, "the On Hit keeps Attack, so Spell can go");
             Assert.IsNull(lifesteal.Fix, "and the lifesteal, of Spell alone, would take every hit without it");
             onHit.Fix.Apply();

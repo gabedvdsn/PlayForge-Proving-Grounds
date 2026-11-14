@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -11,8 +12,8 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// TW-15 in the inspectors: a holder's Lifesteal in its Workers section, after Auras, counted in its line; an effect's own
-    /// Lifesteal in its Impact; and an attribute's Gains Scaled By.
+    /// TW-15 in the inspectors: an effect's own Lifesteal in its Impact, a holder's lifesteal its Lifesteal attribute, with no
+    /// list of its own (FN-15); and an attribute's Gains Scaled By. The Problems view names an older save's list.
     /// </summary>
     public class CommonRulesEditorTests
     {
@@ -42,12 +43,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var health = ScriptableObject.CreateInstance<Attribute>();
             try
             {
-                mask.Lifesteal.Add(new LifestealEntry());
                 Inspect(mask, root =>
                 {
                     var workers = Fields(root, "Workers");
-                    Assert.That(workers.IndexOf("Lifesteal"), Is.EqualTo(workers.IndexOf("Modifiers") + 1), $"after Modifiers, auras being components: {string.Join(", ", workers)}");
-                    Assert.That(root.Q(name: "Workers_CONTAINER").Q<Label>(className: "pf-section__summary").text, Is.EqualTo("1 lifesteal"));
+                    Assert.That(workers, Has.No.Member("Lifesteal"), $"a holder's lifesteal is its Lifesteal, no list of its own: {string.Join(", ", workers)}");
+                    Assert.That(root.Q(name: "Workers_CONTAINER").Q<Label>(className: "pf-section__summary").text, Is.EqualTo("None"));
                 });
                 Inspect(strike, root => Assert.That(Fields(root, "Impact"), Does.Contain("Lifesteal"), "an effect's own, in its Impact"));
                 Inspect(health, root => Assert.IsNotNull(root.Q<PropertyField>("GainsScaledBy"), "an attribute's Gains Scaled By"));
@@ -57,6 +57,40 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(mask);
                 Object.DestroyImmediate(strike);
                 Object.DestroyImmediate(health);
+            }
+        }
+
+        /// <summary>
+        /// An older save's Lifesteal list heals no more, a holder's lifesteal being its Lifesteal: kept, hidden, under its
+        /// name, and the Problems view says where one is, on an item, an ability or an entity (FN-15).
+        /// </summary>
+        [Test]
+        public void FN_15_Problems_say_where_an_older_lifesteal_list_heals_no_more()
+        {
+            foreach (var holder in new ScriptableObject[]
+                     {
+                         ScriptableObject.CreateInstance<Item>(), ScriptableObject.CreateInstance<Ability>(), ScriptableObject.CreateInstance<EntityIdentity>(),
+                     })
+            {
+                try
+                {
+                    var messages = ForgeValidator.Check(holder).Select(problem => problem.Message).ToList();
+                    Assert.That(messages, Has.None.Contains("older save's Lifesteal"), $"a {holder.GetType().Name} with none is no problem");
+
+                    // As an older save left it: an entry in its list, under the list's name
+                    var serialized = new SerializedObject(holder);
+                    var list = serialized.FindProperty("Lifesteal") ?? serialized.FindProperty("legacyLifesteal");
+                    Assert.IsNotNull(list, $"a {holder.GetType().Name} keeps an older save's list");
+                    list.arraySize = 1;
+                    serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                    messages = ForgeValidator.Check(holder).Select(problem => problem.Message).ToList();
+                    Assert.That(messages, Has.Some.Contains("older save's Lifesteal"), $"one with an entry: {string.Join(" | ", messages)}");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(holder);
+                }
             }
         }
     }
