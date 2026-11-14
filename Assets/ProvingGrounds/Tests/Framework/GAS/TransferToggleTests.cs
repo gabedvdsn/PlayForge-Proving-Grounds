@@ -42,7 +42,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private GameplayEffect Moving(string name, EEffectDurationPolicy policy, float duration, AttributeTransfer transfer, int ticks = 0)
         {
             var effect = Make.Effect(name, new EffectConfig { Policy = policy, Duration = duration, PeriodicTicks = ticks > 0, Ticks = ticks });
-            effect.Transfers.Add(transfer);
+            effect.Components.Add(new TransferEffectComponent { Transfer = transfer });
             return effect;
         }
 
@@ -70,6 +70,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
             Assert.AreEqual(0f, Value(poor, strength), 0.01f, "one with 3 gives its 3");
             Assert.AreEqual(18f, Value(caster, strength), 0.01f, "and the caster gets 3, not 5");
+        });
+
+        /// <summary>
+        /// An effect's transfers are components, each its own, so one effect holds several: Essence Shift steals Strength and
+        /// Agility as it lands, each moving what the target has (FN-14).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_14_Each_transfer_component_of_an_effect_moves([Values] Hub hub) => Live(async () =>
+        {
+            var caster = Hero(hub, "Caster", strengthValue: 10f, agilityValue: 10f);
+            var target = Hero(hub, "Target");
+            var essence = Moving("Essence Shift", EEffectDurationPolicy.Instant, 0f, Steal(EImpactDelivery.OnApply, strength, 5f));
+            essence.Components.Add(new TransferEffectComponent { Transfer = Steal(EImpactDelivery.OnApply, agility, 2f) });
+            Assert.AreEqual(2, essence.Transfers.Count, "two transfers, each a component");
+            await Frames.Step();
+
+            Assert.IsTrue(World.Apply(caster, target, essence));
+            await Frames.Step();
+            Assert.AreEqual(15f, Value(target, strength), 0.01f, "the target gives 5 Strength");
+            Assert.AreEqual(18f, Value(target, agility), 0.01f, "and 2 Agility");
+            Assert.AreEqual(15f, Value(caster, strength), 0.01f, "the caster gets the Strength");
+            Assert.AreEqual(12f, Value(caster, agility), 0.01f, "and the Agility");
         });
 
         /// <summary>

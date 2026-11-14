@@ -46,7 +46,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             try
             {
-                var area = new SerializedObject(effect).FindProperty($"{nameof(GameplayEffect.Area)}.{nameof(EffectArea.UseResolveOrder)}");
+                // An effect's Area is a component (FN-14)
+                effect.Components.Add(new AreaEffectComponent());
+                var area = new SerializedObject(effect).FindProperty($"Components.Array.data[0].{nameof(AreaEffectComponent.Area)}.{nameof(EffectArea.UseResolveOrder)}");
                 Assert.IsNotNull(area, "the Area's own toggle is serialized, so its inspector shows it");
             }
             finally

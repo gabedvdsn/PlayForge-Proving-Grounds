@@ -12,8 +12,8 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// TW-20 in the editor: an effect's Impact holds its Transfers after its Lifesteal, an ability's Activation its Toggles,
-    /// and the Problems view says where either never works.
+    /// TW-20 in the editor: an effect's transfers and an ability's toggle are components (FN-14), and the Problems view says
+    /// where either never works.
     /// </summary>
     public class TransferToggleEditorTests
     {
@@ -51,13 +51,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             try
             {
                 steal.DurationSpecification = new GameplayEffectDuration { DurationPolicy = EEffectDurationPolicy.Instant };
-                steal.Transfers.Add(Transfer(EImpactDelivery.OnApply, agility, agility));
+                steal.Components.Add(new TransferEffectComponent { Transfer = Transfer(EImpactDelivery.OnApply, agility, agility) });
                 Assert.That(Messages(steal), Has.None.Contains("Transfer"), "a steal as an instant effect lands is no problem");
 
-                steal.Transfers.Add(Transfer(EImpactDelivery.Continuous, agility, agility));
+                // Numbered among its transfers, an aura between them, and each pointing at its own component (FN-14)
+                steal.Components.Add(new AuraEffectComponent());
+                steal.Components.Add(new TransferEffectComponent { Transfer = Transfer(EImpactDelivery.Continuous, agility, agility) });
                 Assert.That(Messages(steal), Has.Some.StartsWith("Transfer 2: An Instant effect makes no Continuous impact"), "one that lasts can't");
-                steal.Transfers.Add(Transfer(EImpactDelivery.OnApply, agility, null));
+                steal.Components.Add(new TransferEffectComponent { Transfer = Transfer(EImpactDelivery.OnApply, agility, null) });
                 Assert.That(Messages(steal), Has.Some.StartsWith("Transfer 3: It names no attribute"), "nor one with nothing to get");
+                Assert.AreEqual("Components.Array.data[2].Transfer",
+                    ForgeValidator.Check(steal).First(problem => problem.Message.StartsWith("Transfer 2")).PropertyPath, "the second, in its component");
 
                 shield.Components.Add(new ToggleAbilityComponent { Effect = steal });
                 Assert.That(Messages(shield), Has.Some.Contains("toggles an Instant effect"), "an Instant effect is never on");
@@ -80,8 +84,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var shield = ScriptableObject.CreateInstance<Ability>();
             try
             {
-                var impact = Fields(steal, "Impact");
-                Assert.That(impact.IndexOf("Transfers"), Is.EqualTo(impact.IndexOf("Lifesteal") + 1), $"Transfers after Lifesteal: {string.Join(", ", impact)}");
+                Assert.That(Fields(steal, "Impact"), Has.No.Member("Transfers"), "an effect's transfers aren't in Impact");
+                steal.Components.Add(new TransferEffectComponent());
+                steal.Components.Add(new TransferEffectComponent());
+                Assert.That(Fields(steal, "Components"), Does.Contain("Components"), "but in its Components section");
+                Assert.IsTrue(new TransferEffectComponent().AllowsSeveral, "each its own, as many as it moves");
+                var transfer = new EffectComponentDrawer().CreatePropertyGUI(new SerializedObject(steal).FindProperty("Components.Array.data[1]"))
+                    .Query<PropertyField>().ToList().Select(field => field.name).ToList();
+                Assert.That(transfer, Does.Contain("Transfer"), $"a Transfer component, its transfer: {string.Join(", ", transfer)}");
                 Assert.That(Fields(shield, "Activation"), Has.No.Member("Toggles"), "an ability's toggle isn't in Activation");
                 shield.Components.Add(new ToggleAbilityComponent());
                 Assert.That(Fields(shield, "Components"), Does.Contain("Components"), "but in its Components section");

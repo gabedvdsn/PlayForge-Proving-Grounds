@@ -158,7 +158,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             var hammer = Mark("Storm Hammer");
-            hammer.Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.Enemies };
+            hammer.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.Enemies } });
             Assert.IsTrue(World.Apply(caster, target, hammer), "it lands on its target");
             await Frames.Step(2);
             Assert.IsTrue(Marked(target), "its target");
@@ -168,7 +168,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(Marked(chained), "nor one near those the area took: it spreads no further");
 
             var splash = Mark("Splash");
-            splash.Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.AlliesAndEnemies, MaxTargets = 1 };
+            splash.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.AlliesAndEnemies, MaxTargets = 1 } });
             var second = At(hub, "Second", blue, new Vector3(30f, 0f, 0f));
             var closest = At(hub, "Closest", red, new Vector3(31f, 0f, 0f));
             var next = At(hub, "Next", blue, new Vector3(32f, 0f, 0f));

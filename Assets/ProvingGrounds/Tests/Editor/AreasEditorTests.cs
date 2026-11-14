@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -65,9 +66,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 Inspect(effect, root =>
                 {
-                    Assert.That(Fields(root, "Impact"), Does.Contain("Area"), "an effect's Area, in its Impact");
+                    Assert.That(Fields(root, "Impact"), Has.No.Member("Area"), "an effect's Area isn't in its Impact");
                     AurasAreComponents(root, "1 component");
                 });
+
+                // Its Area is a component, one at most, its fields drawn where it's held: a field of the area's whole drew
+                // a foldout inside the component (FN-14)
+                effect.Components.Add(new AreaEffectComponent());
+                Assert.IsFalse(new AreaEffectComponent().AllowsSeveral, "an effect holds one area at most");
+                Inspect(effect, root => AurasAreComponents(root, "2 components"));
+                var area = new SerializedObject(effect).FindProperty("Components.Array.data[1].Area");
+                var drawn = new EffectAreaDrawer().CreatePropertyGUI(area).Query<PropertyField>().ToList().Select(field => field.name).ToList();
+                Assert.That(drawn, Is.EqualTo(new[] { "Radius", "Flat", "Takes", "IncludeCaster", "MaxTargets", "UseResolveOrder" }),
+                    $"the area's own fields: {string.Join(", ", drawn)}");
                 Inspect(item, root =>
                 {
                     AurasAreComponents(root, "2 components");

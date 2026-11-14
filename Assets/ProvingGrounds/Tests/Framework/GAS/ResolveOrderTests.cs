@@ -175,7 +175,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             var blast = Blast();
-            blast.Area = new EffectArea { Radius = 5f, Takes = EAffinityFilter.Enemies };
+            blast.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 5f, Takes = EAffinityFilter.Enemies } });
             var order = Record(blast, ("Totem", totem), ("Grunt", grunt), ("Champion", champion));
             Assert.IsTrue(World.Apply(caster, totem, blast), "it lands on the totem");
             await Frames.Step();
@@ -241,7 +241,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => hero.GetTagCache().GetWeight(immortal) > 0, 30, "the totem's aura holds on the hero");
 
             var explosion = Blast(-1000f);
-            explosion.Area = new EffectArea { Radius = 5f, Takes = EAffinityFilter.Enemies };
+            explosion.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 5f, Takes = EAffinityFilter.Enemies } });
             var order = Record(explosion, ("Hero", hero), ("Totem", totem));
             Assert.IsTrue(World.Apply(bomber, hero, explosion), "the explosion lands on the hero");
             Assert.That(order, Is.EqualTo(new[] { "Totem", "Hero" }), "the totem first, by its entry, though the hero was its target");

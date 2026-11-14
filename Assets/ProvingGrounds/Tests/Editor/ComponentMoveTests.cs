@@ -11,7 +11,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// <summary>
     /// FN-14, Decision 76: an asset saved before components kept its features in fields of their own, and as it loads,
     /// in the editor and in a build, each moves into a component; Move to Components saves each that moved, so the move
-    /// holds. First the auras of effects, abilities, items and entities.
+    /// holds: the auras of effects, abilities, items and entities, an ability's charges and toggle, and an effect's area
+    /// and transfers.
     /// </summary>
     public class ComponentMoveTests
     {
@@ -96,6 +97,58 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual(3, ability.Charges.Magnitude, "which the ability reads as its charges");
             Assert.IsTrue(((IMovesToComponents)ability).MovedToComponents, "and it says it moved");
         }
+
+        [Test]
+        public void FN_14_An_older_effects_area_and_transfers_move_into_components_as_it_loads()
+        {
+            var path = $"{Folder}/Blast.asset";
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<GameplayEffect>(), path);
+            AssetDatabase.SaveAssets();
+            var text = File.ReadAllText(path);
+
+            // As a save before components wrote it: its area under its old name, reaching 3 and taking allies, and two
+            // transfers in their old list, of 5 and of 2
+            AssetDatabase.DeleteAsset(path);
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"legacyArea:\n(\s+)Radius:\n(\s+)Magnitude: [\d.]+", "Area:\n$1Radius:\n$2Magnitude: 3");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(\n  Area:\n(?:    .*\n)*?    Takes: )\d+", "${1}" + (int)EAffinityFilter.Allies);
+            text = text.Replace("legacyTransfers: []", "Transfers:\n" + OldTransfer(5) + OldTransfer(2));
+            Assert.That(text, Does.Contain("  Area:\n").And.Contain("  Transfers:\n  - Delivery"), "the file as an older save wrote it");
+            File.WriteAllText(path, text);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var effect = AssetDatabase.LoadAssetAtPath<GameplayEffect>(path);
+
+            var areas = effect.Components.OfType<AreaEffectComponent>().ToArray();
+            Assert.AreEqual(1, areas.Length, "its area is an Area component as it loads");
+            Assert.AreEqual(3f, areas[0].Area.Radius.Magnitude, "reaching 3");
+            Assert.AreEqual(EAffinityFilter.Allies, areas[0].Area.Takes, "and taking allies");
+            Assert.AreSame(areas[0].Area, effect.Area, "which the effect reads as its area");
+            var transfers = effect.Components.OfType<TransferEffectComponent>().Select(each => each.Transfer.Amount.Magnitude).ToArray();
+            Assert.That(transfers, Is.EqualTo(new[] { 5f, 2f }), "its transfers each a Transfer component, in their order");
+            Assert.AreEqual(2, effect.Transfers.Count, "which it reads as its transfers");
+            Assert.IsTrue(((IMovesToComponents)effect).MovedToComponents, "and it says it moved");
+        }
+
+        [Test]
+        public void FN_14_An_older_effects_area_that_reaches_nothing_stays_out_of_its_components()
+        {
+            var path = $"{Folder}/Strike.asset";
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<GameplayEffect>(), path);
+            AssetDatabase.SaveAssets();
+            var text = File.ReadAllText(path);
+            AssetDatabase.DeleteAsset(path);
+            File.WriteAllText(path, text.Replace("legacyArea:", "Area:").Replace("legacyTransfers:", "Transfers:"));
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var effect = AssetDatabase.LoadAssetAtPath<GameplayEffect>(path);
+
+            Assert.IsEmpty(effect.Components, "a Radius of 0 is no area, and no transfers move nothing");
+            Assert.IsNull(effect.Area, "it has no area");
+            Assert.IsFalse(((IMovesToComponents)effect).MovedToComponents, "and nothing moved");
+        }
+
+        // A transfer as a save before components wrote it, an element of the effect's old list: a steal of an amount
+        private static string OldTransfer(float amount) =>
+            "  - Delivery: 0\n    From: 1\n    FromAttribute: {fileID: 0}\n    To: 0\n    ToAttribute: {fileID: 0}\n    Slot: 0\n" +
+            $"    Amount:\n      Magnitude: {amount}\n      RealMagnitude: 2\n      Scaler:\n        rid: -2\n";
 
         [Test]
         public void FN_14_Move_to_Components_saves_each_asset_that_moved()
