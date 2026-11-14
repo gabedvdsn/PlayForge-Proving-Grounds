@@ -14,7 +14,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// <summary>
     /// Fields shown only where they apply (FN-23): an ability's input buffer under Queue or its entity's policy, which may be
     /// Queue; an effect's Proc Coefficient under Own Proc Coefficient; a roll only for a chance that can miss; and a roll's
-    /// Luck under Own Luck. Each hides, not disables, and shows again as the field it reads changes.
+    /// Luck under Own Luck; and an effect's Origin Texture under Inherit From Origin (FN-25). Each hides, not disables, and
+    /// shows again as the field it reads changes.
     /// </summary>
     public class ShownFieldsTests
     {
@@ -136,6 +137,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 Object.DestroyImmediate(ability);
+            }
+        }
+
+        /// <summary>
+        /// An effect inherits its texture by an option of its own, Inherit From Origin, whose tag, Origin Texture, shows under
+        /// it alone (FN-25).
+        /// </summary>
+        [Test]
+        public void FN_25_Origin_Texture_shows_under_Inherit_From_Origin()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            try
+            {
+                Inspect(effect, root =>
+                {
+                    Assert.IsNotNull(root.Q(name: "InheritFromOrigin"), "an effect's Identity has Inherit From Origin");
+                    Assert.IsTrue(Hidden(root, "OriginTexture"), "and Origin Texture hides without it");
+                });
+                var serialized = new SerializedObject(effect);
+                var inherit = serialized.FindProperty($"{nameof(GameplayEffect.Definition)}.InheritFromOrigin");
+                Assert.IsNotNull(inherit, "an effect's definition can inherit its texture");
+                inherit.boolValue = true;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                Inspect(effect, root => Assert.IsFalse(Hidden(root, "OriginTexture"), "and it shows under it"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(effect);
             }
         }
 
