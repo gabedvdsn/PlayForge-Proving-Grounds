@@ -205,7 +205,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Effects", "Abilities", "Workers", "LocalData", "UsedBy",
+                        "Identity", "Leveling", "Tags", "Effects", "Abilities", "Components", "Workers", "LocalData", "UsedBy",
                     }), "the style doc's order: Identity, Leveling, Tags, the item's own, Workers, Local Data");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4"), "Leveling's range");
@@ -387,7 +387,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Attributes", "Abilities", "Items", "Death", "Workers", "LocalData", "UsedBy",
+                        "Identity", "Leveling", "Tags", "Attributes", "Abilities", "Items", "Death", "Components", "Workers", "LocalData", "UsedBy",
                     }), "the style doc's order: Identity, Leveling, Tags, the entity's own, Workers, Local Data");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–99"), "Leveling's range");
@@ -707,7 +707,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Activation", "Stages", "Requirements", "Workers", "LocalData", "UsedBy",
+                        "Identity", "Leveling", "Tags", "Activation", "Stages", "Requirements", "Components", "Workers", "LocalData", "UsedBy",
                     }), "the style doc's order: Identity, Leveling, Tags, the ability's own, Requirements, Workers, Local Data");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("Levels 1–4"), "Leveling's range");
@@ -862,7 +862,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Duration", "Impact", "Levels", "Cues", "Requirements", "Workers", "LocalData", "UsedBy",
+                        "Identity", "Leveling", "Tags", "Duration", "Impact", "Levels", "Cues", "Requirements", "Components", "Workers", "LocalData", "UsedBy",
                     }), "the style doc's order, as the Effect mockup has it, with Cues among the effect's own (FEAT-1), and Levels after Impact (FEAT-32)");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("From what applies it"), "a standalone effect takes its origin's level");
@@ -1248,6 +1248,76 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             finally
             {
                 Object.DestroyImmediate(entity);
+            }
+        }
+
+        // A kind of component that makes no sense twice, and one that may be several (FN-14)
+        [System.Serializable]
+        private sealed class OnceOnly : AbstractEffectComponent
+        {
+            public override bool AllowsSeveral => false;
+        }
+
+        [System.Serializable]
+        private sealed class Several : AbstractEffectComponent
+        {
+        }
+
+        /// <summary>
+        /// An effect, an ability, an item and an entity each have a Components section, which draws its list of
+        /// components, each added from the list's + (FN-14, Decision 76).
+        /// </summary>
+        [Test]
+        public void FN_14_Each_asset_has_a_Components_section()
+        {
+            foreach (var asset in new ScriptableObject[]
+                     {
+                         ScriptableObject.CreateInstance<GameplayEffect>(), ScriptableObject.CreateInstance<Ability>(),
+                         ScriptableObject.CreateInstance<Item>(), ScriptableObject.CreateInstance<EntityIdentity>(),
+                     })
+            {
+                try
+                {
+                    Inspect(asset, root =>
+                    {
+                        var container = root.Q(name: "Components_CONTAINER");
+                        Assert.IsNotNull(container, $"a {asset.GetType().Name} has a Components section");
+                        Assert.IsTrue(container.Query<PropertyField>().ToList().Any(field => field.bindingPath == "Components"),
+                            $"which draws a {asset.GetType().Name}'s components");
+                    });
+                }
+                finally
+                {
+                    Object.DestroyImmediate(asset);
+                }
+            }
+        }
+
+        /// <summary>
+        /// A kind of component that makes no sense twice, as Charges, is offered while its asset holds none of it, and the
+        /// element that holds it still names it; a kind that may be several is always offered (FN-14).
+        /// </summary>
+        [Test]
+        public void FN_14_A_kind_that_allows_one_is_offered_while_its_asset_holds_none()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            try
+            {
+                effect.Components = new List<AbstractEffectComponent> { new OnceOnly(), new Several() };
+                var serialized = new SerializedObject(effect);
+                var drawer = new EffectComponentDrawer();
+                var kindsFor = typeof(EffectComponentDrawer).GetMethod("KindsFor", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                IEnumerable<System.Type> Kinds(int index) =>
+                    ((IEnumerable)kindsFor.Invoke(drawer, new object[] { serialized.FindProperty($"Components.Array.data[{index}]") }))
+                    .Cast<object>().Select(kind => (System.Type)kind.GetType().GetField("Item1").GetValue(kind));
+
+                Assert.That(Kinds(1), Has.No.Member(typeof(OnceOnly)), "another element isn't offered a kind its asset holds once");
+                Assert.That(Kinds(1), Has.Member(typeof(Several)), "a kind that may be several is");
+                Assert.That(Kinds(0), Has.Member(typeof(OnceOnly)), "and the element that holds it still names it");
+            }
+            finally
+            {
+                Object.DestroyImmediate(effect);
             }
         }
 
