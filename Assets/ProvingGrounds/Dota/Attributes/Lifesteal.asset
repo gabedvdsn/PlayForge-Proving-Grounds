@@ -22,7 +22,16 @@ MonoBehaviour:
   Textures: []
   Role: 0
   AbsorbsFor: {fileID: 0}
-  DecayPerSecond: 0
+  DecayPerSecond:
+    Magnitude: 0
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   DecayAsShareOfBase: 0
   FadesWithEffect: 0
   GainsScaledBy: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }

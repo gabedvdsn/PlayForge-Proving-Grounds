@@ -69,7 +69,11 @@ MonoBehaviour:
       rid: -2
   Transfers: []
   OwnProcCoefficient: 0
-  ProcCoefficient: 1
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 0}
     TargetImpact: 0
@@ -215,4 +219,8 @@ MonoBehaviour:
         AnyContextTag: 1
         ContextMatchingPolicy: 0
         ValidContextTags: []
-        Share: 0.85
+        Share:
+          Magnitude: 0.85
+          RealMagnitude: 2
+          Scaler:
+            rid: -2

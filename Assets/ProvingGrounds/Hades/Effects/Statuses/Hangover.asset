@@ -199,8 +199,18 @@ MonoBehaviour:
             SyncWithTemplate: 0
             AvoidTags: []
             RequireTags: []
-        Min: 0
-        Max: 5
+        Min:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
+        Max:
+          Magnitude: 5
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         OnMaxPolicy: 0
         OverflowEffects: []
         DenyRefreshOnOverflow: 0

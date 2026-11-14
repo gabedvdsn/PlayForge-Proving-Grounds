@@ -187,7 +187,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 host.Clear();
                 serialized.FindProperty(list).MoveArrayElement(1, 0);
                 serialized.ApplyModifiedProperties();
-                Assume.That(((ThresholdAnalysisWorker)ability.WorkerGroup.AnalysisWorkers[0]).Threshold, Is.EqualTo(2f),
+                Assume.That(((ThresholdAnalysisWorker)ability.WorkerGroup.AnalysisWorkers[0]).Threshold.Constant, Is.EqualTo(2f),
                     "the second worker moves to the top");
                 top = host.Draw(serialized, Element(0));
                 bottom = host.Draw(serialized, Element(1));

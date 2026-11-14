@@ -88,6 +88,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             field.SendEvent(focusOut);
         }
 
+        // Whether an element shows: neither it nor what holds it hidden, as a number field's own warning is until it
+        // applies (FN-19: an item's Max Stack Size is a number field)
+        private static bool Shown(VisualElement element)
+        {
+            for (var each = element; each != null; each = each.parent)
+                if (each.resolvedStyle.display == DisplayStyle.None) return false;
+            return true;
+        }
+
         // Lets the panel run its bindings, which the editor's updates drive
         private static IEnumerator Frames()
         {
@@ -438,7 +447,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(hero, item.LinkedProvider, "choosing a provider links the item");
                 yield return Frames();
                 Assert.AreEqual(20, root.Q<IntegerField>("MaxLevel")?.value, "and Leveling shows the provider's range");
-                Assert.That(root.Query<HelpBox>().ToList(), Is.Empty, "with no help box");
+                Assert.That(root.Query<HelpBox>().Where(Shown).ToList(), Is.Empty, "with no help box shown");
 
                 Undo.FlushUndoRecordObjects();
                 Undo.PerformUndo();

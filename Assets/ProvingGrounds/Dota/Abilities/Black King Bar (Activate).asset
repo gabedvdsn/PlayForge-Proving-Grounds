@@ -20,8 +20,17 @@ MonoBehaviour:
     Name: Black King Bar (Activate)
     Description: 'Black King Bar''s Avatar: 9 seconds immune to magic.'
     ActivationPolicy: 0
-    BufferWindow: 0.3
-    BufferPriority: 0
+    BufferWindow:
+      Magnitude: 0.3
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    BufferPriority:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
     ActivateImmediately: 0
     Triggers: []
     Textures: []

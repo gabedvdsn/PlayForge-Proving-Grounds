@@ -69,7 +69,11 @@ MonoBehaviour:
       rid: -2
   Transfers: []
   OwnProcCoefficient: 0
-  ProcCoefficient: 1
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 04da6623b61d0a344bc2df75f5081430, type: 2}
     TargetImpact: 0
@@ -247,8 +251,18 @@ MonoBehaviour:
             SyncWithTemplate: 0
             AvoidTags: []
             RequireTags: []
-        Min: 0
-        Max: 9
+        Min:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
+        Max:
+          Magnitude: 9
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         OnMaxPolicy: 0
         OverflowEffects:
         - {fileID: 11400000, guid: 7f5e76ae2ea8dc94393a25a0f4677268, type: 2}

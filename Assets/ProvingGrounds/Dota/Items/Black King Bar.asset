@@ -24,7 +24,12 @@ MonoBehaviour:
       Name: 
       DisplayName: 
     Textures: []
-    MaxStackSize: 1
+    MaxStackSize:
+      Magnitude: 1
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
   Tags:
     AssetTag:
       Name: Item.BlackKingBar
@@ -46,4 +51,6 @@ MonoBehaviour:
     AnalysisWorkers: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }

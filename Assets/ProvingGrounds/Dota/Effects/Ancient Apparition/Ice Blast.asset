@@ -78,7 +78,11 @@ MonoBehaviour:
       rid: -2
   Transfers: []
   OwnProcCoefficient: 0
-  ProcCoefficient: 1
+  ProcCoefficient:
+    Magnitude: 1
+    RealMagnitude: 2
+    Scaler:
+      rid: -2
   ImpactSpecification:
     AttributeTarget: {fileID: 11400000, guid: 4336fa505eb634c4c988a38c3025bebf, type: 2}
     TargetImpact: 0

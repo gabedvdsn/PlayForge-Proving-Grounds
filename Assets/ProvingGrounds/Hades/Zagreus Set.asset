@@ -51,7 +51,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   - Attribute: {fileID: 11400000, guid: db821eebb194d514d9cef7dee2f91062, type: 2}
     Current:
       Magnitude: 20
@@ -80,7 +84,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   - Attribute: {fileID: 11400000, guid: 28d29c980135a654091d6f7537397f7e, type: 2}
     Current:
       Magnitude: 1
@@ -109,7 +117,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   - Attribute: {fileID: 11400000, guid: 698d428083d5b234cbb7050f46d2739d, type: 2}
     Current:
       Magnitude: 0
@@ -138,7 +150,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   - Attribute: {fileID: 11400000, guid: be052435329cf42479d674613535671b, type: 2}
     Current:
       Magnitude: 0
@@ -167,7 +183,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   - Attribute: {fileID: 11400000, guid: 04da6623b61d0a344bc2df75f5081430, type: 2}
     Current:
       Magnitude: 1
@@ -196,7 +216,11 @@ MonoBehaviour:
       AutoClamp: 1
       AutoScaleWithBase: 0
       RoundingMode: 0
-      SnapInterval: 0
+      SnapInterval:
+        Magnitude: 0
+        RealMagnitude: 2
+        Scaler:
+          rid: -2
   SubSets: []
   CollisionResolutionPolicy: 0
   WorkerGroup:
@@ -231,7 +255,11 @@ MonoBehaviour:
         ValidContextTags: []
         From: 0
         RelativeTo: {fileID: 11400000, guid: 698d428083d5b234cbb7050f46d2739d, type: 2}
-        RelativeMultiplier: 1
+        RelativeMultiplier:
+          Magnitude: 1
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
         RelativeGroups:
           Read: 0
           Groups: []

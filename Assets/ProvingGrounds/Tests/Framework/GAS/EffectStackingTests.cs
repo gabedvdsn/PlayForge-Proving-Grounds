@@ -332,7 +332,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 var configs = copy.DurationSpecification.StackingConfigs;
                 Assert.That(configs, Has.Count.EqualTo(3), "each stack behaviour survives the serializer");
                 Assert.That(configs[0], Is.TypeOf<StackBoundsConfig>(), "the bound");
-                Assert.That(((StackBoundsConfig)configs[0]).Max, Is.EqualTo(5), "with its max");
+                Assert.That(((StackBoundsConfig)configs[0]).Max.Constant, Is.EqualTo(5), "with its max");
                 Assert.That(((StackBoundsConfig)configs[0]).ClearStacksOnOverflow, "and its overflow");
                 Assert.That(configs[2], Is.TypeOf<InitializationOperation>(), "and the others, by their kinds");
             }

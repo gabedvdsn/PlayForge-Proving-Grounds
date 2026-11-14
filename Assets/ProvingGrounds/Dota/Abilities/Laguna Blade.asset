@@ -21,8 +21,17 @@ MonoBehaviour:
     Description: 'Lina''s ultimate: a bolt that strikes its target a quarter of a
       second after the cast, for 450, 600 or 750 magical damage by its level.'
     ActivationPolicy: 0
-    BufferWindow: 0.3
-    BufferPriority: 0
+    BufferWindow:
+      Magnitude: 0.3
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    BufferPriority:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
     ActivateImmediately: 0
     Triggers: []
     Textures: []

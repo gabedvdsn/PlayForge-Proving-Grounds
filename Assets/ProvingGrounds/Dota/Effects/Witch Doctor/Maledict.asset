@@ -212,4 +212,9 @@ MonoBehaviour:
         Of: 1
         What: 0
         Part: 0
-        EveryTicks: 4
+        EveryTicks:
+          Magnitude: 4
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0

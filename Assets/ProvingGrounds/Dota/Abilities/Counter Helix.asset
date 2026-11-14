@@ -21,8 +21,17 @@ MonoBehaviour:
     Description: 'Axe''s passive: as he''s attacked, a 20% chance to spin, dealing
       60, 100, 140 or 180 pure damage by its level to each enemy around him.'
     ActivationPolicy: 0
-    BufferWindow: 0.3
-    BufferPriority: 0
+    BufferWindow:
+      Magnitude: 0.3
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+    BufferPriority:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
     ActivateImmediately: 0
     Triggers:
     - Source: 0

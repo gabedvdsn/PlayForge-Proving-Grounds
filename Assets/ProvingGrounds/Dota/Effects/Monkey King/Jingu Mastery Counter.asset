@@ -255,8 +255,18 @@ MonoBehaviour:
             SyncWithTemplate: 0
             AvoidTags: []
             RequireTags: []
-        Min: 0
-        Max: 3
+        Min:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
+        Max:
+          Magnitude: 3
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         OnMaxPolicy: 0
         OverflowEffects:
         - {fileID: 11400000, guid: cf152c0992d80ca4ebca4767a2a0f063, type: 2}
