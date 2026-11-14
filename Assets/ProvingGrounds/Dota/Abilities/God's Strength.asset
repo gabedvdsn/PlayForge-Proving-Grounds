@@ -106,6 +106,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 2403794372806049792
       type: {class: AutoTargetSelfTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
@@ -124,7 +126,12 @@ MonoBehaviour:
       data:
         Effects:
         - {fileID: 11400000, guid: 5046e210db6db01478827eaf3c351d6f, type: 2}
-        DelayBetweenApplicationMs: 0
+        DelayBetweenApplicationMs:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         RecordLandedAs:
           Name: 
           DisplayName: 

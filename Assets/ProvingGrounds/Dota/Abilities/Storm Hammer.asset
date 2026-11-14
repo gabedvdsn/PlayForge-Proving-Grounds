@@ -116,7 +116,12 @@ MonoBehaviour:
       data:
         Effects:
         - {fileID: 11400000, guid: c5ed72935affc8244af01acb6715827b, type: 2}
-        DelayBetweenApplicationMs: 0
+        DelayBetweenApplicationMs:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         RecordLandedAs:
           Name: 
           DisplayName: 

@@ -138,7 +138,12 @@ MonoBehaviour:
       data:
         Effects:
         - {fileID: 11400000, guid: dd8023b76341fd745b60c6124ad7ee35, type: 2}
-        DelayBetweenApplicationMs: 0
+        DelayBetweenApplicationMs:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         RecordLandedAs:
           Name: 
           DisplayName: 
@@ -148,7 +153,12 @@ MonoBehaviour:
     - rid: 2403794372806049802
       type: {class: DelayTask, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data:
-        DelayMilliseconds: 100
+        DelayMilliseconds:
+          Magnitude: 100
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
     - rid: 2403794372806049803
       type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
       data: 
@@ -157,7 +167,12 @@ MonoBehaviour:
       data:
         Effects:
         - {fileID: 11400000, guid: dd8023b76341fd745b60c6124ad7ee35, type: 2}
-        DelayBetweenApplicationMs: 0
+        DelayBetweenApplicationMs:
+          Magnitude: 0
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0
         RecordLandedAs:
           Name: 
           DisplayName: 

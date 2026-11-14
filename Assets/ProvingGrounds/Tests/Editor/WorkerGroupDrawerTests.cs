@@ -139,12 +139,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        // Every name under an item, its submenus' among them
+        private static IEnumerable<string> Names(UnityEditor.IMGUI.Controls.AdvancedDropdownItem item) =>
+            item.children.SelectMany(child => new[] { child.name }.Concat(Names(child)));
+
         /// <summary>
-        /// A sequence reference is Unity's popup of the project's sequences, None first; a pick is one Undo step (ED-57).
-        /// It was an IMGUI popup, which wrote "(None)".
+        /// A sequence reference is a field as a kind field is, the sequence's name in its box, which opens a searchable
+        /// dropdown of the project's sequences, None first; a pick is one Undo step (ED-57, FN-24). It was Unity's popup, one
+        /// long list, and an IMGUI popup before that, which wrote "(None)".
         /// </summary>
         [UnityTest]
-        public IEnumerator ED_57_A_sequence_reference_is_Unitys_popup()
+        public IEnumerator FN_24_A_sequence_reference_picks_from_a_searchable_dropdown()
         {
             var holder = ScriptableObject.CreateInstance<Holder>();
             var host = new Host();
@@ -152,19 +157,32 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 yield return null;
                 Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
-                var field = host.Draw(new SerializedObject(holder), nameof(Holder.Sequence));
-                yield return Until(() => field.Q<PopupField<string>>("Sequence") != null);
+                var serialized = new SerializedObject(holder);
+                var field = host.Draw(serialized, nameof(Holder.Sequence));
+                yield return Until(() => field.Q(name: "Sequence") != null);
                 yield return Frames();
 
-                var popup = field.Q<PopupField<string>>("Sequence");
-                Assert.IsNotNull(popup, "the reference is Unity's popup");
-                Assert.AreEqual("None", popup.value, "an empty one reads None");
-                Assert.That(popup.choices, Has.Member("ED-57 Sequence"), "it offers the project's sequences");
+                Assert.IsNull(field.Q<PopupField<string>>("Sequence"), "no popup");
+                Assert.AreEqual("None", field.Q(name: "Sequence")?.Q<Label>("TypeName")?.text, "an empty one reads None in its box");
 
+                var drawer = typeof(FarEmerald.PlayForge.Extended.Editor.TaskSequenceReferenceDrawer);
+                var picker = drawer.Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeSequencePicker");
+                Assert.IsNotNull(picker, "it opens a dropdown of its own");
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                var entries = drawer.GetMethod("Entries", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, null);
+                var dropdown = Activator.CreateInstance(picker, flags, null, new[] { entries, null }, null);
+                var root = (UnityEditor.IMGUI.Controls.AdvancedDropdownItem)picker.GetMethod("BuildRoot", flags).Invoke(dropdown, null);
+                Assert.AreEqual("None", root.children.First().name, "None first");
+                Assert.That(Names(root), Has.Member("ED-57 Sequence"), "it offers the project's sequences");
+
+                var pick = drawer.GetMethod("Pick", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                Assert.IsNotNull(pick, "a pick is the drawer's to make");
+                var sequence = typeof(WorkerGroupDrawerTests).GetMethod(nameof(Ed57Sequence), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
                 Undo.IncrementCurrentGroup();
-                popup.value = "ED-57 Sequence";
+                pick.Invoke(null, new object[] { serialized.FindProperty(nameof(Holder.Sequence)), sequence });
                 yield return Frames();
                 Assert.IsTrue(holder.Sequence.IsValid, "a pick names the sequence");
+                Assert.AreEqual("ED-57 Sequence", field.Q(name: "Sequence")?.Q<Label>("TypeName")?.text, "which its box shows");
                 Undo.PerformUndo();
                 Assert.IsFalse(holder.Sequence.IsValid, "and one Undo takes it back");
             }

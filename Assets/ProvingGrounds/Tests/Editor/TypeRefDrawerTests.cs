@@ -174,7 +174,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Until(() => Kinds().Count == 2 && Kinds()[1].Q<PropertyField>("ChannelDuration") != null);
                 yield return Frames();
 
-                serialized.FindProperty($"{nameof(TypeRefHolder.Tasks)}.Array.data[0].{nameof(DelayTask.DelayMilliseconds)}").intValue = 500;
+                // Delay Milliseconds is a Scalable whole number, its constant its Magnitude (FN-24)
+                serialized.FindProperty($"{nameof(TypeRefHolder.Tasks)}.Array.data[0].{nameof(DelayTask.DelayMilliseconds)}.{nameof(ScalableInt.Magnitude)}").intValue = 500;
                 serialized.ApplyModifiedProperties();
                 yield return Frames();
 
