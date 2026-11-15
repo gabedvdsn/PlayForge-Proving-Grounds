@@ -115,5 +115,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                     EActivationRefusal.Blocked, EActivationRefusal.Disabled,
                 }, heard, "and the ability system told each refusal, as it said it");
         });
+
+        /// <summary>
+        /// A refusal by an ability system that was off named no ability, though the slot it was asked for held one, so neither
+        /// a stop on the ability nor the Debugger's track on it could tell it was the ability's (GAS-87). It names the
+        /// ability its slot holds.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_87_A_refusal_with_the_system_off_names_its_ability([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var jab = Quick("Jab");
+            Assert.IsTrue(gas.GetAbilitySystem().GiveAbility(jab, 1, out _), "the entity knows Jab");
+            await Frames.Step();
+            var told = new List<ActivationRefusal>();
+            gas.GetAbilitySystem().Callbacks.OnAbilityRefused += each => told.Add(each);
+
+            gas.GetAbilitySystem().Enabled = false;
+            bool activated = gas.GetAbilitySystem().TryActivateAbility(jab, out var refusal, null, EAbilityActivationPolicyExtended.ActivateIfIdle);
+            gas.GetAbilitySystem().Enabled = true;
+            Assert.IsFalse(activated, "with the system off, Jab is refused");
+            Assert.AreEqual(EActivationRefusal.Disabled, refusal.Reason, "as the system is off");
+            Assert.AreSame(jab, refusal.Ability, "naming the ability its slot holds");
+            Assert.AreEqual(1, told.Count, "told once");
+            Assert.AreSame(jab, told[0].Ability, "as the callbacks tell it");
+        });
     }
 }
