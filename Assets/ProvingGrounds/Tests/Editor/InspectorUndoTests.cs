@@ -103,6 +103,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             for (int i = 0; i < 4; i++) yield return null;
         }
 
+        // Unity binds an inspector in slices of 50 ms and defers the rest, so a field it reaches late shows its value late:
+        // waits until what a check reads holds, up to five seconds, then lets the check say what it found (SP-30)
+        private static IEnumerator Until(System.Func<bool> holds, double seconds = 5)
+        {
+            double until = EditorApplication.timeSinceStartup + seconds;
+            while (!holds() && EditorApplication.timeSinceStartup < until) yield return null;
+        }
+
         // Presses a button, as a user does
         private static void Press(Button button)
         {
@@ -1113,6 +1121,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Frames();
 
                 AssertSteppedAside(root, "effect");
+                yield return Until(() => root.Q("Ticks")?.Q<IntegerField>("Number")?.showMixedValue == true
+                                         && root.Q<TextField>("Delivery")?.showMixedValue == true);
                 Assert.IsTrue(root.Q("Ticks")?.Q<IntegerField>("Number")?.showMixedValue == true, "ticks that differ show as mixed");
                 Assert.IsTrue(root.Q<TextField>("Delivery").showMixedValue, "and so does a delivery that differs");
                 Assert.IsNull(root.Q<Button>("AddImpact"), "additional impacts wait for one effect");
@@ -1164,6 +1174,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsNull(root.Q("AttributeTable"), "the attribute table waits for one entity");
                 Assert.IsFalse(root.Q<Toggle>("AllowDuplicateEquippedItems").enabledSelf,
                     "Equipped Too waits until every entity allows duplicates");
+                yield return Until(() => root.Query<IntegerField>("Number").ToList().Any(number => number.showMixedValue));
                 Assert.IsTrue(root.Query<IntegerField>("Number").ToList().Any(number => number.showMixedValue),
                     "a Max field that differs shows as mixed");
                 AssertEditsBoth(root, () => hero.Description, () => goblin.Description, "Saves the day.", "Steals.");
@@ -1251,6 +1262,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 // PropertyField draws an enum as a popup of the enum's names
                 var choice = lifecycle.Q<PopupField<string>>();
                 Assert.IsNotNull(choice, "as a choice");
+                yield return Until(() => choice.showMixedValue);
                 Assert.IsTrue(choice.showMixedValue, "lifecycles that differ show as mixed");
 
                 Undo.IncrementCurrentGroup();
