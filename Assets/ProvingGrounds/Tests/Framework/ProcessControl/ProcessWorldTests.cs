@@ -146,11 +146,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(sceneProcesses, World.Control.FetchActiveProcesses().Count, "the strikes ran in the duel's world, not the scene's");
 
             for (int i = 0; i < 3; i++) world.Step(1f / 60f);
-            Assert.IsFalse(second.Relay.ProcessActive, "the fallen one's process ends in its world");
-            Assert.IsTrue(first.Relay.ProcessActive, "and the other's goes on");
+            Assert.IsFalse(second.ProcessRelay.ProcessActive, "the fallen one's process ends in its world");
+            Assert.IsTrue(first.ProcessRelay.ProcessActive, "and the other's goes on");
             Assert.AreEqual(sceneProcesses, World.Control.FetchActiveProcesses().Count, "and the scene's control lost nothing");
 
-            first.Relay.TerminateImmediate();
+            first.ProcessRelay.TerminateImmediate();
             await Frames.Step();
         });
 

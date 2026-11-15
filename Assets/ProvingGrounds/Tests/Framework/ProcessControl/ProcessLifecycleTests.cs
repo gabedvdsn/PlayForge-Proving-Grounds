@@ -41,7 +41,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(3);
 
             var expected = ProcessStateOracle.Expected(EProcessControlState.Ready, lifecycle, EProcessState.Running);
-            Assert.That(probe.Relay.State, Is.EqualTo(expected), "the run is over, so the process moves on as any finished run does");
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(expected), "the run is over, so the process moves on as any finished run does");
         });
 
         /// <summary>
@@ -141,7 +141,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Forced");
             await Frames.Step();
 
-            probe.Relay.TerminateImmediate();
+            probe.ProcessRelay.TerminateImmediate();
             await Frames.Step(3);
 
             Assert.That(probe.Recorder[ProbeHook.Terminate], Is.EqualTo(1));
@@ -172,11 +172,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Faults.Arm(probe.Recorder.Site(ProbeHook.Terminate));
             await Frames.Step();
 
-            if (path == EndPath.Queued) probe.Relay.Terminate();
-            if (path == EndPath.Immediate) probe.Relay.TerminateImmediate();
+            if (path == EndPath.Queued) probe.ProcessRelay.Terminate();
+            if (path == EndPath.Immediate) probe.ProcessRelay.TerminateImmediate();
             await Frames.Step(4);
 
-            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "its block is gone");
+            Assert.That(World.Control.IsRegistered(probe.ProcessRelay.CacheIndex), Is.False, "its block is gone");
 
             int updates = probe.Recorder[ProbeHook.Update];
             await Frames.Step(2);
@@ -204,14 +204,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             const string Site = "Watcher.OnUnregister";
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
-            World.Control.WatchProcess(probe.Relay, this, onUnregister: _ => Faults.Trip(Site));
+            World.Control.WatchProcess(probe.ProcessRelay, this, onUnregister: _ => Faults.Trip(Site));
             Faults.Arm(Site);
             await Frames.Step();
 
-            probe.Relay.TerminateImmediate();
+            probe.ProcessRelay.TerminateImmediate();
             await Frames.Step();
 
-            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "its block is gone");
+            Assert.That(World.Control.IsRegistered(probe.ProcessRelay.CacheIndex), Is.False, "its block is gone");
         });
 
         /// <summary>
@@ -322,7 +322,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             switch (kind)
             {
                 case LazyKind.RuntimeGas:
-                    return World.RuntimeEntity().Relay;
+                    return World.RuntimeEntity().ProcessRelay;
 
                 case LazyKind.PlainRuntime:
                     return World.Register(new LazyRuntimeProcess("Lazy", EProcessStepPriorityMethod.Manual, 0,
@@ -397,7 +397,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await PauseAndResume();
             await Frames.Step(2);
 
-            Assert.That(probe.Relay.State, Is.EqualTo(EProcessState.Running), "it's where it was");
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(EProcessState.Running), "it's where it was");
         });
 
         /// <summary>The same default transition started a process that only runs when told to.</summary>
@@ -411,7 +411,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
 
             Assert.That(probe.Recorder[ProbeHook.Run], Is.EqualTo(0), "nobody told it to run");
-            Assert.That(probe.Relay.IsWaiting, "it's where it was");
+            Assert.That(probe.ProcessRelay.IsWaiting, "it's where it was");
         });
 
         /// <summary>And it ran again a process that already ran once and was done.</summary>
@@ -420,7 +420,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var probe = World.Probe("Once", EProcessLifecycle.RunThenWait, runFrames: 1);
             await Frames.Step(3);
-            Assert.That(probe.Relay.IsWaiting, "its run is over");
+            Assert.That(probe.ProcessRelay.IsWaiting, "its run is over");
 
             await PauseAndResume();
             await Frames.Step(2);

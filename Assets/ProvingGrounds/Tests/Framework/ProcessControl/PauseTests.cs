@@ -24,8 +24,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Paused", lifecycle);
             await Frames.Step();
 
-            Assert.That(probe.Relay.Pause(), "the pause is accepted");
-            Assert.That(probe.Relay.IsWaiting, "it's paused already");
+            Assert.That(probe.ProcessRelay.Pause(), "the pause is accepted");
+            Assert.That(probe.ProcessRelay.IsWaiting, "it's paused already");
 
             int updates = probe.Recorder[ProbeHook.Update];
             await Frames.Step(3);
@@ -41,10 +41,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Ending");
             await Frames.Step();
 
-            probe.Relay.Terminate();
+            probe.ProcessRelay.Terminate();
 
-            Assert.That(probe.Relay.Pause(), Is.False, "the pause is refused");
-            await Frames.Until(() => probe.Relay.State == EProcessState.Terminated, 5, "it ends as it was told to");
+            Assert.That(probe.ProcessRelay.Pause(), Is.False, "the pause is refused");
+            await Frames.Until(() => probe.ProcessRelay.State == EProcessState.Terminated, 5, "it ends as it was told to");
         });
 
         /// <summary>A process that says it can hold keeps its run, and carries on with what was left of it.</summary>
@@ -73,15 +73,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Restarted", runFrames: 100);
             await Frames.Step(2);
 
-            probe.Relay.Pause();
+            probe.ProcessRelay.Pause();
             await Frames.Step(2);
             Assert.That(probe.Recorder.RunsCancelled, Is.EqualTo(1), "its run was cancelled");
 
-            probe.Relay.Unpause();
+            probe.ProcessRelay.Unpause();
             await Frames.Step(2);
 
             Assert.That(probe.Recorder[ProbeHook.Run], Is.EqualTo(2), "and it runs again");
-            Assert.That(probe.Relay.IsRunning);
+            Assert.That(probe.ProcessRelay.IsRunning);
         });
 
         /// <summary>A held run has nothing else to end it, so ending the process has to.</summary>
@@ -128,12 +128,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             World.Control.SetControlState(EProcessControlState.Waiting);
             await Frames.Step();
 
-            Assert.That(probe.Relay.Pause(), "the pause is accepted");
+            Assert.That(probe.ProcessRelay.Pause(), "the pause is accepted");
 
             World.Control.SetControlState(EProcessControlState.Ready);
             await Frames.Step();
 
-            Assert.That(probe.Relay.IsWaiting, "ProcessControl's resume wasn't for this");
+            Assert.That(probe.ProcessRelay.IsWaiting, "ProcessControl's resume wasn't for this");
         });
 
         /// <summary>
@@ -153,13 +153,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
             else
             {
-                probe.Relay.Pause();
-                probe.Relay.Unpause();
+                probe.ProcessRelay.Pause();
+                probe.ProcessRelay.Unpause();
             }
 
             await Frames.Step(3);
 
-            Assert.That(probe.Relay.IsRunning, "the new run goes on");
+            Assert.That(probe.ProcessRelay.IsRunning, "the new run goes on");
             Assert.That(probe.Recorder[ProbeHook.Run], Is.EqualTo(2));
             Assert.That(probe.Recorder.RunsCancelled, Is.EqualTo(1), "only the old run was cancelled");
         });
@@ -169,15 +169,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         public IEnumerator PC_11_A_process_paused_on_its_own_stays_paused([Values] EProcessLifecycle lifecycle) => Live(async () =>
         {
             var probe = World.Probe("Paused Alone", lifecycle);
-            if (lifecycle == EProcessLifecycle.RequiresControl) probe.Relay.Unpause();
+            if (lifecycle == EProcessLifecycle.RequiresControl) probe.ProcessRelay.Unpause();
             await Frames.Step();
 
-            probe.Relay.Pause();
+            probe.ProcessRelay.Pause();
             await Frames.Step();
 
             await PauseAndResume();
 
-            Assert.That(probe.Relay.IsWaiting, "it wasn't ProcessControl that stopped it");
+            Assert.That(probe.ProcessRelay.IsWaiting, "it wasn't ProcessControl that stopped it");
         });
 
         /// <summary>A process registered during a pause waits for it, then starts as it would have.</summary>
@@ -187,13 +187,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             World.Control.SetControlState(EProcessControlState.Waiting);
             var probe = World.Probe("Late", lifecycle);
             await Frames.Step();
-            Assert.That(probe.Relay.IsWaiting, "it waits for ProcessControl");
+            Assert.That(probe.ProcessRelay.IsWaiting, "it waits for ProcessControl");
 
             World.Control.SetControlState(EProcessControlState.Ready);
             await Frames.Step(2);
 
             var expected = ProcessStateOracle.Expected(EProcessControlState.Ready, lifecycle, EProcessState.Created);
-            Assert.That(probe.Relay.State, Is.EqualTo(expected));
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(expected));
         });
 
         /// <summary>ProcessControl's pause holds a run that can hold, as a pause of its own does.</summary>
@@ -221,10 +221,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Ending", EProcessLifecycle.RunThenWait);
             await Frames.Step();
 
-            probe.Relay.Terminate();
+            probe.ProcessRelay.Terminate();
             await PauseAndResume();
 
-            Assert.That(probe.Relay.State, Is.EqualTo(EProcessState.Terminated));
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(EProcessState.Terminated));
             Assert.That(probe.Recorder[ProbeHook.Run], Is.EqualTo(1), "it didn't run again");
         });
 
@@ -237,7 +237,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             World.Control.SetControlState(EProcessControlState.Waiting);
 
-            Assert.That(probe.Relay.Unpause(), Is.False);
+            Assert.That(probe.ProcessRelay.Unpause(), Is.False);
 
             World.Control.SetControlState(EProcessControlState.Ready);
             await Frames.Step();

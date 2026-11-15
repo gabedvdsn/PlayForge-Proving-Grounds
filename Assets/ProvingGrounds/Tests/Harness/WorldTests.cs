@@ -57,10 +57,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var probe = World.Probe("Timed", runFrames: 3);
 
-            await Frames.ExactlyIn(3, () => probe.Relay.State == EProcessState.Terminated, "the run ends");
+            await Frames.ExactlyIn(3, () => probe.ProcessRelay.State == EProcessState.Terminated, "the run ends");
 
             Assert.That(probe.Recorder.RunsCompleted, Is.EqualTo(1));
-            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "its block is gone");
+            Assert.That(World.Control.IsRegistered(probe.ProcessRelay.CacheIndex), Is.False, "its block is gone");
         });
 
         [UnityTest]

@@ -117,7 +117,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreSame(gas, overload.Handler, "a wrapper of the builder now");
             await Frames.Step(2);
 
-            var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).Relay;
+            var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).ProcessRelay;
             relay.TerminateImmediate();
             await Frames.Step(3);
             foreach (var each in new[] { built.Relay, run, overload })

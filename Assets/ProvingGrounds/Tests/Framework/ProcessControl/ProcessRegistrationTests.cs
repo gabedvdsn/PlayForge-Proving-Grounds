@@ -178,9 +178,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             World.Register(new ActionProcess("First", EProcessStepPriorityMethod.First, 0, EProcessStepTiming.Update,
                 EProcessLifecycle.Synchronous, () => order.Add("First")));
 
-            middle.Relay.Pause();
+            middle.ProcessRelay.Pause();
             await Frames.Step();
-            middle.Relay.Unpause();
+            middle.ProcessRelay.Unpause();
             order.Clear();
 
             await Frames.Step();

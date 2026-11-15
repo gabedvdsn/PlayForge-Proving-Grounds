@@ -94,9 +94,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Delay(100f)
                 .Build());
 
-            ProcessControl.Register(sequence, out var first);
+            var first = ProcessControl.Register(sequence).Run().Relay;
             World.Own(first);
-            ProcessControl.Register(sequence, out var second);
+            var second = ProcessControl.Register(sequence).Run().Relay;
             World.Own(second);
             await Frames.Step();
 

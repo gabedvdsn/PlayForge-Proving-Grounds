@@ -85,21 +85,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         /// <summary>Registers a process the world will end if the test doesn't.</summary>
         public ProcessRelay Register(AbstractRuntimeProcess process, ProcessDataPacket data = null)
         {
-            if (!ProcessControl.Register(process, data ?? ProcessDataPacket.Default(), out var relay))
-                throw new AssertionException($"ProcessControl refused {process.ProcessName}");
+            var reg = ProcessControl.Register(process).With(data ?? ProcessDataPacket.Default()).Run();
+            if (!reg.Registered)
+                throw new AssertionException($"ProcessControl refused {process.GetName()}");
 
-            _owned.Add(relay);
-            return relay;
+            _owned.Add(reg.Relay);
+            return reg.Relay;
         }
 
         /// <summary>Registers a process the world will end if the test doesn't.</summary>
         public ProcessRelay Register(AbstractMonoProcess process, ProcessDataPacket data = null)
         {
-            if (!ProcessControl.Register(process, data ?? ProcessDataPacket.Default(), out var relay))
-                throw new AssertionException($"ProcessControl refused {process.name}");
+            var reg = ProcessControl.Register(process).With(data ?? ProcessDataPacket.Default()).Run();
+            if (!reg.Registered)
+                throw new AssertionException($"ProcessControl refused {process.GetName()}");
 
-            _owned.Add(relay);
-            return relay;
+            _owned.Add(reg.Relay);
+            return reg.Relay;
         }
 
         /// <summary>Makes the world end a process that was registered some other way.</summary>

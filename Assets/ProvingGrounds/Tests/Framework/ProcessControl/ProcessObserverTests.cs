@@ -62,10 +62,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
             var seen = new List<EProcessState>();
-            World.Control.WatchProcess(probe.Relay, this, onStateChange: (_, to, _) => seen.Add(to));
+            World.Control.WatchProcess(probe.ProcessRelay, this, onStateChange: (_, to, _) => seen.Add(to));
             await Frames.Step();
 
-            probe.Relay.TerminateImmediate();
+            probe.ProcessRelay.TerminateImmediate();
             await Frames.Step();
 
             Assert.That(seen, Does.Contain(EProcessState.Terminated));
@@ -80,17 +80,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             ProcessControlCallbacks.ProcessDelegate listener = (relay, _) =>
             {
-                if (relay == probe.Relay) stillThere = World.Control.IsRegistered(relay.CacheIndex);
+                if (relay == probe.ProcessRelay) stillThere = World.Control.IsRegistered(relay.CacheIndex);
             };
 
             World.Control.Callbacks.OnProcessUnregistered += listener;
-            probe.Relay.TerminateImmediate();
+            probe.ProcessRelay.TerminateImmediate();
             World.Control.Callbacks.OnProcessUnregistered -= listener;
 
             await Frames.Step();
 
             Assert.That(stillThere, "it could still be looked up");
-            Assert.That(World.Control.IsRegistered(probe.Relay.CacheIndex), Is.False, "and then it was gone");
+            Assert.That(World.Control.IsRegistered(probe.ProcessRelay.CacheIndex), Is.False, "and then it was gone");
         });
 
         /// <summary>The first watcher returned before calling back, so only later ones heard they'd started.</summary>
@@ -100,7 +100,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
             bool told = false;
 
-            World.Control.WatchProcess(probe.Relay, this, onStartWatching: _ => told = true);
+            World.Control.WatchProcess(probe.ProcessRelay, this, onStartWatching: _ => told = true);
 
             await Frames.Step();
             Assert.That(told);
@@ -113,11 +113,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Watched", EProcessLifecycle.Synchronous);
             int calls = 0;
 
-            World.Control.WatchProcess(probe.Relay, this, onUnregister: _ => calls++);
-            World.Control.WatchProcess(probe.Relay, this, onUnregister: _ => calls++);
+            World.Control.WatchProcess(probe.ProcessRelay, this, onUnregister: _ => calls++);
+            World.Control.WatchProcess(probe.ProcessRelay, this, onUnregister: _ => calls++);
             await Frames.Step();
 
-            probe.Relay.TerminateImmediate();
+            probe.ProcessRelay.TerminateImmediate();
             await Frames.Step();
 
             Assert.That(calls, Is.EqualTo(2));
@@ -131,15 +131,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var other = new object();
             int otherCalls = 0;
 
-            World.Control.WatchProcess(probe.Relay, this, onStateChange: (_, _, _) => World.Control.StopWatchingProcess(probe.Relay, this));
-            World.Control.WatchProcess(probe.Relay, other, onStateChange: (_, _, _) => otherCalls++);
+            World.Control.WatchProcess(probe.ProcessRelay, this, onStateChange: (_, _, _) => World.Control.StopWatchingProcess(probe.ProcessRelay, this));
+            World.Control.WatchProcess(probe.ProcessRelay, other, onStateChange: (_, _, _) => otherCalls++);
             await Frames.Step();
 
-            Assert.DoesNotThrow(() => probe.Relay.Pause());
+            Assert.DoesNotThrow(() => probe.ProcessRelay.Pause());
             await Frames.Step();
 
             Assert.That(otherCalls, Is.EqualTo(1), "the other watcher still heard");
-            probe.Relay.Unpause();
+            probe.ProcessRelay.Unpause();
             await Frames.Step();
         });
     }

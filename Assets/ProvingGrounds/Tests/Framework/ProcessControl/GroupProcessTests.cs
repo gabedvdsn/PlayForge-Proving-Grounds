@@ -22,7 +22,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             member.TerminateImmediate();
             await Frames.Step(2);
 
-            Assert.That(group.Relay.State, Is.EqualTo(EProcessState.Terminated));
+            Assert.That(group.ProcessRelay.State, Is.EqualTo(EProcessState.Terminated));
             Assert.That(ProcessControl.HasGroup(tag), Is.False, "and is gone from the registry");
         });
 
@@ -33,10 +33,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Unstepped", EProcessLifecycle.Synchronous, EProcessStepTiming.None);
             await Frames.Step();
 
-            probe.Relay.Terminate();
+            probe.ProcessRelay.Terminate();
             await Frames.Step();
 
-            Assert.That(probe.Relay.State, Is.EqualTo(EProcessState.Terminated));
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(EProcessState.Terminated));
         });
 
         /// <summary>Detaching removed every watcher on the process, not only the group's.</summary>
@@ -47,7 +47,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             ProcessControl.RegisterWithGroup(tag, World.NewProbe("Member"), out var member, false);
             World.Own(member);
             ProcessControl.TryGetGroup(tag, out var group);
-            World.Own(group.Relay);
+            World.Own(group.ProcessRelay);
             group.TerminateWhenEmpty = false;
 
             int heard = 0;

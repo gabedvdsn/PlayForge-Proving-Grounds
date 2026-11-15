@@ -196,17 +196,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds
         private static async UniTask<TransitionObservation> ObserveRunEnding(World world, TransitionCell cell)
         {
             var probe = world.Probe("Oracle Probe", cell.Lifecycle);
-            if (cell.Lifecycle == EProcessLifecycle.RequiresControl) probe.Relay.Unpause();
+            if (cell.Lifecycle == EProcessLifecycle.RequiresControl) probe.ProcessRelay.Unpause();
 
             world.Control.SetControlState(cell.Control);
             await world.Frames.Step();
 
-            if (!probe.Relay.IsRunning) return TransitionObservation.Moved(probe.Relay.State, "(moved by the control change)");
+            if (!probe.ProcessRelay.IsRunning) return TransitionObservation.Moved(probe.ProcessRelay.State, "(moved by the control change)");
             if (cell.Lifecycle == EProcessLifecycle.Synchronous) return TransitionObservation.Unreachable("a synchronous process has no run to end");
 
             probe.Recorder.Released = true;
             await world.Frames.Step(2);
-            return TransitionObservation.Moved(probe.Relay.State);
+            return TransitionObservation.Moved(probe.ProcessRelay.State);
         }
 
         private static async UniTask<TransitionObservation> ObserveResume(World world, TransitionCell cell)
@@ -214,24 +214,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             var probe = world.Probe("Oracle Probe", cell.Lifecycle);
 
             // RequiresControl waits from the start; anything else is sent there through a run ending
-            if (!probe.Relay.IsWaiting)
+            if (!probe.ProcessRelay.IsWaiting)
             {
-                probe.Relay.Pause();
+                probe.ProcessRelay.Pause();
                 probe.Recorder.Released = true;
                 await world.Frames.Step(2);
                 probe.Recorder.Released = false;
             }
 
-            if (!probe.Relay.IsWaiting) return TransitionObservation.Moved(probe.Relay.State, "(would not pause)");
+            if (!probe.ProcessRelay.IsWaiting) return TransitionObservation.Moved(probe.ProcessRelay.State, "(would not pause)");
 
             world.Control.SetControlState(cell.Control);
             await world.Frames.Step();
 
-            if (!probe.Relay.IsWaiting) return TransitionObservation.Moved(probe.Relay.State, "(moved by the control change)");
+            if (!probe.ProcessRelay.IsWaiting) return TransitionObservation.Moved(probe.ProcessRelay.State, "(moved by the control change)");
 
-            probe.Relay.Unpause();
+            probe.ProcessRelay.Unpause();
             await world.Frames.Step(2);
-            return TransitionObservation.Moved(probe.Relay.State);
+            return TransitionObservation.Moved(probe.ProcessRelay.State);
         }
     }
 }

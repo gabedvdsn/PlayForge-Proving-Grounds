@@ -337,7 +337,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.That(ended, Is.EqualTo(0), "it's running");
 
-            var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).Relay;
+            var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).ProcessRelay;
             switch (ending)
             {
                 case Ending.Terminate: relay.Terminate(); break;

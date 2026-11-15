@@ -83,13 +83,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             // A pause mid-run sends a self-terminating process to Waiting instead of the table's Terminated
             var cell = Cell(EProcessControlState.Ready, EProcessLifecycle.SelfTerminating, EProcessState.Running);
             var probe = World.Probe("Rerouted");
-            probe.Relay.Pause();
+            probe.ProcessRelay.Pause();
             probe.Recorder.Released = true;
 
             await Frames.Step(2);
 
-            Assert.That(probe.Relay.State, Is.EqualTo(EProcessState.Waiting));
-            Assert.That(probe.Relay.State, Is.Not.EqualTo(cell.Expected));
+            Assert.That(probe.ProcessRelay.State, Is.EqualTo(EProcessState.Waiting));
+            Assert.That(probe.ProcessRelay.State, Is.Not.EqualTo(cell.Expected));
         });
 
         private static TransitionCell Cell(EProcessControlState control, EProcessLifecycle lifecycle, EProcessState from)

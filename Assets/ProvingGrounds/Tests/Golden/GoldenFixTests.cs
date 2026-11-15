@@ -281,13 +281,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Faults.Arm(broken.Recorder.Site(ProbeHook.Update), times: FaultInjector.Always);
 
             // Torn down while running, as a despawned fighter is: the termination waits for its step
-            World.Control.Terminate(broken.Relay.CacheIndex);
+            World.Control.Terminate(broken.ProcessRelay.CacheIndex);
 
             await Frames.Step();
 
             Assert.That(after.Recorder[ProbeHook.Update], Is.EqualTo(1), "the process after the broken one still steps that frame");
-            Assert.That(broken.Relay.State, Is.EqualTo(EProcessState.Terminated), "the broken process's termination applies");
-            Assert.That(World.Control.IsRegistered(broken.Relay.CacheIndex), Is.False, "and its block is gone");
+            Assert.That(broken.ProcessRelay.State, Is.EqualTo(EProcessState.Terminated), "the broken process's termination applies");
+            Assert.That(World.Control.IsRegistered(broken.ProcessRelay.CacheIndex), Is.False, "and its block is gone");
         });
 
         /// <summary>

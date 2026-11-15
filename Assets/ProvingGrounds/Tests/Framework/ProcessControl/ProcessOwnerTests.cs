@@ -39,7 +39,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator FEAT_10_A_relay_reaches_the_control_that_holds_its_process() => Live(async () =>
         {
-            var relay = World.Probe("Held").Relay;
+            var relay = World.Probe("Held").ProcessRelay;
             await Frames.Step();
             var held = World.Control;
             Assert.IsTrue(held.IsRegistered(relay.CacheIndex), "the scene's control holds the process");
@@ -59,7 +59,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator FEAT_10_A_watch_sits_with_the_control_that_holds_the_process() => Live(async () =>
         {
-            var relay = World.Probe("Watched").Relay;
+            var relay = World.Probe("Watched").ProcessRelay;
             await Frames.Step();
             var held = World.Control;
             int changes = 0;
@@ -94,7 +94,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step(2);
             Assert.AreEqual(0, ended, "it's running");
 
-            var relay = ((AbstractRuntimeProcess)gas).Relay;
+            var relay = ((AbstractRuntimeProcess)gas).ProcessRelay;
             using (new OtherControl())
             {
                 Assert.IsTrue(relay.TerminateImmediate(), "the entity ends where it's held");

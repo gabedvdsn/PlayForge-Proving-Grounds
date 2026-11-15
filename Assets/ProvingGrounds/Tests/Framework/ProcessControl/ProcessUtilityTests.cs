@@ -45,7 +45,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var probe = World.Probe("Timed");
             await Frames.Seconds(1.5f);
 
-            Assert.That(probe.Relay.RemainingRuntime(5000, 1000, unscaled: false), Is.InRange(3400, 3550));
+            Assert.That(probe.ProcessRelay.RemainingRuntime(5000, 1000, unscaled: false), Is.InRange(3400, 3550));
         });
 
         /// <summary>

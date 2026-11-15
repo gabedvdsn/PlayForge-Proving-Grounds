@@ -58,7 +58,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .WithRepeat(true)
                 .Stage(stage => stage.WithPolicy(policy).Do(_ => { }))
                 .Build());
-            ProcessControl.Register(sequence, out var relay);
+            var relay = ProcessControl.Register(sequence).Run().Relay;
             World.Own(relay);
             await Frames.Step(30);
 
