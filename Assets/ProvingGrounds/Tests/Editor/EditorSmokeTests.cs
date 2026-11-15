@@ -314,12 +314,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             for (int i = 0; i < count; i++) yield return null;
         }
 
-        // The lists that draw fewer rows than they hold, by their paths, each with the rows it drew and its size
+        // The lists that draw fewer rows than they hold, by their paths, each with the rows it drew, its size and why
         private static List<string> Undrawn(VisualElement root) => root.Query<ListView>().ToList()
             .Select(list => (list, drawn: list.Query(className: ListView.itemUssClassName).ToList().Count))
             .Where(each => each.drawn < (each.list.itemsSource?.Count ?? 0))
-            .Select(each => $"{each.list.bindingPath ?? each.list.name} ({each.drawn} of {each.list.itemsSource.Count} rows, {each.list.layout.size})")
+            .Select(each => $"{each.list.bindingPath ?? each.list.name} ({each.drawn} of {each.list.itemsSource.Count} rows, " +
+                            $"{each.list.layout.size}, {Unsized(each.list)})")
             .ToList();
+
+        // Why a list has no room: the nearest element above it that hides it, or the outermost above it with no size
+        private static string Unsized(VisualElement list)
+        {
+            if (list.panel == null) return "off the panel";
+            VisualElement outermost = null;
+            for (var each = list.hierarchy.parent; each != null; each = each.hierarchy.parent)
+            {
+                if (each.resolvedStyle.display == DisplayStyle.None) return $"hidden by {Named(each)}";
+                if (each.layout.width > 0f && each.layout.height > 0f) break;
+                outermost = each;
+            }
+            return outermost != null ? $"in {Named(outermost)} sized {outermost.layout.size}" : $"in a parent sized {list.hierarchy.parent?.layout.size}";
+        }
+
+        private static string Named(VisualElement element) =>
+            $"{element.GetType().Name} '{element.name}' [{string.Join(" ", element.GetClasses().Take(3))}]";
 
         // Presses a button, as a user does
         private static void Press(Button button)
