@@ -81,7 +81,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 ProcessControl.Instance = null;
                 control.Bootstrap();
-                Assert.IsTrue(ProcessControl.Register(body.AddComponent<StillProcess>(), control, ProcessDataPacket.Default(), out _),
+                Assert.IsTrue(ProcessControl.Register(body.AddComponent<StillProcess>()).HandledBy(control).With(ProcessDataPacket.Default()).Run(out _),
                     "it registers");
 
                 control.TerminateAllImmediately();

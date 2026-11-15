@@ -32,7 +32,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             if (subStage) builder.Stage(stage => stage.SubStage(sub => sub.Task(task)));
             else builder.Task(task);
 
-            ProcessControl.Register(new TaskSequence(builder.Build()), out var relay);
+            ProcessControl.Register(new TaskSequence(builder.Build())).Run(out var relay);
             World.Own(relay);
             await Frames.Until(() => reported != null, 5, "the error is reported");
 
@@ -51,7 +51,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             if (timer == Timer.FiredTimeout) builder.WithTimeout(0.1f, new DelegateSequenceInjection(_ => true));
             builder.Delay(0.3f).Do(data => elapsed = data.ElapsedTime);
 
-            ProcessControl.Register(new TaskSequence(builder.Build()), out var relay);
+            ProcessControl.Register(new TaskSequence(builder.Build())).Run(out var relay);
             World.Own(relay);
             await Frames.Until(() => relay.State == EProcessState.Terminated, 30, "it runs");
 

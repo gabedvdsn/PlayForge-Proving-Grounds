@@ -68,7 +68,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 var sequence = new TaskSequence(TaskSequenceBuilder.Create("Chained").Task(task).Build());
                 ProcessControl.Register(new TaskSequenceChain(sequence)
                     .WithConditionCheckTiming(timing)
-                    .InterruptWhen(_ => tripped), out relay);
+                    .InterruptWhen(_ => tripped)).Run(out relay);
             }
             else
             {
@@ -76,7 +76,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                     .WithConditionCheckTiming(timing)
                     .InterruptWhen(_ => tripped)
                     .Task(task)
-                    .Build()), out relay);
+                    .Build())).Run(out relay);
             }
             World.Own(relay);
 
@@ -298,7 +298,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Task(new ProbeSequenceTask(World, "Stepped", frames: 2))
                 .Build()) { OnCriticalSectionExited = () => exits++ };
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => relay.State == EProcessState.Terminated, 5, "it ends");
@@ -343,7 +343,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private ProcessRelay Run(TaskSequenceBuilder builder)
         {
-            ProcessControl.Register(new TaskSequence(builder.Build()), out var relay);
+            ProcessControl.Register(new TaskSequence(builder.Build())).Run(out var relay);
             World.Own(relay);
             return relay;
         }

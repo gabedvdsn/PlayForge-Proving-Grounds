@@ -182,7 +182,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             world.Control.SetControlState(cell.Control);
 
             var probe = world.NewProbe("Oracle Probe", cell.Lifecycle);
-            if (!ProcessControl.Register(probe, ProcessDataPacket.Default(), out var relay))
+            if (!ProcessControl.Register(probe).With(ProcessDataPacket.Default()).Run(out var relay))
             {
                 return TransitionObservation.Unreachable($"ProcessControl takes no new processes while {cell.Control}");
             }

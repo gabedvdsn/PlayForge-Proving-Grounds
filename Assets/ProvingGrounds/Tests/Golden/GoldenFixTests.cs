@@ -362,7 +362,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var task = new ProbeSequenceTask(World, "Held", frames: 6);
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Held Sequence").Task(task).Build());
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
             Assert.That(relay.IsRunning, "the sequence is mid-run");

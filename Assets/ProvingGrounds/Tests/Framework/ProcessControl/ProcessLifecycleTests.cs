@@ -341,7 +341,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
                 default:
                     var sequence = new TaskSequence(TaskSequenceBuilder.Create("Long Sequence").Delay(100f).Build());
-                    ProcessControl.Register(sequence, out var relay);
+                    ProcessControl.Register(sequence).Run(out var relay);
                     World.Own(relay);
                     return relay;
             }
@@ -359,8 +359,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             ProcessRelay relay = null;
 
             Assert.DoesNotThrow(() => registered = withHandler
-                ? ProcessControl.Register(probe, (IGameplayProcessHandler)World.Root, out relay)
-                : ProcessControl.Register(probe, out relay));
+                ? ProcessControl.Register(probe).HandledBy((IGameplayProcessHandler)World.Root).Run(out relay)
+                : ProcessControl.Register(probe).Run(out relay));
 
             Assert.That(registered, "it registers");
             World.Own(relay);

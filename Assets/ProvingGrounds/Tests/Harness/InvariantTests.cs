@@ -18,7 +18,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var baseline = new HashSet<int>(World.Control.FetchActiveProcesses().Keys);
             var stray = World.NewProbe("Stray");
-            ProcessControl.Register(stray, ProcessDataPacket.Default(), out var relay);
+            ProcessControl.Register(stray).With(ProcessDataPacket.Default()).Run(out var relay);
 
             var violations = World.Invariants.CheckBlocks(World.Control, baseline);
 

@@ -120,7 +120,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var task = new ProbeSequenceTask(World, "Sequence Task", frames: 1);
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Probe Sequence").Task(task).Build());
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => Ledger.Cleans("Sequence Task") == 1, 10, "the task is cleaned");

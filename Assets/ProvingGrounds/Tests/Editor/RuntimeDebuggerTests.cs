@@ -173,7 +173,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private RuntimeGameplayAbilitySystem RuntimeHub(string name, AttributeSet set, out ProcessRelay relay)
         {
             var gas = new RuntimeGameplayAbilitySystem(Identity(name, set));
-            Assert.IsTrue(ProcessControl.Register(gas, control, ProcessDataPacket.Default(), out relay), $"{name} registers");
+            Assert.IsTrue(ProcessControl.Register(gas).HandledBy(control).With(ProcessDataPacket.Default()).Run(out relay), $"{name} registers");
             return gas;
         }
 
@@ -200,7 +200,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var gas = GameplayAbilitySystem.AddToGameObject(body, identity);
             gas.ProcessLifecycle = EProcessLifecycle.Synchronous;
             gas.ProcessTiming = EProcessStepTiming.UpdateAndLate;
-            Assert.IsTrue(ProcessControl.Register(gas, control, ProcessDataPacket.Default(), out _), $"{name} registers");
+            Assert.IsTrue(ProcessControl.Register(gas).HandledBy(control).With(ProcessDataPacket.Default()).Run(out _), $"{name} registers");
             return gas;
         }
 
@@ -1514,7 +1514,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator ShowsStepTime()
         {
-            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Busy", EProcessLifecycle.SelfTerminating), control, ProcessDataPacket.Default(), out var relay),
+            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Busy", EProcessLifecycle.SelfTerminating)).HandledBy(control).With(ProcessDataPacket.Default()).Run(out var relay),
                 "a busy process registers");
             var window = Open();
             yield return Frames();
@@ -1561,7 +1561,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator PausesAndResumes()
         {
-            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Waits", EProcessLifecycle.RunThenWait), control, ProcessDataPacket.Default(), out var relay),
+            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Waits", EProcessLifecycle.RunThenWait)).HandledBy(control).With(ProcessDataPacket.Default()).Run(out var relay),
                 "a process that waits after its run registers");
             var window = Open();
             yield return Frames();
@@ -1600,7 +1600,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator ShowsTheRun()
         {
-            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Waits", EProcessLifecycle.RunThenWait), control, ProcessDataPacket.Default(), out var relay),
+            Assert.IsTrue(ProcessControl.Register(new BusyProcess("Waits", EProcessLifecycle.RunThenWait)).HandledBy(control).With(ProcessDataPacket.Default()).Run(out var relay),
                 "a process that waits after its run registers");
             var window = Open();
             yield return Frames();

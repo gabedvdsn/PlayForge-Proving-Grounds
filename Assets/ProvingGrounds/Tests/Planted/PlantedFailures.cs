@@ -19,7 +19,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest, Description("control block #")]
         public IEnumerator A_leaked_control_block() => Live(async () =>
         {
-            ProcessControl.Register(World.NewProbe("Leaked"), ProcessDataPacket.Default(), out _);
+            ProcessControl.Register(World.NewProbe("Leaked")).With(ProcessDataPacket.Default()).Run(out _);
             await Frames.Step();
         });
 

@@ -300,7 +300,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     for (int i = 0; i < count; i++)
                     {
                         var gas = new RuntimeGameplayAbilitySystem(Identity($"Stress Entity {i}", set));
-                        Assert.IsTrue(ProcessControl.Register(gas, control, ProcessDataPacket.Default(), out var relay), "an entity registers");
+                        Assert.IsTrue(ProcessControl.Register(gas).HandledBy(control).With(ProcessDataPacket.Default()).Run(out var relay), "an entity registers");
                         foreach (var effect in effects) gas.ApplyGameplayEffect(gas.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(gas), effect));
                         relays.Add(relay);
                     }

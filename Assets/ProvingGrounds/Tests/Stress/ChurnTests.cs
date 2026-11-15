@@ -73,7 +73,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             for (int i = 0; i < count; i++)
             {
-                if (!ProcessControl.Register(new Idle(), ProcessDataPacket.Default(), out var relay)) Assert.Fail($"ProcessControl refused process {relays.Count}");
+                if (!ProcessControl.Register(new Idle()).With(ProcessDataPacket.Default()).Run(out var relay)) Assert.Fail($"ProcessControl refused process {relays.Count}");
                 relays.Add(relay);
             }
         }

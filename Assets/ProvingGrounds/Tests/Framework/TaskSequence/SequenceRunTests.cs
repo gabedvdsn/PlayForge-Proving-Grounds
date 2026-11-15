@@ -19,11 +19,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Shared Sequence").Delay(100f).Build());
 
-            ProcessControl.Register(sequence, out var first);
+            ProcessControl.Register(sequence).Run(out var first);
             World.Own(first);
             await Frames.Step();
 
-            ProcessControl.Register(sequence, out var second);
+            ProcessControl.Register(sequence).Run(out var second);
             World.Own(second);
             await Frames.Step();
 
@@ -45,7 +45,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var definition = TaskSequenceBuilder.Create("Shared Definition").Delay(100f).Build();
             var sequence = new TaskSequence(definition);
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
 
@@ -65,9 +65,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                     await UniTask.Yield(PlayerLoopTiming.Update, token)))
                 .Build());
 
-            ProcessControl.Register(sequence, out var first);
+            ProcessControl.Register(sequence).Run(out var first);
             World.Own(first);
-            ProcessControl.Register(sequence, out var second);
+            ProcessControl.Register(sequence).Run(out var second);
             World.Own(second);
             await Frames.Step(3);
 
@@ -129,7 +129,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 })
                 .Build());
 
-            ProcessControl.Register(outer, out var relay);
+            ProcessControl.Register(outer).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => relay.State == EProcessState.Terminated, 12, "the sequence ends");
@@ -145,7 +145,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Delay(100f).Build())
                 .Then(new TaskSequence(TaskSequenceBuilder.Create("Second").Task(new ProbeSequenceTask(World, "Second")).Build()));
 
-            ProcessControl.Register(chain, out var relay);
+            ProcessControl.Register(chain).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
 
@@ -171,7 +171,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Then(new TaskSequence(TaskSequenceBuilder.Create("Again").Do(_ => { }).Build()))
                 .WithRepeat(true);
 
-            ProcessControl.Register(chain, out var relay);
+            ProcessControl.Register(chain).Run(out var relay);
             World.Own(relay);
             await Frames.Step(12);
 
@@ -187,7 +187,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator TS_O_An_empty_repeating_chain_ends() => Live(async () =>
         {
-            ProcessControl.Register(new TaskSequenceChain().WithRepeat(true), out var relay);
+            ProcessControl.Register(new TaskSequenceChain().WithRepeat(true)).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => relay.State == EProcessState.Terminated, 3, "it ends");
@@ -203,7 +203,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         {
             var task = new ProbeSequenceTask(World, "Cancelled", frames: 1000);
             var sequence = new TaskSequence(TaskSequenceBuilder.Create("Cancelled Sequence").Task(task).Build());
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
 
@@ -229,7 +229,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Stage(stage => stage.Task(next))
                 .Build());
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 20, "the next stage runs");
@@ -249,7 +249,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Build());
             sequence.OnCriticalSectionExited = () => Faults.Trip(Site);
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => Ledger.Cleans("Next Stage") == 1, 20, "the next stage runs");
@@ -273,7 +273,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Build());
             sequence.OnCriticalSectionExited = () => Faults.Trip(Site);
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
 
             await Frames.Until(() => terminated, 20, "the sequence's OnTerminate fires");

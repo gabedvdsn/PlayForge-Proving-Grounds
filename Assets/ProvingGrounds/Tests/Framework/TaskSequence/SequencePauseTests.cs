@@ -149,7 +149,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Delay(0.1f).Build())
                 .Then(new TaskSequence(TaskSequenceBuilder.Create("Second").Task(next).Build()));
 
-            ProcessControl.Register(chain, out var relay);
+            ProcessControl.Register(chain).Run(out var relay);
             World.Own(relay);
 
             await Frames.Seconds(0.05f);
@@ -274,7 +274,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Delay(100f).Build())
                 .Then(new TaskSequence(TaskSequenceBuilder.Create("Second").Task(next).Build()));
 
-            ProcessControl.Register(chain, out var relay);
+            ProcessControl.Register(chain).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
 
@@ -298,7 +298,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var chain = new TaskSequence(TaskSequenceBuilder.Create("Only").Delay(0.1f).Build())
                 .Then(new TaskSequence(TaskSequenceBuilder.Create("Then").Task(next).Build()));
 
-            ProcessControl.Register(chain, out var first);
+            ProcessControl.Register(chain).Run(out var first);
             World.Own(first);
             await Frames.Step(2);
 
@@ -306,7 +306,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             first.TerminateImmediate();
             await Frames.Step(2);
 
-            ProcessControl.Register(chain, out var second);
+            ProcessControl.Register(chain).Run(out var second);
             World.Own(second);
 
             await Frames.Until(() => Ledger.Cleans("Chained") == 1, 20, "the new run goes through");
@@ -379,7 +379,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private ProcessRelay Run(TaskSequence sequence)
         {
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             return relay;
         }

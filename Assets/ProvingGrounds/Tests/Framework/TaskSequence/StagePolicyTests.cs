@@ -40,7 +40,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 })
                 .Build());
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Until(() => first.HasValue, ExitFrames, "the first stage ends");
             Assert.That(first, Is.True, "having finished");
@@ -80,7 +80,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Stage(stage => stage.Task(next))
                 .Build());
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Seconds(0.1f);
 
@@ -110,7 +110,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 .Stage(stage => stage.Task(next))
                 .Build());
 
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             await Frames.Step(2);
 

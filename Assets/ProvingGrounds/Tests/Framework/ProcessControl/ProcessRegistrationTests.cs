@@ -43,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             {
                 for (int i = 0; i < count; i++)
                 {
-                    if (!ProcessControl.Register(new Idle(), ProcessDataPacket.Default(), out relays[i])) Assert.Fail($"process {i} was refused");
+                    if (!ProcessControl.Register(new Idle()).With(ProcessDataPacket.Default()).Run(out relays[i])) Assert.Fail($"process {i} was refused");
                 }
                 await Frames.Step();
 
@@ -69,7 +69,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             bool registered = true;
             ProcessRelay relay = null;
-            Assert.DoesNotThrow(() => registered = ProcessControl.Register(probe, ProcessDataPacket.Default(), out relay));
+            Assert.DoesNotThrow(() => registered = ProcessControl.Register(probe).With(ProcessDataPacket.Default()).Run(out relay));
 
             Assert.That(registered, Is.False, "it's refused");
             Assert.That(relay, Is.Null, "with no relay to hold");
@@ -104,7 +104,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             World.Register(process);
             await Frames.Step();
 
-            Assert.That(ProcessControl.Register(process, ProcessDataPacket.Default(), out _), Is.False, "it's already running");
+            Assert.That(ProcessControl.Register(process).With(ProcessDataPacket.Default()).Run(out _), Is.False, "it's already running");
         });
 
         /// <summary>Initialized means registered, so a process that's ended can be run again, as RunProcessTask does.</summary>

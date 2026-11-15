@@ -13,8 +13,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
     /// Legacy, obsolete and asset-updating code is gone, all of it (FN-21, Decision 83): no field keeps an older save's data
-    /// to move, no asset moves it as it loads, no menu upgrades assets, the settings keep no file of their own, and no asset
-    /// holds a legacy field, each saved as it is now.
+    /// to move, no asset moves it as it loads, no menu upgrades assets, the settings keep no file of their own, no asset
+    /// holds a legacy field, each saved as it is now, and nothing is obsolete.
     /// </summary>
     public class LegacyTests
     {
@@ -60,6 +60,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 if (menu == null) continue;
                 Assert.IsFalse(menu.menuItem.Contains("Upgrade Assets") || menu.menuItem.Contains("Move to Components"), $"no menu {menu.menuItem}");
             }
+        }
+
+        /// <summary>
+        /// ProcessControl's 28 Register overloads, obsolete wrappers of its builder since FEAT-15, are gone, so a process
+        /// registers through <c>ProcessControl.Register(process)</c> alone; and nothing else in PlayForge is obsolete
+        /// (FN-21).
+        /// </summary>
+        [Test]
+        public void FN_21_Nothing_is_obsolete()
+        {
+            var overloads = typeof(ProcessControl).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(method => method.Name == nameof(ProcessControl.Register) && method.GetParameters().Any(each => each.IsOut))
+                .Select(method => method.ToString());
+            Assert.That(overloads, Is.Empty, "ProcessControl registers through its builder alone");
+
+            var obsolete = PlayForgeTypes()
+                .SelectMany(type => type.GetMembers(Every).Cast<MemberInfo>().Prepend(type)
+                    .Where(member => member.GetCustomAttribute<ObsoleteAttribute>() != null)
+                    .Select(member => member == type ? type.FullName : $"{type.Name}.{member.Name}"))
+                .Distinct()
+                .ToList();
+            Assert.That(obsolete, Is.Empty, $"nothing in PlayForge is obsolete, as {obsolete.FirstOrDefault()}");
         }
 
         /// <summary>

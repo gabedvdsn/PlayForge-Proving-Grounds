@@ -52,7 +52,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
         private ProcessRelay Run(TaskSequence sequence)
         {
-            ProcessControl.Register(sequence, out var relay);
+            ProcessControl.Register(sequence).Run(out var relay);
             World.Own(relay);
             return relay;
         }

@@ -143,7 +143,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Assert.That((bool)root, "and a live GameRoot");
 
                 var probe = World.NewProbe("After");
-                Assert.That(ProcessControl.Register(probe, ProcessDataPacket.Default(), out _), "which takes processes");
+                Assert.That(ProcessControl.Register(probe).With(ProcessDataPacket.Default()).Run(out _), "which takes processes");
                 await Frames.Step(2);
 
                 Assert.That(probe.Recorder[ProbeHook.Update], Is.GreaterThan(0), "and steps them");

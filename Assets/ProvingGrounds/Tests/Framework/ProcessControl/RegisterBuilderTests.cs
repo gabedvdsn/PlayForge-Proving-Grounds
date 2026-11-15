@@ -1,7 +1,5 @@
-using System;
 using System.Collections;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -10,8 +8,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// <summary>
     /// The Register builder (FEAT-15, Decision 30): one fluent registration in place of ProcessControl's 28 static
     /// overloads. It says why it refuses a process, hands a process to its packet's source by the packet's run-time type,
-    /// and its relay runs a process that waits. The overloads stay as obsolete wrappers of it until the first Asset Store
-    /// submission.
+    /// and its relay runs a process that waits. The overloads, obsolete wrappers of it since, went with the legacy code
+    /// (FN-21).
     /// </summary>
     public class RegisterBuilderTests : ProvingGroundsTest
     {
@@ -95,7 +93,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         /// <summary>
         /// The argument's static type picked the handler: an ability's packet passed as a sequence's filed its sequence
         /// under GameRoot, so the sequence didn't end with its entity (FEAT-15, GAS-52), as TaskSequence.RegisterAndRun did.
-        /// The handler follows the packet's run-time type, through the builder and the overloads alike.
+        /// The handler follows the packet's run-time type, through the builder and RegisterAndRun alike.
         /// </summary>
         [UnityTest]
         public IEnumerator FEAT_15_The_handler_follows_the_packets_run_time_type([Values] Hub hub) => Live(async () =>
@@ -111,16 +109,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var run = LongSequence("Run").RegisterAndRun(packet);
             Assert.AreSame(gas, run.Handler, "as TaskSequence.RegisterAndRun does");
 
-#pragma warning disable CS0618
-            Assert.IsTrue(ProcessControl.Register(LongSequence("Overload"), packet, out var overload), "and the old overload");
-#pragma warning restore CS0618
-            Assert.AreSame(gas, overload.Handler, "a wrapper of the builder now");
             await Frames.Step(2);
 
             var relay = gas is AbstractMonoProcess mono ? mono.ProcessRelay : ((AbstractRuntimeProcess)gas).ProcessRelay;
             relay.TerminateImmediate();
             await Frames.Step(3);
-            foreach (var each in new[] { built.Relay, run, overload })
+            foreach (var each in new[] { built.Relay, run })
                 Assert.IsFalse(World.Control.TryGetPCB(each.CacheIndex, out _), "and each ends with its entity (GAS-52)");
         });
 
@@ -169,17 +163,5 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 result.Relay?.TerminateImmediate();
             }
         });
-
-        /// <summary>The 28 overloads stay, marked obsolete, until the first Asset Store submission (Decision 30).</summary>
-        [Test]
-        public void FEAT_15_The_old_overloads_are_obsolete()
-        {
-            var overloads = typeof(ProcessControl).GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Where(method => method.Name == "Register" && method.GetParameters().Any(each => each.IsOut))
-                .ToList();
-            Assert.AreEqual(28, overloads.Count, "the 28 overloads stay");
-            Assert.That(overloads.Where(method => method.GetCustomAttribute<ObsoleteAttribute>() == null).Select(method => method.ToString()),
-                Is.Empty, "each marked obsolete");
-        }
     }
 }

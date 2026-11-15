@@ -137,7 +137,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.KitTests
 
                 // Registered behind the world's back, so it isn't the world's to end before the audit
                 var stray = new RuntimeGameplayAbilitySystem(world.Make.RuntimeIdentity("Stray", world.Make.UnusedSet()));
-                Assert.IsTrue(ProcessControl.Register(stray, ProcessDataPacket.Default(), out _), "a stray registers");
+                Assert.IsTrue(ProcessControl.Register(stray).With(ProcessDataPacket.Default()).Run(out _), "a stray registers");
                 await world.Frames.Step();
                 var violations = await world.Audit();
                 Assert.That(violations, Has.Some.Contains("leaked"), $"the audit finds it: {string.Join(" | ", violations)}");

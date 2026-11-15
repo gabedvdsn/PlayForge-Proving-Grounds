@@ -149,7 +149,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(GameRoot.Instance != null, "it's still there");
 
             var probe = World.NewProbe("After The Load", EProcessLifecycle.Synchronous);
-            Assert.That(ProcessControl.Register(probe, out var relay), "and the default overloads work");
+            Assert.That(ProcessControl.Register(probe).Run(out var relay), "and the default overloads work");
             World.Own(relay);
             await Frames.Step();
 
