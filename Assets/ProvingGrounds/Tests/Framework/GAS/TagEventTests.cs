@@ -124,6 +124,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>
+        /// A tag worker's activation and resolution are told, as the GAS's callbacks say: Tag Worker Activated and Tag
+        /// Worker Resolved were declared and never raised (GAS-81, seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_81_A_tag_workers_activation_and_resolution_are_told([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            int activated = 0, resolved = 0;
+            gas.GetCallbacks().OnTagWorkerActivated += _ => activated++;
+            gas.GetCallbacks().OnTagWorkerResolved += _ => resolved++;
+            var worker = new ProbeTagWorker("Told", Faults);
+            gas.GetTagCache().ProvideWorker(worker);
+            await Frames.Step(2);
+            Assume.That(Faults.Hits("Told.Activate"), Is.EqualTo(1), "the worker, needing nothing, activates");
+            Assert.AreEqual(1, activated, "and its activation is told");
+
+            gas.GetTagCache().RemoveWorker(worker);
+            await Frames.Step();
+            Assume.That(Faults.Hits("Told.Resolve"), Is.EqualTo(1), "taken away, it resolves");
+            Assert.AreEqual(1, resolved, "and its resolution is told");
+        });
+
         // A tag worker that counts how often it's evaluated
         private sealed class CountingWorker : AbstractTagWorker
         {

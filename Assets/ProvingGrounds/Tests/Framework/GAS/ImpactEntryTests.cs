@@ -85,6 +85,110 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
         });
 
+        /// <summary>
+        /// An additional impact's change runs its own attribute's workers. The attribute system found a change's workers
+        /// by its carrier's attribute, and an effect's spec, which carries every one of its impacts, gave its first
+        /// impact's: a drain's mana ran health's workers and none of mana's, and a floor on mana let it fall (GAS-78,
+        /// seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_78_An_additional_impact_runs_its_own_attributes_workers([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var mana = Make.Attribute("Mana");
+            var set = Make.Set(Make.Element(health, 100f, 100f), Make.Element(mana, 50f, 100f));
+            set.WorkerGroup.AttributeWorkers.Add(new CantFallBelowAttributeWorker { TargetAttribute = mana, Floor = 45f });
+            var gas = World.Entity(hub, set);
+            await Frames.Step();
+            gas.GetAttributeSystem().ProvideWorker(new ProbeAttributeWorker("Health watcher", health, Faults));
+            gas.GetAttributeSystem().ProvideWorker(new ProbeAttributeWorker("Mana watcher", mana, Faults));
+            var drain = Make.Effect("Drain", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Op = ECalculationOperation.Add, Magnitude = -30f,
+            });
+            drain.ImpactSpecification.AdditionalImpacts.Add(Impact(mana, -10f, EImpactDelivery.OnApply));
+
+            World.Apply(gas, gas, drain);
+            await Frames.Step(2);
+
+            Assert.That(Faults.Hits("Health watcher.Intercept"), Is.EqualTo(1), "health's worker saw health's change alone");
+            Assert.That(Faults.Hits("Mana watcher.Intercept"), Is.EqualTo(1), "mana's saw mana's");
+            Assert.That(Current(gas, mana), Is.EqualTo(45f), "and mana's floor held it");
+            Assert.That(Current(gas, health), Is.EqualTo(70f), "as the first impact took 30 health");
+        });
+
+        /// <summary>
+        /// An additional impact that raises an attribute's Base rescales that attribute's Current, where it scales with
+        /// Base: the rescale was queued on the carrier's attribute, the effect's first impact's, so a blessing that doubled
+        /// mana's Base raised health instead (GAS-78).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_78_An_additional_impact_rescales_its_own_attribute([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var mana = Make.Attribute("Mana");
+            var manaElement = Make.Element(mana, 50f, 100f);
+            manaElement.Constraints.AutoScaleWithBase = true;
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f), manaElement));
+            await Frames.Step();
+            var blessing = Make.Effect("Blessing", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Op = ECalculationOperation.Add, Magnitude = -10f,
+            });
+            var raise = Impact(mana, 100f, EImpactDelivery.OnApply);
+            raise.TargetSlot = EAttributeTarget.Base;
+            blessing.ImpactSpecification.AdditionalImpacts.Add(raise);
+
+            World.Apply(gas, gas, blessing);
+            await Frames.Step(3);
+
+            gas.TryGetAttributeValue(mana, out var manaValue);
+            Assert.That(manaValue.BaseValue, Is.EqualTo(200f), "mana's Base doubled");
+            Assert.That(manaValue.CurrentValue, Is.EqualTo(100f), "and its Current with it, half of its Base as it was");
+            Assert.That(Current(gas, health), Is.EqualTo(90f), "while health lost only the first impact's 10");
+        });
+
+        /// <summary>
+        /// A lasting modifier's end is no hit. Its start is its effect's impact, landing, but its coming off ran a hit's
+        /// relay too: its effect's workers heard a second impact, and its dealer's impact workers ran on the change back
+        /// (GAS-85, Decision 84, seen mapping the architecture). A change of nothing, as a hit a barrier soaks whole, is
+        /// still a hit, as it was.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_85_A_lasting_modifiers_end_is_no_hit([Values] Hub hub) => Live(async () =>
+        {
+            var armor = Make.Attribute("Armor");
+            var dealer = World.Entity(hub, Make.Set(Make.Element(armor, 10f, 10f)));
+            var target = World.Entity(hub, Make.Set(Make.Element(armor, 10f, 10f)));
+            await Frames.Step();
+            dealer.GetAbilitySystem().ProvideWorker(new ProbeImpactWorker("Dealt", armor, Faults));
+            var sunder = Make.Effect("Sunder", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 0.5f, Workers = { new ProbeEffectWorker("Sunder", Faults) },
+            });
+            sunder.ImpactSpecification.AdditionalImpacts.Add(Impact(armor, -4f, EImpactDelivery.Continuous));
+
+            World.Apply(dealer, target, sunder);
+            await Frames.Step(2);
+            Assert.That(Current(target, armor), Is.EqualTo(6f), "the sunder lowers armor while it lasts");
+            int impacts = Faults.Hits("Sunder.Impact"), dealt = Faults.Hits("Dealt.Inline");
+            Assert.That(impacts, Is.GreaterThan(0), "its start is its impact");
+            Assert.That(dealt, Is.GreaterThan(0), "and a hit its dealer's impact workers hear");
+
+            await Frames.Seconds(0.8f);
+            Assert.That(Current(target, armor), Is.EqualTo(10f), "its end gives the armor back");
+            Assert.That(Faults.Hits("Sunder.Impact"), Is.EqualTo(impacts), "and is no second impact");
+            Assert.That(Faults.Hits("Dealt.Inline"), Is.EqualTo(dealt), "nor a hit its dealer's workers hear");
+
+            var nothing = Make.Effect("Nothing", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = armor, Magnitude = 0f, Workers = { new ProbeEffectWorker("Nothing", Faults) },
+            });
+            World.Apply(dealer, target, nothing);
+            await Frames.Step(2);
+            Assert.That(Faults.Hits("Nothing.Impact"), Is.EqualTo(1), "a change of nothing is still a hit");
+        });
+
         private static AttributeImpactEntry Impact(ForgeAttribute attribute, float magnitude, EImpactDelivery delivery) => new()
         {
             AttributeTarget = attribute,

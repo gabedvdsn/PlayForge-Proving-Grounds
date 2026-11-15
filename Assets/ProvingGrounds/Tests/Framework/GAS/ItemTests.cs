@@ -8,6 +8,110 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class ItemTests : ProvingGroundsTest
     {
         /// <summary>
+        /// An item's tag comes with it and goes with it. Every held item's asset tag is its holder's, and giving or taking
+        /// one asked for no compile of the tags, so a given item's tag waited for the next unrelated one and a removed
+        /// item's stayed, an equipped one's too, as unequipping compiled while it was still held (GAS-82, seen mapping
+        /// the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_82_An_items_tag_comes_and_goes_with_it([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var charm = Make.Item("Charm");
+            var ring = Make.Item("Ring");
+            await Frames.Step();
+            var items = gas.GetItemSystem();
+
+            Assert.IsTrue(items.GiveItem(charm, out _), "the charm is given");
+            Assert.That(gas.GetTagWeight(charm.Tags.AssetTag), Is.GreaterThan(0), "and its tag is its holder's at once");
+            Assert.IsTrue(items.RemoveItem(charm), "it's taken back");
+            Assert.That(gas.GetTagWeight(charm.Tags.AssetTag), Is.LessThanOrEqualTo(0), "and its tag goes with it");
+
+            Assert.IsTrue(items.GiveAndEquipItem(ring, out _), "a ring goes on");
+            Assert.That(gas.GetTagWeight(ring.Tags.AssetTag), Is.GreaterThan(0), "its tag with it");
+            Assert.IsTrue(items.RemoveItem(ring), "it's taken off and away");
+            Assert.That(gas.GetTagWeight(ring.Tags.AssetTag), Is.LessThanOrEqualTo(0), "and its tag goes too");
+        });
+
+        // An entity on either hub that may hold and wear two of one item
+        private IGameplayAbilitySystem Collector(Hub hub, AttributeSet set)
+        {
+            if (hub == Hub.Runtime)
+            {
+                var identity = Make.RuntimeIdentity("Collector", set);
+                identity.AllowDuplicateItems = true;
+                identity.AllowDuplicateEquippedItems = true;
+                var runtime = new RuntimeGameplayAbilitySystem(identity);
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, "Collector");
+            mono.EntityData.AllowDuplicateItems = true;
+            mono.EntityData.AllowDuplicateEquippedItems = true;
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        /// <summary>
+        /// Two copies of an item share its workers, one instance of each. Worn together, the attribute, tag and analysis
+        /// caches kept each once and dropped it as the first copy came off, the second still worn, and the impact cache
+        /// ran it once for each copy. Each cache counts the copies that give it a worker, runs it once, and keeps it until
+        /// the last goes (GAS-83, Decision 85, seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_83_A_worker_two_copies_share_stays_until_both_go([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var holder = Collector(hub, Make.Set(Make.Element(health, 100f, 100f)));
+            var foe = World.Entity(hub, Make.Set(Make.Element(health, 1000f, 1000f)));
+            var amulet = Make.Item("Amulet");
+            amulet.WorkerGroup = new StandardWorkerGroup();
+            amulet.WorkerGroup.AttributeWorkers.Add(new CantFallBelowAttributeWorker { TargetAttribute = health, Floor = 50f });
+            amulet.WorkerGroup.ImpactWorkers.Add(new ProbeImpactWorker("Amulet", health, Faults));
+            await Frames.Step();
+            var items = holder.GetItemSystem();
+            float Health() => holder.TryGetAttributeValue(health, out var value) ? value.CurrentValue : float.NaN;
+
+            Assert.IsTrue(items.GiveAndEquipItem(amulet, out var first), "one amulet goes on");
+            Assert.IsTrue(items.GiveAndEquipItem(amulet, out var second), "and a second, a copy");
+            World.Apply(holder, foe, Make.Effect("Poke", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1f }));
+            await Frames.Step(2);
+            Assert.That(Faults.Hits("Amulet.Inline"), Is.EqualTo(1), "their impact worker runs once for a hit, not once a copy");
+
+            Assert.IsTrue(items.UnequipItem(first), "the first comes off");
+            World.Apply(foe, holder, Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -80f }));
+            await Frames.Step(2);
+            Assert.That(Health(), Is.EqualTo(50f), "and the second's floor still holds");
+
+            Assert.IsTrue(items.UnequipItem(second), "the second comes off");
+            World.Apply(foe, holder, Make.Effect("Cut", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -30f }));
+            await Frames.Step(2);
+            Assert.That(Health(), Is.EqualTo(20f), "and with both off, the floor goes");
+        });
+
+        /// <summary>
+        /// An item linked to a level provider takes its max level from the provider, as its Max Level says it does: its
+        /// spec took the item's own (GAS-82).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_82_A_linked_item_takes_its_providers_max_level([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var provider = Make.Ability("Provider");
+            provider.MaxLevel = 10;
+            var charm = Make.Item("Linked Charm");
+            charm.MaxLevel = 4;
+            Assert.IsTrue(charm.LinkToProvider(provider), "the charm follows its provider's levels");
+            await Frames.Step();
+
+            Assert.IsTrue(gas.GetItemSystem().GiveItem(charm, out var index), "the charm is given");
+            Assert.IsTrue(gas.GetItemSystem().TryGetItemContainer(index, out var held), "and held");
+            Assert.AreEqual(10, held.Spec.GetLevel().MaxValue, "with its provider's max level, not its own");
+        });
+
+        /// <summary>
         /// Most items have no ability of their own, and equipping one threw, with its effects already on and
         /// the item marked as equipped.
         /// </summary>

@@ -12,6 +12,31 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class LevelRescalingTests : ProvingGroundsTest
     {
         /// <summary>
+        /// A max level that moves is told: the level system's Max Level Changed was declared and never raised, so what
+        /// listened for it alone heard nothing (GAS-81, seen mapping the architecture). A level that moves under the
+        /// same max tells none.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_81_A_max_level_change_is_told([Values] Hub hub) => Live(async () =>
+        {
+            var gas = World.Entity(hub);
+            var crown = Make.Item("Crown");
+            crown.MaxLevel = 4;
+            Assert.IsTrue(gas.GetItemSystem().GiveAndEquipItem(crown, out _), "the crown goes on");
+            await Frames.Step();
+            Assert.IsTrue(gas.FindLevelSystem(out var levels), "the entity keeps levels");
+            int maxChanges = 0;
+            levels.Callbacks.OnMaxLevelChanged += _ => maxChanges++;
+
+            Assert.IsTrue(levels.TrySetLevel(crown.Tags.AssetTag, new IntValuePair(2, 4)).Success, "the crown levels up");
+            Assert.AreEqual(0, maxChanges, "under the same max, which none is told of");
+            Assert.IsTrue(levels.TrySetLevel(crown.Tags.AssetTag, new IntValuePair(2, 6)).Success, "its max rises");
+            Assert.AreEqual(1, maxChanges, "and the new max is told");
+            Assert.IsTrue(levels.TryModifyLevel(crown.Tags.AssetTag, new IntValuePair(0, 1)).Success, "it rises again");
+            Assert.AreEqual(2, maxChanges, "as one modified is");
+        });
+
+        /// <summary>
         /// A lasting effect's magnitude was read as its modifier registered, and nothing read it again as its origin's
         /// level changed, so an item that levelled up kept its first level's bonus (GAS-58, which the Roguelite lab
         /// found). Levelled up, and back down, the item's effect follows.

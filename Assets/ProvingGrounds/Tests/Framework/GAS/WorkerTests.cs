@@ -9,6 +9,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     public class WorkerTests : ProvingGroundsTest
     {
+        // A ratio threshold that counts the times it's met, as a project's own would act
+        private sealed class RatioWatcher : TargetAttributeRatioThresholdEffectWorker
+        {
+            public int Met;
+
+            protected override IEnumerable<IRootAction> OnThresholdMet(EffectWorkerContext ctx)
+            {
+                Met++;
+                return Array.Empty<IRootAction>();
+            }
+        }
+
+        /// <summary>
+        /// A ratio threshold compares Current to Base, whatever its Target. Its Base target compared Base to Base, which
+        /// is always one, so "below half" never held there; and with no Base there's no ratio, so no threshold is met,
+        /// Not Equal's no more than another's (GAS-84, Decision 86, seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_84_A_ratio_threshold_compares_current_to_base([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var empty = Make.Attribute("Empty");
+            var gas = World.Entity(hub, Make.Set(Make.Element(health, 30f, 100f), Make.Element(empty, 0f, 0f)));
+            await Frames.Step();
+            var below = new RatioWatcher
+            {
+                TargetAttribute = health, Threshold = new AttributeValue(0.5f, 0.5f), Target = EAttributeTarget.Base,
+                Policy = EComparisonOperator.LessThan,
+            };
+            var unequal = new RatioWatcher
+            {
+                TargetAttribute = empty, Threshold = new AttributeValue(0.5f, 0.5f), Target = EAttributeTarget.Current,
+                Policy = EComparisonOperator.NotEqual,
+            };
+            var poke = Make.Effect("Poke", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = 0f, Workers = { below, unequal },
+            });
+
+            World.Apply(gas, gas, poke);
+            await Frames.Step(2);
+
+            Assert.AreEqual(1, below.Met, "30 of 100 is below half, its Target Base or not");
+            Assert.AreEqual(0, unequal.Met, "and with no Base, no ratio, so not even Not Equal is met");
+        });
+
         /// <summary>A set's workers were given to the GAS by the set and again by the GAS, so each ran twice.</summary>
         [UnityTest]
         public IEnumerator GAS_18_A_sets_impact_worker_runs_once_per_impact([Values] Hub hub) => Live(async () =>

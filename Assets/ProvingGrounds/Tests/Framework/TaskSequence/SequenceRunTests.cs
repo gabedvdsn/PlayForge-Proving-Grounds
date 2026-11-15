@@ -11,6 +11,41 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     public class SequenceRunTests : ProvingGroundsTest
     {
         /// <summary>
+        /// An interrupt that lands in a run's last stage ends it unsuccessfully, as one in any other stage does. The run
+        /// looked for an interrupt only as each stage began, and none began after the last, so a last stage whose task
+        /// finished without heeding it left the run successful, and a repeating sequence went round again with the
+        /// interrupt lost (TS-AF, seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TS_AF_An_interrupt_in_the_last_stage_ends_the_run() => Live(async () =>
+        {
+            var once = new TaskSequence(TaskSequenceBuilder.Create("Interrupted Last")
+                .Stage(stage => stage.Do(_ => { }))
+                .Stage(stage => stage.Do(data => data.Interrupt()))
+                .Build());
+            Assert.IsFalse(await once.TryRun(SequenceDataPacket.Default()), "the interrupted run isn't a success");
+
+            int runs = 0;
+            var repeating = new TaskSequence(TaskSequenceBuilder.Create("Interrupted Repeat").WithRepeat(true)
+                .Stage(stage => stage.Do(_ => runs++))
+                .Stage(stage => stage.Do(data => data.Interrupt()))
+                .Build());
+            // Stopped by the test, wherever it got to, so a run the interrupt didn't end doesn't outlive it
+            using var stop = new CancellationTokenSource();
+            var run = repeating.TryRun(SequenceDataPacket.Default(), stop.Token);
+            try
+            {
+                await Frames.Step(5);
+                Assert.That(runs, Is.EqualTo(1), "a repeating sequence stops where it was interrupted");
+                Assert.That(run.Status, Is.Not.EqualTo(UniTaskStatus.Pending), "its run has ended");
+            }
+            finally
+            {
+                stop.Cancel();
+            }
+        });
+
+        /// <summary>
         /// A TaskSequence held one Runtime, and each run overwrote it, so running one twice at once left the
         /// first run unreachable: interrupting it stopped the other one instead.
         /// </summary>

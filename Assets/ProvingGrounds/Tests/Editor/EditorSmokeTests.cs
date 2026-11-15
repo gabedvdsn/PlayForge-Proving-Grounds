@@ -309,6 +309,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             for (int i = 0; i < count; i++) yield return null;
         }
 
+        // The lists that draw fewer rows than they hold, by their paths
+        private static List<string> Undrawn(VisualElement root) => root.Query<ListView>().ToList()
+            .Where(list => list.Query(className: ListView.itemUssClassName).ToList().Count < (list.itemsSource?.Count ?? 0))
+            .Select(list => list.bindingPath ?? list.name).ToList();
+
         // Presses a button, as a user does
         private static void Press(Button button)
         {
@@ -385,14 +390,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var root = host.Inspect(asset);
                 yield return Frames();
                 yield return ExpandAll(root);
-                // A list the last pass opened lays its rows out over the next frames
-                yield return Frames();
 
-                // The suite's own check: every element of every list is drawn, so its drawer opens too. Squeezed into
-                // the panel, a list drew only some of its rows
-                var undrawn = root.Query<ListView>().ToList()
-                    .Where(list => list.Query(className: ListView.itemUssClassName).ToList().Count < (list.itemsSource?.Count ?? 0))
-                    .Select(list => list.bindingPath ?? list.name).ToList();
+                // The suite's own check: every element of every list is drawn, so its drawer opens too. A list the last
+                // pass opened lays its rows out over the next frames, and a row it draws may hold a closed list of its
+                // own, so the sweep opens and waits until every list draws its rows, or a few seconds pass: on CI's Linux
+                // editor a runtime panel lays out fewer times an editor tick, and a fixed count of frames left an
+                // ability's nested Effects list with no rows yet (SP-27). Squeezed into the panel, a list drew only some
+                var undrawn = Undrawn(root);
+                for (var until = EditorApplication.timeSinceStartup + 5.0; undrawn.Count > 0 && EditorApplication.timeSinceStartup < until; undrawn = Undrawn(root))
+                {
+                    yield return Frames();
+                    yield return ExpandAll(root);
+                }
                 Assert.That(undrawn, Is.Empty, "lists that draw fewer rows than they hold");
             }
             finally

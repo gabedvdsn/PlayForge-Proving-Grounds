@@ -153,5 +153,34 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsTrue(Has(near, burst), "and as it ends, the burst lands on one near");
             Assert.IsFalse(Has(cursed, burst), "not on the cursed itself");
         });
+
+        /// <summary>
+        /// A spread each tick spreads once a tick. A periodic effect's workers are called every frame, with the ticks that
+        /// frame executes, and its components heard every one of those calls as a tick: a smolder of two ticks spread its
+        /// embers every frame it lasted (GAS-79, seen mapping the architecture).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GAS_79_A_spread_each_tick_spreads_once_a_tick([Values] Hub hub) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, -20f);
+            var smoldering = At(hub, "Smoldering", blue, 0f);
+            var near = At(hub, "Near", blue, 3f);
+            var ember = Make.Effect("Ember", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Instant, Target = health, Op = ECalculationOperation.Add, Magnitude = -1f,
+            });
+            var smolder = Make.Effect("Smolder", new EffectConfig
+            {
+                Policy = EEffectDurationPolicy.Durational, Duration = 2f, PeriodicTicks = true, Ticks = 2,
+                Target = health, Op = ECalculationOperation.Add, Magnitude = -1f,
+            });
+            smolder.Components.Add(new SpreadEffectComponent { When = ESpreadMoment.Tick, Effect = ember, Radius = 4f, Takes = EAffinityFilter.Enemies });
+            await Frames.Step();
+
+            Assert.IsTrue(World.Apply(caster, smoldering, smolder), "the smolder lands");
+            await Frames.Seconds(2.5f);
+            Assert.IsTrue(near.TryGetAttributeValue(health, out var value), "the one near has health");
+            Assert.That(value.CurrentValue, Is.EqualTo(98f), "an ember for each of the smolder's two ticks, and no more");
+        });
     }
 }

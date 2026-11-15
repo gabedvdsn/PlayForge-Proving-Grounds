@@ -210,6 +210,27 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A file name leaves out what any platform's files can't have, not only what the platform the editor runs on
+        /// can't: on Linux and macOS, <c>Path.GetInvalidFileNameChars()</c> gives only the slash and the null character,
+        /// so a name made there kept a colon or a question mark a Windows checkout can't open (ED-86, found by CI's
+        /// Linux run of ED-70).
+        /// </summary>
+        [Test]
+        public void ED_86_A_file_name_leaves_out_what_any_platform_cant_have()
+        {
+            const System.Reflection.BindingFlags Internal = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+            var creation = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetCreation");
+            Assert.IsNotNull(creation, "the asset creation's editor class is there");
+            var unportable = creation.GetField("UnportableFileCharacters", Internal)?.GetValue(null) as char[];
+            Assert.IsNotNull(unportable, "it keeps one set of the characters no platform's files may have");
+            Assert.That(unportable, Is.SupersetOf(new[] { '"', '<', '>', '|', ':', '*', '?', '\\', '/', '\0', '\t' }),
+                "Windows' set, which takes in the others'");
+            var fileNameOf = creation.GetMethod("FileNameOf", Internal);
+            Assert.AreEqual("FireAshBlazeEmber", fileNameOf?.Invoke(null, new object[] { "Fire: Ash? <Blaze> \"Ember\"|*\\/" }),
+                "a new asset's file name leaves them out wherever it's made");
+        }
+
+        /// <summary>
         /// Renaming an asset in its inspector left its file as it was, so the two drifted apart (the user's request, ED-70).
         /// The file follows the name, with its type's prefix and suffix: a character a file can't have is left out, a name
         /// another file in its folder has takes a number, and an Undo of the rename brings the file back with the name.
