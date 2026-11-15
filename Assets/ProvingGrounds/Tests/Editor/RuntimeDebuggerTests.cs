@@ -1666,5 +1666,122 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 ForgeProject.Use(was);
             }
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // LAB-17: the Debugger's journals
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // An action that does nothing, named for what queued it
+        private sealed class NoteAction : IRootAction
+        {
+            public NoteAction(string description) => Description = description;
+            public int Priority => 0;
+            public bool IsValid => true;
+            public string Description { get; }
+            public void Execute(ISource system) { }
+        }
+
+        // An effect worker that queues one action as its effect lands
+        private sealed class NotingWorker : AbstractEffectWorker
+        {
+            public override IEnumerable<IRootAction> OnEffectApplication(EffectWorkerContext ctx) => new IRootAction[] { new NoteAction("Noted") };
+        }
+
+        /// <summary>
+        /// The Debugger's Timeline showed an effect's time on the shelf and nothing of what happened in it, nor an effect
+        /// refused (LAB-17). It keeps an effect journal of the entities it lists: an effect's detail lists its journal,
+        /// newest first, its landing and each worker's run among it, and a refusal is a track's tick, saying why.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_17_The_Timeline_shows_an_effects_journal_and_its_refusals() => Guarded(ShowsTheJournal());
+
+        private IEnumerator ShowsTheJournal()
+        {
+            var clock = new StoppedClock { Now = 10f };
+            var before = ForgeTime.Use(clock);
+            try
+            {
+                var foe = RuntimeHub("Journal Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+                var frost = Lasting("Frost", 5f);
+                frost.Workers.Add(new NotingWorker());
+                var missed = Lasting("Missed", 5f);
+                missed.ImpactSpecification.ChanceToApply = new ScalableFloat(0f);
+                var window = Open();
+                yield return Frames();
+                yield return ShowView(window, "ShowTimeline");
+
+                Assert.IsTrue(Apply(foe, frost), "Frost lands");
+                Assert.IsFalse(Apply(foe, missed), "Missed misses");
+                Sample(window);
+
+                var tracks = window.rootVisualElement.Q<MultiColumnListView>("Tracks");
+                Assert.That(Listed(tracks).Select(TrackName), Is.SupersetOf(new[] { "Journal Foe · Frost", "Journal Foe · Missed" }),
+                    "a track for each, the refused one too");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Frost"));
+                yield return Frames();
+                Sample(window);
+                var journal = window.rootVisualElement.Q("TimelineDetail").Q("JournalRows");
+                Assert.IsNotNull(journal, "an effect's detail lists its journal");
+                var lines = journal.Query<Label>().ToList().Select(label => label.text).ToList();
+                Assert.That(lines, Has.Some.Contains("Frost landed on Journal Foe"), "its landing");
+                Assert.That(lines, Has.Some.Contains("heard it land"), "and its worker's run");
+
+                tracks.SetSelection(Listed(tracks).FindIndex(track => (string)Member(track, "Name") == "Missed"));
+                yield return Frames();
+                Sample(window);
+                var detail = window.rootVisualElement.Q("TimelineDetail");
+                Assert.That(detail.Q("Refusal 1")?.Q<Label>("Index")?.text, Does.StartWith("Refused").And.Contains("chance"),
+                    "a refusal shows as one, and why");
+                Assert.That(detail.Q("JournalRows").Query<Label>().ToList().Select(label => label.text),
+                    Has.Some.Contains("Missed refused by Journal Foe"), "and the journal tells it");
+                Assert.AreEqual("Effect · Journal Foe · 0 applications", detail.Q<Label>("HeaderDetail").text,
+                    "a refusal is no application");
+            }
+            finally
+            {
+                ForgeTime.Use(before);
+            }
+        }
+
+        /// <summary>
+        /// The Debugger's combat log showed a hit's run through its pipeline and nothing after it (LAB-17). A hit clicked
+        /// shows its steps too, as made and as it landed (LAB-13).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_17_The_combat_log_shows_a_hits_steps() => Guarded(ShowsAHitsSteps());
+
+        private IEnumerator ShowsAHitsSteps()
+        {
+            var project = Own(ScriptableObject.CreateInstance<ForgeProject>());
+            var was = ForgeProject.Use(project);
+            try
+            {
+                var health = Attribute("Health");
+                var foe = RuntimeHub("Stepped Foe", Set((health, 100f, 100f)), out _);
+                var attacker = RuntimeHub("Stepping Attacker", Set((health, 100f, 100f)), out _);
+                var blow = Lasting("Blow", 0f);
+                blow.DurationSpecification.DurationPolicy = EEffectDurationPolicy.Instant;
+                blow.ImpactSpecification.AttributeTarget = health;
+                blow.ImpactSpecification.MagnitudeOperation = new ScalableFloat { Magnitude = -20f, RealMagnitude = EMagnitudeOperation.UseMagnitude };
+                Assert.IsTrue(foe.ApplyGameplayEffect(foe.GenerateEffectSpec(attacker, blow)), "the attacker's blow lands");
+
+                var window = Open();
+                yield return Frames();
+                Sample(window);
+                yield return Select(window, foe);
+
+                var section = Detail(window).Q("CombatLog_CONTAINER");
+                var row = section.Q("CombatLogRows").Children().First();
+                Press(row);
+                var shown = section.Q<Label>("CombatLogBreakdown").text;
+                StringAssert.Contains("-20 as made", shown, "a hit clicked shows its change as made");
+                StringAssert.Contains("landed -20", shown, "and as it landed");
+            }
+            finally
+            {
+                ForgeProject.Use(was);
+            }
+        }
     }
 }
