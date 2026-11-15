@@ -116,6 +116,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_Renaming_stores_the_tag_in_the_same_undo_step()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var ability = ScriptableObject.CreateInstance<Ability>();
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
             var host = new GameObject("ED-12") { hideFlags = HideFlags.HideAndDontSave };
@@ -164,6 +166,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_Update_stores_a_stale_tag_as_one_undoable_change()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var ability = ScriptableObject.CreateInstance<Ability>();
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
             var host = new GameObject("ED-12") { hideFlags = HideFlags.HideAndDontSave };
@@ -238,6 +242,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_70_Renaming_an_asset_renames_its_file()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             const string folder = "Assets/ED70Temp";
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
             var host = new GameObject("ED-70") { hideFlags = HideFlags.HideAndDontSave };

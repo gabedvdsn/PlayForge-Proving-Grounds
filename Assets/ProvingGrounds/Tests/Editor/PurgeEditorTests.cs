@@ -104,6 +104,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_85_A_flags_field_stores_the_flags_picked()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             var host = new Host();
             try

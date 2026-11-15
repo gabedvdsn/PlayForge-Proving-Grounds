@@ -13,7 +13,8 @@ using Object = UnityEngine.Object;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// An effect level by level in its inspector, which The Forge shows (FEAT-32, LVL-4); and a Scaler asset tried there,
+    /// An effect level by level, the view its inspector's Levels section showed until the user took the section out
+    /// (FEAT-32, LVL-4, Decision 87); and a Scaler asset tried in its inspector, which The Forge shows,
     /// against stand-ins for its caster and its target, with values typed or filled from an entity (LVL-5, Decision 82).
     /// </summary>
     public class LevelByLevelEditorTests
@@ -273,8 +274,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// An effect's inspector has a Levels section: a row for each impact with its value at each level, and under the
-        /// table, the parts behind the selected cell, the first impact's first level until another is picked (LVL-4).
+        /// An effect level by level: a row for each impact with its value at each level, and under the table, the parts
+        /// behind the selected cell, the first impact's first level until another is picked (LVL-4). The user took the
+        /// effect inspector's Levels section out (Decision 87) and kept its view, so the view is read on its own, as the
+        /// section built it.
         /// </summary>
         [Test]
         public void LVL_4_An_effect_shows_its_levels_and_the_parts_behind_a_cell()
@@ -298,13 +301,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 TickIntervalOperation = new ScalableFloat(1f),
                 StackingConfigs = new System.Collections.Generic.List<AbstractStackingConfig>(),
             };
-            var editor = UnityEditor.Editor.CreateEditor(effect);
             try
             {
-                var root = editor.CreateInspectorGUI();
-                Assume.That(root, Is.Not.Null, "the inspector builds");
-                var view = root.Q("EffectLevels");
-                Assert.IsNotNull(view, "the effect shows its levels");
+                var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.EffectLevelsView");
+                Assert.IsNotNull(type, "the view is kept");
+                // An array, as a Unity object passed alone converts to the bool of CreateInstance(Type, bool)
+                var view = (VisualElement)System.Activator.CreateInstance(type, new object[] { effect });
+                Assert.AreEqual("EffectLevels", view.name, "the effect shows its levels");
 
                 var rows = view.Query<VisualElement>(className: "pf-levels__row").ToList();
                 Assert.That(rows.Count, Is.GreaterThanOrEqualTo(2), "a header and a row for its impact");
@@ -320,7 +323,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             finally
             {
-                Object.DestroyImmediate(editor);
                 Object.DestroyImmediate(effect);
                 Object.DestroyImmediate(health);
             }

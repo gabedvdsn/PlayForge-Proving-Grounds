@@ -357,6 +357,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_A_magnitude_field_edits_every_selected_asset()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var burning = Burning();
             var chilled = Burning();
             chilled.name = "Chilled";
@@ -425,6 +427,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_A_scaler_drawn_on_its_own_edits_every_selected_asset()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var health = ScriptableObject.CreateInstance<Attribute>();
             var goblin = ScriptableObject.CreateInstance<AttributeSet>();
             goblin.Attributes.Add(new AttributeSetElement { Attribute = health });

@@ -155,6 +155,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_Linking_in_the_Effect_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var provider = ScriptableObject.CreateInstance<Ability>();
             provider.Definition.Name = "Provider";
             var contained = ScriptableObject.CreateInstance<GameplayEffect>();
@@ -225,6 +227,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Attribute_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var attribute = MakeAttribute("Health", "HP", "How much damage it can take.");
             var host = new Host();
             try
@@ -268,6 +272,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Attribute_inspector_edits_every_selected_attribute()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(AttributeEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
 
@@ -316,6 +322,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Effect_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.Definition.Name = "Burning";
             effect.Definition.Description = "Fire damage over time.";
@@ -367,6 +375,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Item_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var item = ScriptableObject.CreateInstance<Item>();
             item.Definition.Name = "Torch";
             item.Definition.Description = "Lights the way.";
@@ -478,6 +488,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Entity_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var entity = ScriptableObject.CreateInstance<EntityIdentity>();
             entity.Name = "Goblin";
             entity.Description = "Small and mean.";
@@ -655,6 +667,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Attribute_Set_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var attributeSet = ScriptableObject.CreateInstance<AttributeSet>();
             attributeSet.Name = "Hero";
             attributeSet.Description = "A hero's base attributes.";
@@ -707,6 +721,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_An_edit_in_the_Ability_inspector_undoes()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var ability = ScriptableObject.CreateInstance<Ability>();
             ability.Definition.Name = "Fireball";
             ability.Definition.Description = "Hurls fire.";
@@ -853,6 +869,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_31_The_unlink_question_counts_the_linked_children()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             foreach (var child in LinkedChildren())
             {
                 var made = new List<Object>();
@@ -890,6 +908,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_A_rebuilt_drawer_edits_every_selected_asset()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var first = ScriptableObject.CreateInstance<GameplayEffect>();
             var second = ScriptableObject.CreateInstance<GameplayEffect>();
             first.SourceRequirements = new EffectTagRequirements { ApplicationRequirements = new AvoidRequireTagGroup() };
@@ -936,6 +956,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Item_inspector_edits_every_selected_item()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(ItemEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
             var torch = ScriptableObject.CreateInstance<Item>();
@@ -986,6 +1008,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Ability_inspector_edits_every_selected_ability()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(AbilityEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
             var fireball = ScriptableObject.CreateInstance<Ability>();
@@ -1071,6 +1095,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Effect_inspector_edits_every_selected_effect()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(GameplayEffectEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
             var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 2);
@@ -1110,6 +1136,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Entity_inspector_edits_every_selected_entity()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(EntityIdentityEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
             var heroStats = ScriptableObject.CreateInstance<AttributeSet>();
@@ -1157,6 +1185,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_Attribute_Set_inspector_edits_every_selected_set()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(AttributeSetEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
             var goblin = ScriptableObject.CreateInstance<AttributeSet>();
@@ -1192,6 +1222,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_12_The_MonoProcess_inspector_edits_every_selected_process()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             Assert.IsTrue(System.Attribute.IsDefined(typeof(AbstractMonoProcessEditor), typeof(CanEditMultipleObjects)),
                 "the Inspector gives it a multiple selection");
 
@@ -1312,6 +1344,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_39_A_typed_magnitude_stays_in_bounds()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var rage = ScriptableObject.CreateInstance<Attribute>();
             rage.Name = "Rage";
             var set = OverflowingSet(rage);
@@ -1413,6 +1447,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_38_New_makes_an_asset_and_uses_it()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             const string folder = "Assets/ED-38 New";
             if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-38 New");
             var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
@@ -1591,6 +1627,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_8_The_Effect_inspector_edits_what_an_effect_removes_and_blocks()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var cleanse = ScriptableObject.CreateInstance<GameplayEffect>();
             cleanse.Definition.Name = "Cleanse";
             var removes = typeof(GameplayEffectTags).GetField("RemovesEffectsTagged");
@@ -1628,6 +1666,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_8_The_Effect_inspector_edits_the_chance_to_apply_and_granted_abilities()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var chance = typeof(GameplayEffectImpact).GetField("ChanceToApply");
             var granted = typeof(GameplayEffect).GetField("GrantedAbilities");
             Assert.IsNotNull(chance, "an effect has a chance to apply");
@@ -1677,6 +1717,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_42_Clearing_a_section_gives_its_fields_a_new_assets_values()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var strike = MakeEffect(EEffectDurationPolicy.Instant);
             var impact = strike.ImpactSpecification;
             impact.AffiliationPolicy = EAffiliationPolicy.Affiliated;
@@ -1722,6 +1764,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_5_The_Ability_inspector_edits_cancel_block_and_While_active()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var channel = ScriptableObject.CreateInstance<Ability>();
             channel.Definition = new AbilityDefinition { Name = "Channel", Textures = new List<TextureItem>() };
             channel.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
@@ -1760,6 +1804,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_6_The_Ability_inspector_edits_the_buffer()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var jab = ScriptableObject.CreateInstance<Ability>();
             jab.Definition = new AbilityDefinition { Name = "Jab", Textures = new List<TextureItem>() };
             var host = new Host();
@@ -1786,6 +1832,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_14_The_Item_inspector_edits_its_stack_size()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var coin = ScriptableObject.CreateInstance<Item>();
             coin.Definition.Name = "Coin";
             var host = new Host();
@@ -1810,6 +1858,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator TS_7_A_stage_edits_its_condition()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var attack = ScriptableObject.CreateInstance<Ability>();
             attack.Definition = new AbilityDefinition { Name = "Attack", Textures = new List<TextureItem>() };
             attack.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage() } };
@@ -1920,6 +1970,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_3_An_impact_is_added_and_removed_in_place()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var burning = MakeEffect(EEffectDurationPolicy.Durational, periodic: true, ticks: 2);
             var host = new Host();
             try
@@ -2017,6 +2069,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator ED_37_The_requirements_table_opens_a_cell_to_edit_it()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var burning = MakeEffect(EEffectDurationPolicy.Durational);
             burning.TargetRequirements = new EffectTagRequirements
             {
@@ -2131,6 +2185,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_4_The_Ability_inspector_edits_its_triggers()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var parry = ScriptableObject.CreateInstance<Ability>();
             parry.Definition = new AbilityDefinition { Name = "Parry", Textures = new List<TextureItem>() };
             var host = new Host();
@@ -2155,6 +2211,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator FEAT_1_The_Effect_inspector_edits_its_cues()
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var slam = ScriptableObject.CreateInstance<GameplayEffect>();
             slam.Definition = new GameplayEffectDefinition { Name = "Slam", Textures = new List<TextureItem>() };
             var host = new Host();
@@ -2173,6 +2231,56 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 host.Destroy();
                 Object.DestroyImmediate(slam);
             }
+        }
+
+        /// <summary>
+        /// The tests that edit an inspector meet Unity's IsInSync assertion on CI, two to four a run. Tolerated in them, it
+        /// lets that assertion through alone: any other error the test logs is logged again as it ends, so the test's own
+        /// log check still fails on it (SP-30, Decision 87).
+        /// </summary>
+        [Test]
+        public void SP_30_A_test_that_edits_lets_through_the_out_of_step_bind_alone()
+        {
+            // The other error comes again as the tolerance ends, for the log check to fail on: here, expected
+            LogAssert.Expect(LogType.Error, "[Error] Something else broke");
+            using (new UnsyncedBindsTolerated())
+            {
+                Debug.LogAssertion("Assertion failed on expression: 'IsInSyncWithParentSerializedObject()'");
+                Debug.LogError("Something else broke");
+            }
+        }
+    }
+
+    /// <summary>
+    /// For a test that edits an inspector by design. Unity binds an inspector in slices of 50 ms and defers the rest, and
+    /// an edit made before a deferred field binds leaves that field's property out of step with its object, which Unity
+    /// asserts as IsInSyncWithParentSerializedObject: Unity's, not the asset's, and the test still checks the asset comes
+    /// back as it was. Only that assertion is let through; every other error, assertion or exception the test logs is
+    /// logged again as this ends, so the test's own log check fails on it. A test that only looks never takes this:
+    /// there, the assertion means something wrote (ED-85) (Decision 87).
+    /// </summary>
+    internal sealed class UnsyncedBindsTolerated : System.IDisposable
+    {
+        private const string Unsynced = "IsInSyncWithParentSerializedObject";
+        private readonly List<(string message, LogType type)> others = new();
+
+        public UnsyncedBindsTolerated()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            Application.logMessageReceived += Take;
+        }
+
+        private void Take(string message, string stack, LogType type)
+        {
+            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && !message.Contains(Unsynced))
+                others.Add((message, type));
+        }
+
+        public void Dispose()
+        {
+            Application.logMessageReceived -= Take;
+            LogAssert.ignoreFailingMessages = false;
+            foreach (var (message, type) in others) Debug.LogError($"[{type}] {message}");
         }
     }
 }

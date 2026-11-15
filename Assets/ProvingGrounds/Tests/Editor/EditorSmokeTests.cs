@@ -1095,6 +1095,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [UnityTest]
         public IEnumerator Every_edit_in_an_inspector_undoes([ValueSource(nameof(EditSubjects))] Subject subject)
         {
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
+            using var unsynced = new UnsyncedBindsTolerated();
             var made = new List<Object>();
             var host = new Host(theme);
             var answers = new AnswerLinksYes();
