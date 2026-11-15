@@ -265,6 +265,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             public Host(EditorTheme theme)
             {
                 this.theme = theme;
+                // A pixel to a point on every platform: the default scales the panel by the screen's DPI, which a batch
+                // editor reports as it likes, so on CI's Linux editor the panel laid out narrower than on Windows and a
+                // nested list drew none of its rows (SP-27)
+                settings.scaleMode = PanelScaleMode.ConstantPixelSize;
+                settings.scale = 1f;
                 Document = owner.AddComponent<UIDocument>();
                 Document.panelSettings = settings;
             }
@@ -309,10 +314,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             for (int i = 0; i < count; i++) yield return null;
         }
 
-        // The lists that draw fewer rows than they hold, by their paths
+        // The lists that draw fewer rows than they hold, by their paths, each with the rows it drew and its size
         private static List<string> Undrawn(VisualElement root) => root.Query<ListView>().ToList()
-            .Where(list => list.Query(className: ListView.itemUssClassName).ToList().Count < (list.itemsSource?.Count ?? 0))
-            .Select(list => list.bindingPath ?? list.name).ToList();
+            .Select(list => (list, drawn: list.Query(className: ListView.itemUssClassName).ToList().Count))
+            .Where(each => each.drawn < (each.list.itemsSource?.Count ?? 0))
+            .Select(each => $"{each.list.bindingPath ?? each.list.name} ({each.drawn} of {each.list.itemsSource.Count} rows, {each.list.layout.size})")
+            .ToList();
 
         // Presses a button, as a user does
         private static void Press(Button button)
@@ -393,16 +400,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 // The suite's own check: every element of every list is drawn, so its drawer opens too. A list the last
                 // pass opened lays its rows out over the next frames, and a row it draws may hold a closed list of its
-                // own, so the sweep opens and waits until every list draws its rows, or a few seconds pass: on CI's Linux
-                // editor a runtime panel lays out fewer times an editor tick, and a fixed count of frames left an
-                // ability's nested Effects list with no rows yet (SP-27). Squeezed into the panel, a list drew only some
+                // own, so the sweep opens and waits until every list draws its rows, or a few seconds pass. Squeezed into
+                // the panel, a list drew only some (SP-27); a list that draws too few says how big it and the panel are
                 var undrawn = Undrawn(root);
                 for (var until = EditorApplication.timeSinceStartup + 5.0; undrawn.Count > 0 && EditorApplication.timeSinceStartup < until; undrawn = Undrawn(root))
                 {
                     yield return Frames();
                     yield return ExpandAll(root);
                 }
-                Assert.That(undrawn, Is.Empty, "lists that draw fewer rows than they hold");
+                Assert.That(undrawn, Is.Empty, $"lists that draw fewer rows than they hold, in a panel {root.panel?.visualTree.layout.size}");
             }
             finally
             {
