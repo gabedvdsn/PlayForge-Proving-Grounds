@@ -144,12 +144,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator Jingu_mastery_charges_monkey_king_on_the_fourth_hit([Values] Hub hub) => Live(async () =>
         {
-            // Through the Lifesteal worker its project gives every entity, by the Lifesteal role's attribute, healing the
-            // Health role's (FN-15)
+            // Through the Lifesteal worker its project gives every entity, by the attribute it names as its Share, healing
+            // the Health role's (FN-15, FN-27)
             var lifesteal = Attribute("Lifesteal");
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = Health });
-            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = lifesteal });
+            foreach (var worker in project.Settings.Workers.ImpactWorkers) if (worker is LifestealImpactWorker steal) steal.Share = lifesteal;
             var was = ForgeProject.Use(project);
             try
             {

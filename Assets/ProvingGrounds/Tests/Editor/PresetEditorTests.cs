@@ -138,14 +138,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsNotNull(use.Cooldown, "and a cooldown");
         }
 
-        /// <summary>The passive: a trigger on a gameplay event, and a stage that applies its effects.</summary>
+        /// <summary>
+        /// The passive (the user's edit, FN-27): an ability that activates as its entity starts, its holder its target, and a
+        /// stage that applies its effects, so it gives its holder its effects. It was Passive (Triggered), on Impact Taken.
+        /// </summary>
         [Test]
-        public void TW_24_The_passive_preset_makes_a_triggered_ability()
+        public void FN_27_The_passive_preset_gives_its_holder_its_effects()
         {
-            var thorns = Make<Ability>("Passive (Triggered)", "Spiked Hide");
-            Assert.AreEqual(1, thorns.Definition.Triggers.Count, "a trigger");
-            Assert.AreEqual(EAbilityTriggerSource.GameplayEvent, thorns.Definition.Triggers[0].Source, "on a gameplay event");
-            Assert.That(thorns.Behaviour.Stages.SelectMany(stage => stage.Tasks), Has.Some.InstanceOf<ApplyEffectsAbilityTask>(), "applying its effects");
+            var hide = Make<Ability>("Passive", "Spiked Hide");
+            Assert.IsTrue(hide.Definition.ActivateImmediately, "it activates as its entity starts");
+            Assert.That(hide.Definition.Triggers ?? new List<AbilityTrigger>(), Is.Empty, "with no trigger");
+            Assert.IsTrue(hide.Behaviour.UseImplicitTargeting, "its holder its target");
+            Assert.That(hide.Behaviour.Stages.SelectMany(stage => stage.Tasks), Has.Some.InstanceOf<ApplyEffectsAbilityTask>(), "applying its effects");
         }
 
         /// <summary>The hero: an attribute set of its own, of the attributes playing the project's roles, Health first.</summary>
@@ -207,7 +211,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 {
                     "Gameplay Effect/Blank", "Gameplay Effect/Damage", "Gameplay Effect/Damage over Time", "Gameplay Effect/Buff",
                     "Gameplay Effect/Debuff", "Gameplay Effect/Stun", "Gameplay Effect/Aura", "Gameplay Effect/Storm Template",
-                    "Item/On-Hit", "Item/Active", "Ability/Passive (Triggered)", "Entity/Hero", "Attribute",
+                    "Item/On-Hit", "Item/Active", "Ability/Passive", "Entity/Hero", "Attribute",
                 }), $"each type's presets: {string.Join(", ", items)}");
             }
             finally

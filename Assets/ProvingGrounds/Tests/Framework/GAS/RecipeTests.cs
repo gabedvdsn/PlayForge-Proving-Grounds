@@ -127,11 +127,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         [UnityTest]
         public IEnumerator TW_23_Lifesteal_heals_its_caster_half_the_blow([Values] Hub hub) => Live(async () =>
         {
-            // Through the Lifesteal worker its project gives every entity, by the Lifesteal role's attribute, healing the
-            // Health role's (FN-15)
+            // Through the Lifesteal worker its project gives every entity, by the attribute it names as its Share, healing
+            // the Health role's (FN-15, FN-27)
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = recipes.Health });
-            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = recipes.Lifesteal });
+            foreach (var worker in project.Settings.Workers.ImpactWorkers) if (worker is LifestealImpactWorker steal) steal.Share = recipes.Lifesteal;
             var was = ForgeProject.Use(project);
             try
             {

@@ -166,7 +166,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// The page holds the project's Workers, which every entity in it has, the Lifesteal worker among them as a project
-        /// starts; and Fill Roles by Name fills the Lifesteal role (FN-15).
+        /// starts (FN-15); and Fill Roles by Name leaves an attribute named Lifesteal alone, as there's no Lifesteal role
+        /// (FN-27): the worker names its Share.
         /// </summary>
         [UnityTest]
         public IEnumerator FN_15_The_settings_page_holds_the_projects_workers()
@@ -193,7 +194,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     fill.SendEvent(click);
                 }
                 yield return Frames();
-                Assert.AreSame(lifesteal, project.Settings.AttributeFor(Tags.ROLE_LIFESTEAL), "the Lifesteal role, filled by the attribute of its name");
+                Assert.That(project.Settings.Roles.Select(role => role.Attribute), Has.None.SameAs(lifesteal), "no role for Lifesteal, which the worker names (FN-27)");
             }
             finally
             {

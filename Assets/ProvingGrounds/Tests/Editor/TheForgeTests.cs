@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using FarEmerald.PlayForge.Extended;
 using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
@@ -1367,19 +1369,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ("TRANSFORM", "Transform", "Transformvzcc39S241gwUN6VDCLgpcwj07aImO_rvzcc39S241gwUN6VDCLgpcw", new[] { ForgeContext.DataKey }),
             ("POSITION", "Position", "PositionUdA0nPKFwm0si1roTY40ir2zGbpyzLF9UdA0nPKFwm0si1roTY40ir2z", new[] { ForgeContext.DataKey }),
             ("ROTATION", "Rotation", "Rotationy3LaB8y9qvil4bci199uDOqeRlfUmzX9y3LaB8y9qvil4bci199uDOqe", new[] { ForgeContext.DataKey }),
-            ("GAMEPLAY_ABILITY_SYSTEM", "GameplayAbilitySystem", "GameplayAbilitySystemhQRDDFnNxglKsSg9_jk9Wc6hLH_qWCvBhQRDDFnNxgl", new[] { ForgeContext.DataKey }),
+            ("GAMEPLAY_ABILITY_SYSTEM", "Gameplay Ability System", "Gameplay Ability SystemdDEPNtsXtcCo2i559dQ9JDSQtZepBUwwdDEPNtsXt", new[] { ForgeContext.DataKey }),
             ("DERIVATION", "Derivation", "DerivationS1sCz1tkEC3uTcFWFcpt8izYLLONMxjFS1sCz1tkEC3uTcFWFcpt8i", new[] { ForgeContext.DataKey }),
             ("AFFILIATION", "Affiliation", "AffiliationL6jKG5Q9qXE1ZSku2cgcFq6DcAoe5dYvL6jKG5Q9qXE1ZSku2cgcF", new[] { ForgeContext.DataKey }),
             ("SOURCE", "Source", "SourceoymO9bK8ptefaabLxXIb6M9wlFZIfBfHoymO9bK8ptefaabLxXIb6M9wlF", new[] { ForgeContext.DataKey }),
             ("TARGET", "Target", "TargetzfvEmaa5gNtqhQ0_dE2_NOOAGh1QLRP8zfvEmaa5gNtqhQ0_dE2_NOOAGh", new[] { ForgeContext.DataKey }),
-            ("TARGET_REAL", "TargetReal", "TargetRealgXUzSIBzE3KaizyDkAneOiKoO7BtcdZdgXUzSIBzE3KaizyDkAneOi", new[] { ForgeContext.DataKey }),
-            ("TARGET_POS", "TargetPosition", "TargetPosition9GKno4NgBm3iCmjMTIPk_vu4cFEj3oAB9GKno4NgBm3iCmjMTI", new[] { ForgeContext.DataKey }),
-            ("EVENT_SUBJECT", "EventSubject", "EventSubject8wrHUO8kfW4DDiZusGQwm0LPmYTARTDR8wrHUO8kfW4DDiZusGQw", new[] { ForgeContext.DataKey }),
+            ("TARGET_REAL", "Target Real", "Target RealJD9g172P7bM9RDiYpIMkcWndxHxzP0jVJD9g172P7bM9RDiYpIMkc", new[] { ForgeContext.DataKey }),
+            ("TARGET_POS", "Target Position", "Target Positionh1MHLD6DMioNjSBcsTLYE3bpo_CDeXFch1MHLD6DMioNjSBcs", new[] { ForgeContext.DataKey }),
+            ("EVENT_SUBJECT", "Event Subject", "Event SubjectknKxbyFXU09RjqtgU_Dn1b4uO8kJ0pU3knKxbyFXU09RjqtgU_D", new[] { ForgeContext.DataKey }),
             ("EVENT_IMPACT", "EventImpact", "EventImpactzJIFxVyMXK2qJCpmjz7wuPh_OSqQdgp0zJIFxVyMXK2qJCpmjz7wu", new[] { ForgeContext.DataKey }),
             ("ROLE_HEALTH", "Health", "HealthwlgkU1_U0ptONBlYz9jTuP8r1wWU2j5gwlgkU1_U0ptONBlYz9jTuP8r1w", new[] { ForgeContext.AttributeRole }),
             ("ROLE_LUCK", "Luck", "Luck4U3MdI9kV7Zf8eHFAoSRTm75F7mRIuXU4U3MdI9kV7Zf8eHFAoSRTm75F7mR", new[] { ForgeContext.AttributeRole }),
             ("ROLE_MOVEMENT_SPEED", "Movement Speed", "Movement Speed6s1trn1l70Ski32tSaE4xLdx8JUs69_46s1trn1l70Ski32tSa", new[] { ForgeContext.AttributeRole }),
-            ("ROLE_LIFESTEAL", "Lifesteal", "LifestealaP_5bEKT84QGY5De9bmK0ZlJLbdT4SP0aP_5bEKT84QGY5De9bmK0Zl", new[] { ForgeContext.AttributeRole }),
             ("IMPACT_DEALT", "Impact Dealt", "Impact DealtFTN8KO5Jf5YqWEIbR3YbUgsyJ3zS1bEwFTN8KO5Jf5YqWEIbR3Yb", new[] { ForgeContext.Event }),
             ("IMPACT_TAKEN", "Impact Taken", "Impact TakenCxbKO7Cc9k6c8dHrg_t58gAhmogDGfsFCxbKO7Cc9k6c8dHrg_t5", new[] { ForgeContext.Event }),
             ("KILL", "Kill", "KillXZxDDyRbFpGHEI9eIFJzb2LZnQ8YXRfXXZxDDyRbFpGHEI9eIFJzb2LZnQ8Y", new[] { ForgeContext.Event }),
@@ -1395,7 +1396,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ("ABILITIES", "Abilities", "AbilitiesdvRBCCYCASJ7L1H9Vim3iDJ5JrANhWA4dvRBCCYCASJ7L1H9Vim3iDJ", new[] { ForgeContext.DataKey }),
             ("ENTITIES", "Entities", "EntitiesbE8rdJv2JUnIUKOnz0QgfYH1fYvUWwmrbE8rdJv2JUnIUKOnz0QgfYH1", new[] { ForgeContext.DataKey }),
             ("ATTRIBUTES", "Attributes", "AttributesmoBr_Bdp18SPLjuOpUnhXXYDxbREMTSsmoBr_Bdp18SPLjuOpUnhXX", new[] { ForgeContext.DataKey }),
-            ("ATTRIBUTE_SETS", "AttributeSets", "AttributeSetsM_FUlP8b89QFWAhvCaaJIbPPe2nfrh3RM_FUlP8b89QFWAhvCaa", new[] { ForgeContext.DataKey }),
+            ("ATTRIBUTE_SETS", "Attribute Sets", "Attribute SetsHNbbwbf8cDcnSuUu6jdJB2do6lKYic5UHNbbwbf8cDcnSuUu6j", new[] { ForgeContext.DataKey }),
             ("TAGS", "Tags", "TagstXNCi32fcEh6Nx4y2v0UW3ZPhVO4BfFRtXNCi32fcEh6Nx4y2v0UW3ZPhVO4", new[] { ForgeContext.DataKey }),
             ("INDEX", "Index", "Index5gbrAKbIyt2i0pE97e9TDoG0aEhBuEPT5gbrAKbIyt2i0pE97e9TDoG0aEh", new[] { ForgeContext.DataKey }),
             ("OBJECT", "Object", "ObjectJODj1eqTNcEMFvbLQDMG88PevygmAa_IJODj1eqTNcEMFvbLQDMG88Pevy", new[] { ForgeContext.DataKey }),
@@ -1412,18 +1413,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ("VECTOR2", "Vector2", "Vector2UiTEXWUCHtlWIBPBOGj0oh6LeCrbsZacUiTEXWUCHtlWIBPBOGj0oh6Le", new[] { ForgeContext.DataKey }),
             ("VECTOR3", "Vector3", "Vector32gvNctMNqMKVRK0oaBIoa9Trp1JWU2Is2gvNctMNqMKVRK0oaBIoa9Trp", new[] { ForgeContext.DataKey }),
             ("HEIGHT", "Height", "HeightcLVMb60L_Mrvk52vwDNNoE0WdEMWSq6JcLVMb60L_Mrvk52vwDNNoE0WdE", new[] { ForgeContext.DataKey }),
-            ("WAIT_FOR", "WaitFor", "WaitFor1IT01PEK45EzXPa6eHvcBxOuKyzoqRXC1IT01PEK45EzXPa6eHvcBxOuK", new[] { ForgeContext.DataKey }),
+            ("WAIT_FOR", "Wait For", "Wait For6yjOpINGSvoYjzoBMyvOit5XQvDhNqsR6yjOpINGSvoYjzoBMyvOit5X", new[] { ForgeContext.DataKey }),
             ("ITERATIONS", "Iterations", "Iterationsib30YuwMQpoXfU7ahWw44edO9n1EPQO3ib30YuwMQpoXfU7ahWw44e", new[] { ForgeContext.DataKey }),
             ("VALID", "Valid", "Valid4wIgXqSLtqfvW0IEKoRb6LHhHSGvUvqn4wIgXqSLtqfvW0IEKoRb6LHhHSG", new[] { ForgeContext.DataKey }),
             ("INVALID", "Invalid", "InvalidyglhzUxDMmwMhetKnN75NljZaDjikV5TyglhzUxDMmwMhetKnN75NljZa", new[] { ForgeContext.DataKey }),
             ("CAMERA", "Camera", "CameradkmnFc1ILk_2ES58jk8xcloN857NQLX0dkmnFc1ILk_2ES58jk8xcloN85", new[] { ForgeContext.DataKey }),
-            ("PROCESS_RELAY", "ProcessRelay", "ProcessRelayH7hp9FBbZesRz_m9pT92Vm34CGgKlbg4H7hp9FBbZesRz_m9pT92", new[] { ForgeContext.DataKey }),
+            ("PROCESS_RELAY", "Process Relay", "Process RelayI_5R2hTX3dmxTQKGcsdBtt_qqJlX_x0GI_5R2hTX3dmxTQKGcsd", new[] { ForgeContext.DataKey }),
             ("CONTAINER", "Container", "Containerm5JRkAX_nebKQUL_xgDYPz8GzVILKAI5m5JRkAX_nebKQUL_xgDYPz8", new[] { ForgeContext.DataKey }),
             ("UI", "UI", "UI9YQH4xK7DtvEt2vwapOfLuk3bK0YtDKI9YQH4xK7DtvEt2vwapOfLuk3bK0YtD", new[] { ForgeContext.DataKey }),
-            ("TARGETED_INTENT", "TargetedIntent", "TargetedIntenta3XiGkE8akraVWK2yGSHUChAFOsL3mwHa3XiGkE8akraVWK2yG", new[] { ForgeContext.DataKey }),
-            ("PROJECTILE_SPEED", "ProjectileSpeed", "ProjectileSpeedTDOqnRj7a_7x7WNN99NhMMccYmVZPKzFTDOqnRj7a_7x7WNN9", new[] { ForgeContext.SetByCallerKey }),
-            ("FAILED_TO_INITIALIZE", "FailedToInitialize", "FailedToInitialize1Hhg_KCN7CKTI1mAd0Oze_b2DJQAOc2o1Hhg_KCN7CKTI1", new string[0]),
-            ("FAILED_WHILE_ACTIVE", "FailedWhileActive", "FailedWhileActiveOLFOEHg9C7Hp31nzOe5iaEtqV1L1q9ngOLFOEHg9C7Hp31n", new string[0]),
+            ("TARGETED_INTENT", "Targeted Intent", "Targeted IntentVWuBUH07IBIQC8uwE2D1lXD_JN1v2oUTVWuBUH07IBIQC8uwE", new[] { ForgeContext.DataKey }),
+            ("PROJECTILE_SPEED", "Projectile Speed", "Projectile SpeedWo7pgx6QjuV1X9OKIn0cedoucG3k_ntrWo7pgx6QjuV1X9OK", new[] { ForgeContext.SetByCallerKey }),
+            ("FAILED_TO_INITIALIZE", "Failed To Initialize", "Failed To InitializeN4f9xQAelhj1O3WdXcaF2MEvGOnpE8tMN4f9xQAelhj1", new string[0]),
+            ("FAILED_WHILE_ACTIVE", "Failed While Active", "Failed While Active_geCp1FsWtxHXX9gy_xrbsY2MRxW7VV__geCp1FsWtxHX", new string[0]),
         };
 
         /// <summary>
@@ -1456,6 +1457,44 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             problems.AddRange(exposed.Keys.Except(CoreTags.Select(row => row.property)).Select(extra => $"Tags.{extra} isn't pinned"));
             Assert.IsEmpty(problems, string.Join("; ", problems));
         }
+
+        /// <summary>
+        /// A sample's asset stores each core tag by its name, which its text pads (FN-27): the user's edit of 2026-11-15
+        /// spaced out eleven core tags' texts, so their names changed, and the Demo's projectiles stored Projectile Speed
+        /// by its old one, which no role matched any more. Each padded tag a sample stores whose text reads as a core tag's,
+        /// spaces aside, is that core tag, by its name.
+        /// </summary>
+        [Test]
+        public void FN_27_A_samples_assets_store_core_tags_by_their_names()
+        {
+            var root = UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/com.faremerald.playforge/package.json")?.resolvedPath;
+            Assume.That(root, Is.Not.Null, "the package is found");
+            var core = typeof(Tags).GetProperties(BindingFlags.Public | BindingFlags.Static)
+                .Where(property => property.PropertyType == typeof(Tag))
+                .Select(property => (Tag)property.GetValue(null))
+                .Where(tag => tag.Name != tag.ToString())
+                .GroupBy(tag => Squashed(tag.ToString()))
+                .ToDictionary(group => group.Key, group => group.First());
+            var pair = new Regex(@"Name: ([^\r\n]+)\r?\n\s*DisplayName: ([^\r\n]*)");
+            var problems = new List<string>();
+            var files = Directory.EnumerateFiles(Path.Combine(root, "Samples~"), "*.*", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(".asset") || path.EndsWith(".prefab") || path.EndsWith(".unity"));
+            foreach (var file in files)
+            {
+                foreach (Match match in pair.Matches(File.ReadAllText(file)))
+                {
+                    string stored = match.Groups[1].Value.Trim(), shown = match.Groups[2].Value.Trim();
+                    // A unique tag, its text padded to 64 characters
+                    if (stored.Length != 64 || shown.Length == 0 || !stored.StartsWith(shown)) continue;
+                    if (core.TryGetValue(Squashed(shown), out var tag) && stored != tag.Name)
+                        problems.Add($"{Path.GetFileName(file)} stores {shown} as {stored}, not {tag.Name}");
+                }
+            }
+            Assert.IsEmpty(problems, string.Join("; ", problems.Distinct()));
+        }
+
+        // A text in letters and digits alone, lower case, so "Projectile Speed" and "ProjectileSpeed" are one
+        private static string Squashed(string text) => new string((text ?? "").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
 
         /// <summary>
         /// A unique tag's text of 64 characters or more is cut to 64, so two long paths that begin alike were one tag, and

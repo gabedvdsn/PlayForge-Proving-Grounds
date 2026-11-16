@@ -8,10 +8,10 @@ using ForgeAttribute = FarEmerald.PlayForge.Attribute;
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     /// <summary>
-    /// FN-15, Decision 78: lifesteal is an attribute the Lifesteal worker reads. Every entity has the worker through its
-    /// project's Workers, or through its own; it heals its holder its Lifesteal's share of each loss it deals another, of the
-    /// impact types it names; an effect has no lifesteal of its own, its hits healing by its caster's (FN-22); and two of
-    /// the worker heal a hit once.
+    /// FN-15, Decision 78: lifesteal is an attribute the Lifesteal worker reads, the one it names as its Share (FN-27).
+    /// Every entity has the worker through its project's Workers, or through its own; it heals its holder its Share's part
+    /// of each loss it deals another, of the impact types it names; an effect has no lifesteal of its own, its hits healing
+    /// by its caster's (FN-22); and two of the worker heal a hit once.
     /// </summary>
     public class LifestealTests : ProvingGroundsTest
     {
@@ -28,7 +28,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             spell = Make.NewTag("Test.FN15.Spell");
             project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = health });
-            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = lifesteal });
+            // The share it heals is the attribute it names; the Lifesteal role is gone (FN-27)
+            foreach (var worker in project.Settings.Workers.ImpactWorkers) if (worker is LifestealImpactWorker steal) steal.Share = lifesteal;
             was = ForgeProject.Use(project);
         }
 
@@ -137,11 +138,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(60f, Value(leech, health), 0.01f, "an attack heals half of its 20");
         });
 
+        /// <summary>
+        /// The worker heals its Heals attribute for its Receives attribute's losses (FN-27, the user's edit): a burn of
+        /// another's Mana heals its holder's Health by its share. It joined its cache under Heals, the attribute it heals,
+        /// so where Receives was another attribute it heard no hit and healed nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FN_27_The_worker_heals_its_Heals_for_its_Receives_losses([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            project.Settings.Workers.ImpactWorkers.Clear();
+            project.Settings.Workers.ImpactWorkers.Add(new LifestealImpactWorker { Share = lifesteal, Receives = mana, Heals = health });
+            var leech = Fighter(hub, "Leech", healthNow: 50f, share: 0.25f);
+            var target = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f), Make.Element(mana, 100f, 100f)), "Target");
+            await Frames.Step();
+
+            var burn = Make.Effect("Mana Burn", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = mana, Magnitude = -40f });
+            Assert.IsTrue(World.Apply(leech, target, burn));
+            await Frames.Step(3);
+            Assert.AreEqual(60f, Value(target, mana), 0.01f, "the burn takes 40 of the target's Mana");
+            Assert.AreEqual(60f, Value(leech, health), 0.01f, "and heals the leech's Health a quarter of it, its Share's part");
+
+            Assert.IsTrue(World.Apply(leech, target, Blow("Bite", 40f)));
+            await Frames.Step(3);
+            Assert.AreEqual(60f, Value(leech, health), 0.01f, "a loss of Health, which it doesn't receive, heals nothing");
+        });
+
         /// <summary>An entity with the worker of its own as well as its project's heals a hit once.</summary>
         [UnityTest]
         public IEnumerator FN_15_Two_lifesteal_workers_heal_a_hit_once([Values] Hub hub) => Live(async () =>
         {
-            var leech = Fighter(hub, "Leech", healthNow: 50f, share: 0.25f, new LifestealImpactWorker());
+            var leech = Fighter(hub, "Leech", healthNow: 50f, share: 0.25f, new LifestealImpactWorker { Share = lifesteal });
             var target = Fighter(hub, "Target");
             await Frames.Step();
 

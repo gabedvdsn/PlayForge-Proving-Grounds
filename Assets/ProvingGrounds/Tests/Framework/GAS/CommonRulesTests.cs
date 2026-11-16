@@ -81,7 +81,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var lifesteal = Make.Attribute("Lifesteal");
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_HEALTH, Attribute = health });
-            project.Settings.Roles.Add(new AttributeRole { Role = Tags.ROLE_LIFESTEAL, Attribute = lifesteal });
+            foreach (var worker in project.Settings.Workers.ImpactWorkers) if (worker is LifestealImpactWorker steal) steal.Share = lifesteal;
             var was = ForgeProject.Use(project);
             try
             {
