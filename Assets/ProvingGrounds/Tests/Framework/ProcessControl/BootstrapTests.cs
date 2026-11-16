@@ -196,6 +196,62 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
         });
 
+        /// <summary>
+        /// A Bootstrapper that names no prefab brings PlayForge up itself (EP-11, Decision 89): ProcessControl, then a
+        /// GameRoot stepping in Update and LateUpdate, which runs as the Game Root entity of the Forge Project it names, or,
+        /// naming none, as the game's own, on the System side. PlayForge ships no prefab, so a scene needs nothing but a
+        /// Bootstrapper.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_11_A_Bootstrapper_with_no_prefabs_plays_its_project([Values] bool namesAProject) => Live(async () =>
+        {
+            Object.Destroy(World.Control.gameObject);
+            Object.Destroy(World.Root.gameObject);
+            await Frames.Step(2);
+
+            var entity = Make.Identity("EP11 Game Root", Make.UnusedSet());
+            var project = ScriptableObject.CreateInstance<ForgeProject>();
+            project.GameRootEntity = entity;
+            ProcessControl control = null;
+            GameRoot root = null;
+            try
+            {
+                var host = new GameObject("Bootstrapper");
+                host.SetActive(false);
+                var bootstrapper = host.AddComponent<Bootstrapper>();
+                if (namesAProject) bootstrapper.Project = project;
+                host.SetActive(true);
+                control = ProcessControl.Instance;
+                root = GameRoot.Instance;
+
+                Assert.That((bool)control, "it makes ProcessControl");
+                Assert.That((bool)root && control.IsRegistered(root.ProcessRelay.CacheIndex), "and a GameRoot, registered");
+                Assert.AreEqual(EProcessStepTiming.UpdateAndLate, root.ProcessTiming, "stepping in Update and LateUpdate (GAS-1)");
+                if (namesAProject)
+                {
+                    Assert.AreSame(project, root.Project, "which plays its project");
+                    Assert.AreSame(entity, root.EntityData, "as the project's Game Root entity");
+                }
+                else
+                {
+                    Assert.IsNull(root.Project, "which plays no project");
+                    Assert.AreEqual("Game Root", root.EntityData?.Name, "as the game's own Game Root entity");
+                    Assert.That(root.EntityData.Affiliation, Is.EqualTo(new[] { Tags.SYSTEM }), "on the System side");
+                }
+
+                var probe = World.NewProbe("After");
+                Assert.That(ProcessControl.Register(probe).With(ProcessDataPacket.Default()).Run(out _), "which takes processes");
+                await Frames.Step(2);
+                Assert.That(probe.Recorder[ProbeHook.Update], Is.GreaterThan(0), "and steps them");
+            }
+            finally
+            {
+                if (root) Object.Destroy(root.gameObject);
+                if (control) Object.Destroy(control.gameObject);
+                Object.Destroy(project);
+            }
+        });
+
         private static bool HoldsUnityObjects(Type type)
         {
             var element = type.IsArray ? type.GetElementType()

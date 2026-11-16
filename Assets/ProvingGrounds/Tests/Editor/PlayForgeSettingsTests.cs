@@ -306,7 +306,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             PlayForgeSettings.UseDefaultFolders();
 
             Assert.AreEqual(PlayForgeSettings.DefaultFolder(typeof(Ability)), PlayForgeSettings.FolderFor(typeof(Ability)), "abilities' folder");
-            Assert.AreEqual("Assets/Data/Effects", PlayForgeSettings.FolderFor(typeof(GameplayEffect)), "effects' folder");
+            Assert.AreEqual("Effects", PlayForgeSettings.FolderFor(typeof(GameplayEffect)), "effects' folder, within the project's (EP-10)");
             Assert.AreEqual(PlayForgeSettings.DefaultFolder(typeof(ScalerAsset)), PlayForgeSettings.FolderFor(typeof(ScalerAsset)), "and Scaler assets'");
             Assert.AreSame(ability, PlayForgeSettings.NewAssetDefault(typeof(Ability)), "the defaults stay");
             Assert.AreSame(cost, PlayForgeSettings.UsageEffect("Cost"), "and so does the Cost effect");

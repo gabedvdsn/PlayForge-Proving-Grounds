@@ -2,12 +2,15 @@
 The Asset Store export (Decision 87): build the package as a buyer gets it, in a throwaway project, export it as a
 .unitypackage, and import that into a fresh project to check it. PlayForge's own repository never changes.
 
-In the throwaway project, Assets/PlayForge is the package as PlayForge's working tree has it, with:
+In the throwaway project, Assets/Plugins/PlayForge is the package as PlayForge's working tree has it, where a buyer's
+import puts it, so the Forge Projects PlayForge makes in Assets/PlayForge are never in its folder (EP-12, Decision 89),
+with:
 - UniTask 2.5.11's source in PlayForge/ThirdParty/UniTask, from GitHub's archive of its tag, and its licence in
   PlayForge/Third-Party Notices.txt. A package under Assets resolves no dependency, so it carries its own;
 - the four samples copied out of Samples~ into PlayForge/Samples, as Unity imports no folder whose name ends in ~;
 - the internal docs left out: Documentation/IMPACT_MODEL_REFACTOR.md and Documentation/PUBLISHING.md.
-The folders it makes take GUIDs worked out from their paths, so each export names them the same.
+The folders it makes take GUIDs worked out from the paths they had under Assets/PlayForge, so each export names them as
+the exports before EP-12 did.
 
 A package under Assets doesn't resolve package.json's dependencies either, so the upload declares them for the buyer's
 import to install (PUBLISHING.md): com.unity.ugui and com.unity.profiling.core. Both projects take them, as an import
@@ -25,7 +28,7 @@ Usage: python export-unitypackage.py [--out <dir>] [--skip-check] [--tests] [--b
   --tests       the check project runs the golden tests too, with the Test Framework added
   --build       and builds a Windows player, its scenes none, as BuildVerification makes one
 
-The throwaway project stays, so the Asset Store Tools can upload Assets/PlayForge from it.
+The throwaway project stays, so the Asset Store Tools can upload Assets/Plugins/PlayForge from it.
 """
 import io
 import json
@@ -60,7 +63,7 @@ public static class PlayForgeExport
     public static void Run()
     {
         var path = Environment.GetEnvironmentVariable("PLAYFORGE_EXPORT_PATH");
-        AssetDatabase.ExportPackage("Assets/PlayForge", path, ExportPackageOptions.Recurse);
+        AssetDatabase.ExportPackage("Assets/Plugins/PlayForge", path, ExportPackageOptions.Recurse);
         Debug.Log("PLAYFORGE EXPORT done: " + path);
     }
 }
@@ -73,7 +76,7 @@ using UnityEngine;
 
 public static class SampleCheck
 {
-    private const string Root = "Assets/PlayForge/Samples";
+    private const string Root = "Assets/Plugins/PlayForge/Samples";
     private static int _scripts, _references, _types;
 
     public static void Run()
@@ -260,7 +263,8 @@ if not os.path.exists(archive):
 
 # ─── The throwaway project ───────────────────────────────────────────────────────────────────────────────────────────
 fresh(build, "build-create.log", DEPENDENCIES)
-target = os.path.join(build, "Assets", "PlayForge")
+# Under Assets/Plugins, where the buyer's import puts it (EP-12)
+target = os.path.join(build, "Assets", "Plugins", "PlayForge")
 
 
 def leave_out(directory, names):

@@ -31,9 +31,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
         /// <summary>Where the Sparring scene and its dummy go, beside the starter set (AC-2).</summary>
         public const string SparringRoot = "Assets/PlayForgeAdditional/Sparring";
 
-        /// <summary>PlayForge's Bootstrapper, which brings up ProcessControl and the GameRoot as a scene starts.</summary>
-        public const string BootstrapperPath = "Packages/com.faremerald.playforge/Runtime/Prefabs/Bootstrapper/Bootstrapper.prefab";
-
         // The sample's feedback scripts, which the scene's objects carry, by name: they compile only where the sample is
         private static readonly string[] SampleScripts = { "CameraShaker", "FloatingNumbers", "HitFlash", "HitSound", "StatusBar", "Sparring" };
 
@@ -119,8 +116,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
                 }
                 scripts[name] = type;
             }
-            var bootstrapper = AssetDatabase.LoadAssetAtPath<GameObject>(BootstrapperPath);
-            if (bootstrapper == null) throw new InvalidOperationException($"No Bootstrapper at {BootstrapperPath}");
 
             Folder(root);
             string path = $"{root}/Sparring.unity";
@@ -134,7 +129,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
             try
             {
                 SceneManager.SetActiveScene(scene);
-                PrefabUtility.InstantiatePrefab(bootstrapper, scene);
+                // PlayForge's Bootstrapper, which names no prefab, so it makes ProcessControl and the GameRoot itself as
+                // the scene starts: PlayForge ships none (EP-11)
+                new GameObject("Bootstrapper").AddComponent<Bootstrapper>();
 
                 var camera = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)) { tag = "MainCamera" };
                 camera.transform.SetPositionAndRotation(new Vector3(0f, 3f, -6.5f), Quaternion.Euler(16f, 0f, 0f));

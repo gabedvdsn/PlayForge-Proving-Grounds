@@ -1429,6 +1429,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ("ENTITIES", "Entities", "EntitiesbE8rdJv2JUnIUKOnz0QgfYH1fYvUWwmrbE8rdJv2JUnIUKOnz0QgfYH1", new[] { ForgeContext.DataKey }),
             ("ATTRIBUTES", "Attributes", "AttributesmoBr_Bdp18SPLjuOpUnhXXYDxbREMTSsmoBr_Bdp18SPLjuOpUnhXX", new[] { ForgeContext.DataKey }),
             ("ATTRIBUTE_SETS", "Attribute Sets", "Attribute SetsHNbbwbf8cDcnSuUu6jdJB2do6lKYic5UHNbbwbf8cDcnSuUu6j", new[] { ForgeContext.DataKey }),
+            ("FORGE_PROJECT", "Forge Project", "Forge ProjecturRUaXXyR5qxKk4Bu15RZLaEQDriJcFDurRUaXXyR5qxKk4Bu15", new[] { ForgeContext.DataKey }),
             ("TAGS", "Tags", "TagstXNCi32fcEh6Nx4y2v0UW3ZPhVO4BfFRtXNCi32fcEh6Nx4y2v0UW3ZPhVO4", new[] { ForgeContext.DataKey }),
             ("INDEX", "Index", "Index5gbrAKbIyt2i0pE97e9TDoG0aEhBuEPT5gbrAKbIyt2i0pE97e9TDoG0aEh", new[] { ForgeContext.DataKey }),
             ("OBJECT", "Object", "ObjectJODj1eqTNcEMFvbLQDMG88PevygmAa_IJODj1eqTNcEMFvbLQDMG88Pevy", new[] { ForgeContext.DataKey }),

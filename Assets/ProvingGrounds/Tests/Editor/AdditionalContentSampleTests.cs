@@ -99,9 +99,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             try
             {
                 var roots = scene.GetRootGameObjects();
-                Assert.IsTrue(roots.Any(r => PrefabUtility.GetCorrespondingObjectFromSource(r) is { } source &&
-                                             AssetDatabase.GetAssetPath(source) == RecipeExport.BootstrapperPath),
-                    "PlayForge's Bootstrapper brings PlayForge up");
+                Assert.IsTrue(roots.Any(r => r.GetComponent<Bootstrapper>() != null && PrefabUtility.GetCorrespondingObjectFromSource(r) == null),
+                    "a Bootstrapper of its own brings PlayForge up, as PlayForge ships no prefab (EP-11)");
                 Assert.IsTrue(roots.Any(r => r.GetComponent<Camera>() != null && r.GetComponent(Sample("CameraShaker")) != null),
                     "the camera has the sample's shaker");
                 var dummies = roots.Select(r => r.GetComponent<GameplayAbilitySystem>()).Where(g => g != null).ToArray();
