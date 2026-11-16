@@ -1453,14 +1453,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// New makes an asset of the reference's type where The Forge makes that type, named for the asset and the field,
-        /// with the tag its name gives, and the field takes it, as one Undo step (ED-38).
+        /// New makes an asset of the reference's type, named for the asset and the field, with the tag its name gives, and
+        /// the field takes it, as one Undo step (ED-38): it asks the name in The Forge's New dialog first (EP-8).
         /// </summary>
         [UnityTest]
         public IEnumerator ED_38_New_makes_an_asset_and_uses_it()
         {
-            // It edits an inspector by design, so Unity's out-of-step bind is tolerated, and only it (Decision 87)
-            using var unsynced = new UnsyncedBindsTolerated();
+            // It edits an inspector by design, so Unity's out-of-step bind is tolerated (Decision 87); and New's dialog is a
+            // window, which batch mode has no device to show
+            using var unsynced = new UnsyncedBindsTolerated(WindowsTolerated.NoDevice);
             const string folder = "Assets/ED-38 New";
             if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED-38 New");
             var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
@@ -1481,6 +1482,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Press(create);
                 yield return Frames();
 
+                // The New dialog asks its name, starting as the entity's and the field's; Create makes it in the test's folder
+                var dialog = Resources.FindObjectsOfTypeAll<ForgeNewAssetWindow>().FirstOrDefault();
+                Assert.IsNotNull(dialog, "New asks the new set's name");
+                Assert.IsNull(goblin.AttributeSet, "and makes nothing until it's named");
+                Assert.AreEqual("Goblin Attribute Set", dialog.rootVisualElement.Q<TextField>("AssetName").value, "named for the entity and the field");
+                dialog.rootVisualElement.Q<TextField>("Folder").value = folder;
+                dialog.CreateAsset();
+                yield return Frames();
+
                 var set = goblin.AttributeSet;
                 Assert.IsNotNull(set, "New makes a set and uses it");
                 made = AssetDatabase.GetAssetPath(set);
@@ -1494,6 +1504,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             finally
             {
+                foreach (var open in Resources.FindObjectsOfTypeAll<ForgeNewAssetWindow>()) open.Close();
                 host.Destroy();
                 if (!string.IsNullOrEmpty(made)) AssetDatabase.DeleteAsset(made);
                 AssetDatabase.DeleteAsset(folder);
@@ -1502,12 +1513,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A Value Pipeline, Crowd Control Rules or Effect Modifier field is a reference as a PlayForge asset's is: New beside
-        /// it while it's empty, which makes one named for the asset and the field and uses it, and Open once it names one.
-        /// Unity's bare object field gave no way to make one in place (FN-11).
+        /// it while it's empty, which asks the new one's name in The Forge's New dialog (EP-8), makes it and uses it, and Open
+        /// once it names one. Unity's bare object field gave no way to make one in place (FN-11).
         /// </summary>
         [UnityTest]
         public IEnumerator FN_11_A_pipeline_rules_or_modifier_field_has_New_and_Open()
         {
+            // New's dialog is a window, which batch mode has no device to show (EP-8)
+            using var windows = new WindowsTolerated();
             const string folder = "Assets/FN-11 New";
             if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "FN-11 New");
             var goblin = ScriptableObject.CreateInstance<EntityIdentity>();
@@ -1539,6 +1552,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.AreEqual("New", action.text, $"{path}, empty, offers New");
                     Press(action);
                     yield return Frames();
+                    // The New dialog asks its name first (EP-8); Create makes it in the test's folder
+                    var dialog = Resources.FindObjectsOfTypeAll<ForgeNewAssetWindow>().FirstOrDefault();
+                    Assert.IsNotNull(dialog, $"New asks the name of {path}'s new asset");
+                    dialog.rootVisualElement.Q<TextField>("Folder").value = folder;
+                    dialog.CreateAsset();
+                    yield return Frames();
                     var asset = read();
                     Assert.IsNotNull(asset, $"New makes an asset for {path} and uses it");
                     made.Add(AssetDatabase.GetAssetPath(asset));
@@ -1549,6 +1568,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             finally
             {
+                foreach (var open in Resources.FindObjectsOfTypeAll<ForgeNewAssetWindow>()) open.Close();
                 host.Destroy();
                 foreach (var path in made) if (!string.IsNullOrEmpty(path)) AssetDatabase.DeleteAsset(path);
                 AssetDatabase.DeleteAsset(folder);
@@ -2269,14 +2289,48 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// asserts as IsInSyncWithParentSerializedObject: Unity's, not the asset's, and the test still checks the asset comes
     /// back as it was. Only that assertion is let through; every other error, assertion or exception the test logs is
     /// logged again as this ends, so the test's own log check fails on it. A test that only looks never takes this:
-    /// there, the assertion means something wrote (ED-85) (Decision 87).
+    /// there, the assertion means something wrote (ED-85) (Decision 87). A test that opens a window as well lets batch
+    /// mode's want of a graphics device through too, <see cref="WindowsTolerated.NoDevice"/>.
     /// </summary>
     internal sealed class UnsyncedBindsTolerated : System.IDisposable
     {
         private const string Unsynced = "IsInSyncWithParentSerializedObject";
+        private readonly string[] alsoTolerated;
         private readonly List<(string message, LogType type)> others = new();
 
-        public UnsyncedBindsTolerated()
+        public UnsyncedBindsTolerated(params string[] alsoTolerated)
+        {
+            this.alsoTolerated = alsoTolerated ?? System.Array.Empty<string>();
+            LogAssert.ignoreFailingMessages = true;
+            Application.logMessageReceived += Take;
+        }
+
+        private void Take(string message, string stack, LogType type)
+        {
+            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && !message.Contains(Unsynced)
+                && !alsoTolerated.Any(message.Contains))
+                others.Add((message, type));
+        }
+
+        public void Dispose()
+        {
+            Application.logMessageReceived -= Take;
+            LogAssert.ignoreFailingMessages = false;
+            foreach (var (message, type) in others) Debug.LogError($"[{type}] {message}");
+        }
+    }
+
+    /// <summary>
+    /// For a test that opens a window, as a field's New opens The Forge's New dialog (EP-8). Batch mode has no graphics
+    /// device to show one, and logs an error saying so as each opens: only that is let through; every other error,
+    /// assertion or exception the test logs is logged again as this ends, so the test's own log check fails on it.
+    /// </summary>
+    internal sealed class WindowsTolerated : System.IDisposable
+    {
+        internal const string NoDevice = "No graphic device is available";
+        private readonly List<(string message, LogType type)> others = new();
+
+        public WindowsTolerated()
         {
             LogAssert.ignoreFailingMessages = true;
             Application.logMessageReceived += Take;
@@ -2284,7 +2338,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private void Take(string message, string stack, LogType type)
         {
-            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && !message.Contains(Unsynced))
+            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && !message.Contains(NoDevice))
                 others.Add((message, type));
         }
 
