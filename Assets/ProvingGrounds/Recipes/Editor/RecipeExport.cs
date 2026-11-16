@@ -130,8 +130,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes.Building
             {
                 SceneManager.SetActiveScene(scene);
                 // PlayForge's Bootstrapper, which names no prefab, so it makes ProcessControl and the GameRoot itself as
-                // the scene starts: PlayForge ships none (EP-11)
-                new GameObject("Bootstrapper").AddComponent<Bootstrapper>();
+                // the scene starts: PlayForge ships none (EP-11). It plays the Forge Project whose folder holds the scene,
+                // the sample's own, so the GameRoot runs as that project's Game Root entity (EP-22)
+                new GameObject("Bootstrapper").AddComponent<Bootstrapper>().Project = ForgeProject.Owner(path, ForgeProject.Folders());
 
                 var camera = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)) { tag = "MainCamera" };
                 camera.transform.SetPositionAndRotation(new Vector3(0f, 3f, -6.5f), Quaternion.Euler(16f, 0f, 0f));

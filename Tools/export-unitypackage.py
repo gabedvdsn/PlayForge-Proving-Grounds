@@ -7,8 +7,8 @@ import puts it, so the Forge Projects PlayForge makes in Assets/PlayForge are ne
 with:
 - UniTask 2.5.11's source in PlayForge/ThirdParty/UniTask, from GitHub's archive of its tag, and its licence in
   PlayForge/Third-Party Notices.txt. A package under Assets resolves no dependency, so it carries its own;
-- the four samples copied out of Samples~ into PlayForge/Samples, as Unity imports no folder whose name ends in ~;
-- the internal docs left out: Documentation/IMPACT_MODEL_REFACTOR.md and Documentation/PUBLISHING.md.
+- the four samples copied out of Samples~ into PlayForge/Samples, as Unity imports no folder whose name ends in ~.
+The internal docs live in PlayForge's own Docs/, outside the package, so it leaves nothing out.
 The folders it makes take GUIDs worked out from the paths they had under Assets/PlayForge, so each export names them as
 the exports before EP-12 did.
 
@@ -50,7 +50,8 @@ UNITASK_SOURCE = UNITASK_ROOT + "src/UniTask/Assets/Plugins/UniTask/"
 # What the upload declares, as package.json does for a UPM install
 DEPENDENCIES = {"com.unity.ugui": "2.0.0", "com.unity.profiling.core": "1.0.2"}
 TEST_FRAMEWORK = {"com.unity.test-framework": "1.4.5"}
-LEFT_OUT = {"Documentation/IMPACT_MODEL_REFACTOR.md", "Documentation/PUBLISHING.md"}
+# What the package holds that ships not: nothing, the internal docs living outside it (EP-21)
+LEFT_OUT = set()
 # The namespace the made folders' GUIDs come from, so an export names its folders as the last did
 GUIDS = uuid.UUID("6f1c2b8e-5a0d-4c3e-9b7a-2d4f8e1a6c90")
 
