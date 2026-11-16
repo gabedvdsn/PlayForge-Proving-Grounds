@@ -14,7 +14,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
     /// docs write it (FEAT-29, NUM-3). It is one class with one method.
     /// </summary>
     [Serializable]
-    [NumberKind("Distance to Target", Category = "Space", Reads = NumberReads.Caster | NumberReads.Target)]
+    [NumberKind("Distance to Target", Reads = NumberReads.Caster | NumberReads.Target)]
+    [ForgeMenu("Space", Description = "How far the target is from the caster")]
     public class DistanceToTarget : NumberKind
     {
         [Tooltip("Along the ground, leaving height out")]

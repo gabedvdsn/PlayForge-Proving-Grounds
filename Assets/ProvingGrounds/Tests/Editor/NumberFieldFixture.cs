@@ -51,7 +51,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
     /// <summary>A kind of the tests' own that needs a target, filed under a category of its own.</summary>
     [Serializable]
-    [NumberKind("Reach", Category = "Testing", Reads = NumberReads.Target)]
+    [NumberKind("Reach", Reads = NumberReads.Target)]
+    [ForgeMenu("Testing")]
     public class ReachKind : NumberKind
     {
         public float Scale = 1f;

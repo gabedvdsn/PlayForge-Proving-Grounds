@@ -10,22 +10,17 @@ using NUnit.Framework;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// The ability tasks pass (FN-24, Decision 83): each of PlayForge's tasks names its category, and a kind's picker lists
-    /// its kinds in a submenu for each, those naming none after them; and every number a task has is Scalable.
+    /// The ability tasks pass (FN-24, Decision 83): each of PlayForge's tasks names its category, its [ForgeMenu] path since
+    /// EP-2, and a kind's picker lists its kinds in a submenu for each, those naming none after them; and every number a task
+    /// has is Scalable.
     /// </summary>
     public class TaskPickerTests
     {
         private static readonly Assembly Runtime = typeof(AbstractAbilityRelatedTask).Assembly;
         private static readonly Assembly EditorAssembly = typeof(TaskSequenceReferenceDrawer).Assembly;
 
-        // The category a kind names, read by the attribute's name, so the test reads as it should where there's none
-        private static string CategoryOf(Type type)
-        {
-            var attribute = Runtime.GetType("FarEmerald.PlayForge.ForgeCategoryAttribute");
-            Assert.IsNotNull(attribute, "a kind can name its category");
-            var found = System.Attribute.GetCustomAttribute(type, attribute, true);
-            return found?.GetType().GetProperty("Name")?.GetValue(found) as string;
-        }
+        // The submenu a kind's picker files it under, its [ForgeMenu]'s or a class it's made from's (EP-2), or null for none
+        private static string CategoryOf(Type type) => ForgeMenuAttribute.PathOf(type) is { Length: > 0 } path ? path : null;
 
         // A task of no category, as a project's own may be
         private sealed class Loose : AbstractAbilityTask
