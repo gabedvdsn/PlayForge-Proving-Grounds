@@ -222,6 +222,112 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(counts, Is.EqualTo(new[] { 0, 1 }), "its two repeats heard, each counted as it's heard");
         });
 
+        // ─── What the examples' rewrite found (EP-31) ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A synced task in an async sequence was stepped by the frame's time whatever its sequence was doing, so a
+        /// SyncDelay or a library's synced tween went on while the sequence was paused, which the library's own waits
+        /// don't (EP-31, found by the Task Sequence Examples' rewrite). It holds with its run.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_31_A_synced_task_holds_while_its_async_sequence_is_paused() => Live(async () =>
+        {
+            float stepped = 0f;
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Synced In Async")
+                .Stage(stage => stage.SyncTask((_, deltaTime) =>
+                {
+                    stepped += deltaTime;
+                    return false;
+                }))
+                .Build()));
+
+            await Frames.Step(3);
+            Assert.Greater(stepped, 0f, "it steps while the sequence runs");
+            Assert.That(relay.Pause(), "the pause is accepted");
+            float at = stepped;
+            await Frames.Step(5);
+            Assert.AreEqual(at, stepped, "paused, it isn't stepped");
+            Assert.That(relay.Unpause(), "the resume is accepted");
+            await Frames.Step(3);
+            Assert.Greater(stepped, at, "resumed, it is again");
+            relay.Terminate();
+        });
+
+        /// <summary>
+        /// data.SetStageTimeout gave its timeout the injection it was given, null where it was given none, so a stage's
+        /// time up applied nothing, where WithTimeout's skips the stage (EP-31). Its default is the skip, as WithTimeout's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_31_A_stage_timeout_set_from_a_task_skips_the_stage() => Live(async () =>
+        {
+            bool reached = false;
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Timed From Inside")
+                .Stage(stage => stage.Task(async (data, token) =>
+                {
+                    Assert.That(data.SetStageTimeout(0.1f), "the timeout is set");
+                    await SequenceTaskLibrary.WaitUntil(() => false, token);
+                }))
+                .Stage(stage => stage.Do(_ => reached = true))
+                .Build()));
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 30, "the time's up skips the stage, and the run ends");
+            Assert.IsTrue(reached, "on through the next stage");
+        });
+
+        private static bool openGate;
+
+        /// <summary>A chain whose condition ends it once the gate opens, its first sequence waiting for ever.</summary>
+        public static TaskSequenceChain GatedChain() =>
+            new TaskSequence(TaskSequenceBuilder.Create("Waits")
+                    .Stage(stage => stage.Task((_, token) => SequenceTaskLibrary.WaitUntil(() => false, token)))
+                    .Build())
+                .Then(next => next.WithName("Never").Stage(stage => stage.Do(_ => { })))
+                .InterruptWhen(_ => openGate);
+
+        /// <summary>A sequence's definition, as a method the sequence dropdown offers may return.</summary>
+        public static TaskSequenceDefinition MadeDefinition() =>
+            TaskSequenceBuilder.Create("Defined").Stage(stage => stage.Do(_ => definitionRuns++)).Build();
+
+        private static int definitionRuns;
+
+        /// <summary>
+        /// An ability's Sequence task awaited a chain in place, where nothing asked its conditions, so a chain an ability
+        /// ran never heard them, its sequences' neither (EP-31). It runs the chain as a process, as a sequence's run is,
+        /// which asks them each frame.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_31_A_chain_an_ability_runs_heeds_its_conditions([Values] Hub hub) => Live(async () =>
+        {
+            openGate = false;
+            var task = new RunSequenceTask { Sequence = new TaskSequenceReference(typeof(SequencePassTests).GetMethod(nameof(GatedChain))) };
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(Make.Ability("Gated", Make.Stage(task)), 1, out int index), "the entity knows it");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "the ability activates");
+
+            await Frames.Holds(5, () => abilities.IsExecuting, "the chain waits");
+            openGate = true;
+            await Frames.Until(() => !abilities.IsExecuting, 10, "its condition ends it, and the ability with it");
+        });
+
+        /// <summary>
+        /// The sequence dropdown offers a method that returns a sequence's definition, and the Sequence task found no
+        /// sequence in it, so it did nothing at all (EP-31). A definition's method runs as a sequence's does.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_31_A_definition_s_method_runs_from_an_ability([Values] Hub hub) => Live(async () =>
+        {
+            definitionRuns = 0;
+            var reference = new TaskSequenceReference(typeof(SequencePassTests).GetMethod(nameof(MadeDefinition)));
+            Assert.IsInstanceOf<TaskSequence>(reference.GetActiveSequence(), "the reference finds a sequence in it");
+
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(Make.Ability("Defined", Make.Stage(new RunSequenceTask { Sequence = reference })), 1,
+                out int index), "the entity knows it");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "the ability activates");
+            await Frames.Until(() => !abilities.IsExecuting, 10, "its sequence runs to its end");
+            Assert.AreEqual(1, definitionRuns, "it ran");
+        });
+
         private ProcessRelay Run(TaskSequence sequence)
         {
             ProcessControl.Register(sequence).Run(out var relay);

@@ -93,6 +93,14 @@ jobs:
         run: |
           cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content/Scripts/Tests"
+      # The task sequence and process group samples, code alone: they compile in every run, and their tests run each
+      # task sequence example and each group's key (EP-29, EP-30)
+      - name: Import the Task Sequence Examples and Process Group Examples samples
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples/Tests"
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
@@ -191,6 +199,14 @@ jobs:
         run: |
           cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content/Scripts/Tests"
+      # The task sequence and process group samples, code alone: they compile in every run, and their tests run each
+      # task sequence example and each group's key (EP-29, EP-30)
+      - name: Import the Task Sequence Examples and Process Group Examples samples
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples/Tests"
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
