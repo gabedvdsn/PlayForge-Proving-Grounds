@@ -48,7 +48,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             used = true;
         }
 
-        /// <summary>Each project keeps its own: a folder and file names set in one are in its asset, and another has its own.</summary>
+        /// <summary>Each project keeps its own: a folder set in one is in its asset, and another has its own.</summary>
         [Test]
         public void TW_30_Each_project_keeps_its_own_authoring_settings()
         {
@@ -56,19 +56,17 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var dungeon = MakeProject("TW-30 Dungeon");
 
             Use(arena);
-            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/Data/TW-30 Abilities", "AB_", "_A");
+            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/Data/TW-30 Abilities");
             Assert.AreEqual("Assets/Data/TW-30 Abilities", PlayForgeSettings.FolderFor(typeof(Ability)), "the arena's folder for abilities");
-            Assert.AreEqual("AB_", PlayForgeSettings.PrefixFor(typeof(Ability)), "and its prefix");
             Assert.AreEqual("Assets/Data/TW-30 Abilities", arena.Settings.Authoring.NewAssets.Find(entry => entry.Type == nameof(Ability))?.Folder,
                 "held by the arena's project");
             StringAssert.Contains("TW-30 Abilities", File.ReadAllText(AssetDatabase.GetAssetPath(arena)), "and saved in its asset");
 
             Use(dungeon);
             Assert.AreEqual(PlayForgeSettings.DefaultFolder(typeof(Ability)), PlayForgeSettings.FolderFor(typeof(Ability)), "the dungeon has its own");
-            Assert.AreEqual("", PlayForgeSettings.PrefixFor(typeof(Ability)), "with no prefix");
 
             Use(arena);
-            Assert.AreEqual("AB_", PlayForgeSettings.PrefixFor(typeof(Ability)), "and the arena's are as it left them");
+            Assert.AreEqual("Assets/Data/TW-30 Abilities", PlayForgeSettings.FolderFor(typeof(Ability)), "and the arena's is as it left it");
         }
     }
 }

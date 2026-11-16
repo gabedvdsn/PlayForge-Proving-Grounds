@@ -128,6 +128,40 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// A new asset's file is its name alone (the user's note of 2026-11-15, EP-13): a type's new assets have a folder and
+        /// no file prefix or suffix, and the page's New Assets table shows each type's folder alone. A file of a new asset
+        /// and a renamed one took its type's prefix and suffix, which the table set.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_13_New_assets_have_no_prefix_or_suffix()
+        {
+            Assert.IsNull(typeof(NewAssetSettings).GetField("Prefix"), "a type's new assets have no prefix");
+            Assert.IsNull(typeof(NewAssetSettings).GetField("Suffix"), "nor a suffix");
+            Assert.IsNull(typeof(PlayForgeSettings).GetMethod("PrefixFor", AnyStatic), "so the settings read none");
+            Assert.IsNull(typeof(PlayForgeSettings).GetMethod("SuffixFor", AnyStatic), "of either");
+
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Build("BuildProjectPage");
+                yield return Frames();
+                var table = root.Q("NewAssets");
+                Assert.IsNotNull(table, "the page has its New Assets table");
+                Assert.IsNull(table.Q("Prefix"), "with no Prefix field");
+                Assert.IsNull(table.Q("Suffix"), "nor a Suffix field");
+                Assert.That(table.Query<Label>().ToList().Select(label => label.text), Has.None.EqualTo("Prefix").And.None.EqualTo("Suffix"),
+                    "and no column for either");
+                Assert.IsNotNull(root.Q<Button>("UseDefaultFolders"), "Use Default Folders puts the folders back");
+            }
+            finally
+            {
+                host.Destroy();
+            }
+        }
+
+        /// <summary>
         /// Every setting was an EditorPref, which every project on the machine shares (ED-21). A folder set now is the
         /// project's: it's written to its Forge Project's asset (TW-30), which travels with the project, and the machine's
         /// EditorPrefs are left as they were.
@@ -137,11 +171,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var machine = EditorPrefs.GetString(Prefix + "Path_Ability", "unset");
 
-            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/ED-21 Abilities", "AB_", "_X");
+            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/ED-21 Abilities");
 
             Assert.AreEqual("Assets/ED-21 Abilities", PlayForgeSettings.FolderFor(typeof(Ability)), "new abilities go there");
-            Assert.AreEqual("AB_", PlayForgeSettings.PrefixFor(typeof(Ability)));
-            Assert.AreEqual("_X", PlayForgeSettings.SuffixFor(typeof(Ability)));
             Assert.AreEqual(machine, EditorPrefs.GetString(Prefix + "Path_Ability", "unset"), "the machine's EditorPrefs stay as they were");
             Assert.IsTrue(File.Exists(SettingsFile), "the project's asset keeps its settings");
             StringAssert.Contains("ED-21 Abilities", File.ReadAllText(SettingsFile), "which holds the folder");
@@ -156,7 +188,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public IEnumerator ED_21_The_Project_Settings_page_edits_the_shared_settings()
         {
             var ability = Make<Ability>("Assets/ED-21 Default.asset");
-            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/ED-21 Before", "", "");
+            PlayForgeSettings.SetNewAssets(typeof(Ability), "Assets/ED-21 Before");
             PlayForgeSettings.SetDefaults(typeof(Ability), ability, new ScriptableObject[] { ability });
             var host = new Host();
             try
@@ -262,21 +294,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         /// and Cooldown effects, which are content you chose (ED-6).
         /// </summary>
         [Test]
-        public void ED_6_Use_Default_Folders_and_Names_keeps_the_defaults()
+        public void ED_6_Use_Default_Folders_keeps_the_defaults()
         {
             var ability = Make<Ability>("Assets/ED-6 Default.asset");
             var cost = Make<GameplayEffect>("Assets/ED-6 Cost.asset");
             foreach (var type in new[] { typeof(Ability), typeof(GameplayEffect), typeof(ScalerAsset) })
-                PlayForgeSettings.SetNewAssets(type, "Assets/ED-6", "P_", "_S");
+                PlayForgeSettings.SetNewAssets(type, "Assets/ED-6");
             PlayForgeSettings.SetDefaults(typeof(Ability), ability, new ScriptableObject[] { ability });
             PlayForgeSettings.SetUsageEffect("Cost", cost);
 
-            PlayForgeSettings.UseDefaultFoldersAndNames();
+            PlayForgeSettings.UseDefaultFolders();
 
             Assert.AreEqual(PlayForgeSettings.DefaultFolder(typeof(Ability)), PlayForgeSettings.FolderFor(typeof(Ability)), "abilities' folder");
             Assert.AreEqual("Assets/Data/Effects", PlayForgeSettings.FolderFor(typeof(GameplayEffect)), "effects' folder");
-            Assert.AreEqual("", PlayForgeSettings.PrefixFor(typeof(ScalerAsset)), "a prefix");
-            Assert.AreEqual("", PlayForgeSettings.SuffixFor(typeof(ScalerAsset)), "a suffix");
+            Assert.AreEqual(PlayForgeSettings.DefaultFolder(typeof(ScalerAsset)), PlayForgeSettings.FolderFor(typeof(ScalerAsset)), "and Scaler assets'");
             Assert.AreSame(ability, PlayForgeSettings.NewAssetDefault(typeof(Ability)), "the defaults stay");
             Assert.AreSame(cost, PlayForgeSettings.UsageEffect("Cost"), "and so does the Cost effect");
         }

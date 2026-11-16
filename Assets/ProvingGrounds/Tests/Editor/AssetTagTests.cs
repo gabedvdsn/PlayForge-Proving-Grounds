@@ -236,7 +236,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// Renaming an asset in its inspector left its file as it was, so the two drifted apart (the user's request, ED-70).
-        /// The file follows the name, with its type's prefix and suffix: a character a file can't have is left out, a name
+        /// The file follows the name, its name alone (EP-13): a character a file can't have is left out, a name
         /// another file in its folder has takes a number, and an Undo of the rename brings the file back with the name.
         /// </summary>
         [UnityTest]
@@ -248,7 +248,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
             var host = new GameObject("ED-70") { hideFlags = HideFlags.HideAndDontSave };
             UnityEditor.Editor editor = null;
-            string Expected(string file) => $"{PlayForgeSettings.PrefixFor(typeof(Ability))}{file}{PlayForgeSettings.SuffixFor(typeof(Ability))}";
+            string Expected(string file) => file;
             try
             {
                 if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets", "ED70Temp");

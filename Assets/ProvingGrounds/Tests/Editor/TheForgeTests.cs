@@ -1126,10 +1126,42 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     "an Impact Type field doesn't offer a retention group");
                 Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.RetentionGroup }, false), Has.Member(retention),
                     "a retention group's field does");
-                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.No.Member(queried),
-                    "a Granted field doesn't offer a tag picked in a field of several contexts");
+                // A tag picked in a field of several contexts is each one's since EP-14, which the user asked for: TAG-4 kept it
+                // to the field's own set
                 Assert.That(ForgeTagRegistry.GetTagsForContext(set, false), Has.Member(queried).And.Member(granted),
-                    "which offers its own set's picks, and each of its contexts' tags");
+                    "a field of several contexts offers its own picks, and each of its contexts' tags");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+                ForgeTagRegistry.MarkDirty();
+            }
+        }
+
+        /// <summary>
+        /// A tag used in a field of several contexts is used in each, alone (the user's note of 2026-11-15, EP-14): no
+        /// context joins others, as "AssetTag+Granted" did, which The Forge showed as a context of its own, nor does a code
+        /// tag's or a Tag Library's declaration of several; so each of its contexts' fields offers it, and The Forge says
+        /// it's for each. TAG-4 had kept a field of several contexts' picks to its own set.
+        /// </summary>
+        [Test]
+        public void EP_14_A_tag_used_in_a_field_of_several_contexts_is_used_in_each()
+        {
+            var holder = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                ForgeTagRegistry.RefreshCache();
+                var queried = Tag.Generate("Test.EP14.Queried");
+                ForgeTagRegistry.RegisterTagUsage(queried, new[] { ForgeContext.AssetTag, ForgeContext.Granted }, holder, "Query");
+
+                var usage = ForgeTagRegistry.GetTagUsage(queried);
+                Assert.IsNotNull(usage, "the tag is used");
+                Assert.That(usage.UsageByContext.Keys, Is.EquivalentTo(new[] { ForgeContext.AssetTag, ForgeContext.Granted }),
+                    "in each of its field's contexts, alone");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.Granted }, false), Has.Member(queried), "so a Granted field offers it");
+                Assert.That(ForgeTagRegistry.GetTagsForContext(new[] { ForgeContext.AssetTag }, false), Has.Member(queried), "and an Asset Tag field");
+                Assert.That(ForgeTagRegistry.GetAllContextKeys().Where(key => key.Contains("+")), Is.Empty,
+                    "and no context joins others: not a field's, a code tag's or a Tag Library's");
             }
             finally
             {
