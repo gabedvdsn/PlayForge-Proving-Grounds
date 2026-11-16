@@ -139,9 +139,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
-        // Every name under an item, its submenus' among them
-        private static IEnumerable<string> Names(UnityEditor.IMGUI.Controls.AdvancedDropdownItem item) =>
-            item.children.SelectMany(child => new[] { child.name }.Concat(Names(child)));
+        // Every name under a node of PlayForge's dropdown, its submenus' among them, read by reflection as the dropdown is the
+        // editor's own (EP-1)
+        private static IEnumerable<object> Children(object node) =>
+            ((System.Collections.IEnumerable)node.GetType().GetProperty("Children").GetValue(node)).Cast<object>();
+
+        private static string NameOf(object node) => (string)node.GetType().GetProperty("Name").GetValue(node);
+
+        private static IEnumerable<string> Names(object node) => Children(node).SelectMany(child => new[] { NameOf(child) }.Concat(Names(child)));
 
         /// <summary>
         /// A sequence reference is a field as a kind field is, the sequence's name in its box, which opens a searchable
@@ -170,9 +175,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsNotNull(picker, "it opens a dropdown of its own");
                 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
                 var entries = drawer.GetMethod("Entries", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, null);
-                var dropdown = Activator.CreateInstance(picker, flags, null, new[] { entries, null }, null);
-                var root = (UnityEditor.IMGUI.Controls.AdvancedDropdownItem)picker.GetMethod("BuildRoot", flags).Invoke(dropdown, null);
-                Assert.AreEqual("None", root.children.First().name, "None first");
+                var made = Activator.CreateInstance(picker, flags, null, new[] { entries, null, null }, null);
+                var dropdown = picker.GetProperty("Dropdown", flags)?.GetValue(made);
+                Assert.IsNotNull(dropdown, "PlayForge's dropdown (EP-1)");
+                var root = dropdown.GetType().GetMethod("Build").Invoke(dropdown, null);
+                Assert.AreEqual("None", NameOf(Children(root).First()), "None first");
                 Assert.That(Names(root), Has.Member("ED-57 Sequence"), "it offers the project's sequences");
 
                 var pick = drawer.GetMethod("Pick", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);

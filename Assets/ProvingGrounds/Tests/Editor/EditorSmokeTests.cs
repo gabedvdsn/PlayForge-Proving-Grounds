@@ -821,6 +821,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Name = "Import Sheet", Type = typeof(ForgeSpreadsheetWindow),
                 Open = _ => ForgeSpreadsheetWindow.Show(ForgeSpreadsheets.Read("Asset Tag,Name,Field,Kind,Level 1\n"), "Smoke.csv"),
             };
+            // PlayForge's dropdown, every picker's, under a field: a choice in a submenu, and one that says more (EP-1)
+            var dropdown = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeDropdown");
+            var dropdownWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeDropdownWindow");
+            yield return new Window
+            {
+                Name = "Dropdown", Type = dropdownWindow,
+                Open = _ =>
+                {
+                    var made = Activator.CreateInstance(dropdown, "Smoke");
+                    dropdown.GetMethod("Add").Invoke(made, new object[] { "Smoke Menu", "Choice", null, "It says more", false, true });
+                    dropdown.GetMethod("Add").Invoke(made, new object[] { "", "Another", null, null, true, true });
+                    dropdownWindow.GetMethod("Open", AnyStatic).Invoke(null, new object[] { made, new Rect(200, 200, 160, 20) });
+                },
+            };
         }
 
         private static void CloseWindows()

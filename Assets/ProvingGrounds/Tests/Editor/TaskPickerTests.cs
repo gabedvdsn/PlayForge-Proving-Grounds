@@ -6,7 +6,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using FarEmerald.PlayForge.Extended.Editor;
 using NUnit.Framework;
-using UnityEditor.IMGUI.Controls;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
@@ -51,9 +50,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("Picked", CategoryOf(typeof(SelectGasTargetTask)), "a targeting task's too");
         }
 
-        // Every name under an item, its submenus' among them
-        private static IEnumerable<string> Names(AdvancedDropdownItem item) =>
-            item.children.SelectMany(child => new[] { child.name }.Concat(Names(child)));
+        // A node of PlayForge's dropdown, read by reflection, as the dropdown is the editor's own (EP-1): its children, its
+        // name, a line's as "—", and every name under it, its submenus' among them
+        private static IEnumerable<object> Children(object node) =>
+            ((System.Collections.IEnumerable)node.GetType().GetProperty("Children").GetValue(node)).Cast<object>();
+
+        private static string NameOf(object node) =>
+            (bool)node.GetType().GetProperty("IsSeparator").GetValue(node) ? "—" : (string)node.GetType().GetProperty("Name").GetValue(node);
+
+        private static IEnumerable<string> Names(object node) => Children(node).SelectMany(child => new[] { NameOf(child) }.Concat(Names(child)));
 
         [Test]
         public void FN_24_A_kinds_picker_lists_each_category_as_a_submenu()
@@ -61,18 +66,21 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var picker = EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTypePicker");
             Assert.IsNotNull(picker, "the kind picker");
             var kinds = new List<(Type, string)> { (typeof(ApplyEffectsAbilityTask), "Apply Effects"), (typeof(DelayTask), "Delay"), (typeof(Loose), "Loose") };
-            var dropdown = Activator.CreateInstance(picker, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
-                new object[] { kinds, true, "Ability Task", null }, null);
-            var root = (AdvancedDropdownItem)picker.GetMethod("BuildRoot", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(dropdown, null);
-            var children = root.children.ToList();
+            var made = Activator.CreateInstance(picker, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
+                new object[] { kinds, true, "Ability Task", null, null }, null);
+            // PlayForge's dropdown, which the picker shows (EP-1)
+            var dropdown = picker.GetProperty("Dropdown")?.GetValue(made);
+            Assert.IsNotNull(dropdown, "the picker shows PlayForge's dropdown");
+            var root = dropdown.GetType().GetMethod("Build").Invoke(dropdown, null);
+            var children = Children(root).ToList();
 
-            Assert.AreEqual("None", children[0].name, "None first");
-            var effects = children.FirstOrDefault(child => child.name == "Effects");
-            Assert.IsNotNull(effects, $"a submenu for Effects: {string.Join(", ", children.Select(child => child.name))}");
-            Assert.That(effects.children.Select(child => child.name), Is.EquivalentTo(new[] { "Apply Effects" }), "holding its kinds");
-            Assert.That(children.FirstOrDefault(child => child.name == "Waits")?.children.Select(child => child.name),
+            Assert.AreEqual("None", NameOf(children[0]), "None first");
+            var effects = children.FirstOrDefault(child => NameOf(child) == "Effects");
+            Assert.IsNotNull(effects, $"a submenu for Effects: {string.Join(", ", children.Select(NameOf))}");
+            Assert.That(Children(effects).Select(NameOf), Is.EquivalentTo(new[] { "Apply Effects" }), "holding its kinds");
+            Assert.That(Children(children.First(child => NameOf(child) == "Waits")).Select(NameOf),
                 Is.EquivalentTo(new[] { "Delay" }), "and one for Waits");
-            Assert.AreEqual("Loose", children.Last().name, "a kind naming none after the submenus");
+            Assert.AreEqual("Loose", NameOf(children.Last()), "a kind naming none after the submenus");
             Assert.That(Names(root), Has.Member("Delay"), "each kind found under its category");
         }
 
