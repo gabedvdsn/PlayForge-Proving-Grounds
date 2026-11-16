@@ -19,8 +19,17 @@ MonoBehaviour:
     Type: 4
     stringValue: 
     boolValue: 0
-    intValue: 1655
-    floatValue: 0
+    intValue:
+      Magnitude: 1655
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
+      Rounding: 0
+    floatValue:
+      Magnitude: 0
+      RealMagnitude: 2
+      Scaler:
+        rid: -2
     objectValue: {fileID: 0}
     monoBehaviourValue: {fileID: 0}
     scriptableObjectValue: {fileID: 0}

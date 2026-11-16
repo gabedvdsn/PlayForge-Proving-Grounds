@@ -117,7 +117,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             Assert.That(gas.TryGetLocalData(key, out var data), "the entity's Local Data");
-            Assert.That(data.intValue, Is.EqualTo(7));
+            // A number that can scale since EP-16, a constant here
+            Assert.That(data.intValue.Magnitude, Is.EqualTo(7));
         });
 
         // A registered entity made from an Entity asset, set up first, on either hub
