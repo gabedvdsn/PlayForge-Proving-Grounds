@@ -78,6 +78,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "the runtime reads the player's input and the camera through ForgeInput");
         }
 
+        private static readonly Regex UnityLog = new(@"(?<![\w.])(?:UnityEngine\.)?Debug\.Log\w*\s*\(");
+
+        /// <summary>
+        /// The runtime logged straight to Unity's console in 70 places, ProcessControl's, the action queue's, the tags' and
+        /// the task sequences' among them, so no level held them back and no listener, the Creator Lab's log among them,
+        /// heard them (EP-27, the user's answer of 2026-11-16). It logs through ForgeLog, whose own file is the one place
+        /// that writes to the console.
+        /// </summary>
+        [Test]
+        public void EP_27_The_runtime_logs_through_ForgeLog()
+        {
+            Assert.That(ReadsOf(UnityLog, "ForgeLog.cs"), Is.Empty, "the runtime logs through ForgeLog");
+        }
+
         // Each line of the package's runtime whose code reads what the rule matches, but in the files let do it
         private static List<string> ReadsOf(Regex rule, params string[] except)
         {
