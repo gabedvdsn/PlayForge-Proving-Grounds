@@ -140,12 +140,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A project names its own assets for saves, as the Asset Catalog it grew from names every one: those in its folder
-        /// and in no project inside it (FEAT-34, FEAT-9).
+        /// and in no project inside it (FEAT-34, FEAT-9). Add Its Assets does it by hand, so this project keeps no catalog
+        /// current itself, as one does by default (EP-15).
         /// </summary>
         [Test]
         public void FEAT_34_A_project_names_its_own_assets_for_saves()
         {
             var arena = Project("Assets/FEAT34 Arena");
+            arena.KeepCatalogCurrent = false;
             Project("Assets/FEAT34 Arena/Inner");
             var fire = AbilityIn("Assets/FEAT34 Arena", "FEAT34 Fireball");
             var inner = AbilityIn("Assets/FEAT34 Arena/Inner", "FEAT34 Inner Bolt");
