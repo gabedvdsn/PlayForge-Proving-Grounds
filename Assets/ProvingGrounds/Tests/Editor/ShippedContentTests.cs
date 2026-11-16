@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -11,13 +12,28 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     /// <summary>
     /// What PlayForge ships, as a buyer gets it (the user's notes of 2026-11-16): its docs and what its code shows a user
     /// say nothing of the refactor's process (EP-21), each sample with assets imports as a Forge Project of its own
-    /// (EP-22), and no sample ships tests (EP-24). The package is read where it's resolved, as the release check reads it.
+    /// (EP-22), and no sample ships tests (EP-24); and its code's comments and names say nothing of the process either
+    /// (EP-26). The package is read where it's resolved, as the release check reads it.
     /// </summary>
     public class ShippedContentTests
     {
-        // A tracker ID, a decision or an interview question, as the refactor's own records name them
+        // A tracker ID, a decision or an interview question, as the refactor's own records name them: TW-30, TS-A,
+        // GAS-S1, NUM-4, TAG-6, Arcade Fighter's log's PF-005 and PF-B08, Decision 44, Q21. A key in brackets, as a
+        // sample's "[Q1]", is a key
         private static readonly Regex Process = new(
-            @"\b(?:PC|TS|GAS|ED|SP|FEAT|TW|AC|FN|LVL|LAB|EP)-(?:[A-Z]{1,2}\d*[a-z]?|\d+[a-z]?)\b|\bDecision \d+\b");
+            @"\b(?:PC|TS|GAS|ED|SP|FEAT|TW|AC|FN|LVL|LAB|EP|NUM|TAG)-(?:[A-Z]{1,2}\d*[a-z]?|\d+[a-z]?)\b|\bPF-[A-Z]?\d{2,3}\b" +
+            @"|\bDecisions?\s+\d+\b|(?<![\[\w])Q\d+\b(?!\])");
+
+        // What else names the process: a doc of the repository's own, which doesn't ship; the design's mockups and its
+        // canvas's boards; who asked; the PlayForge log; the refactor's steps and plan
+        private static readonly Regex ProcessWords = new(
+            @"\bDocs/[A-Za-z_]+\.md\b|\b[Mm]ockups?\b|\bdesign canvas\b|\bcanvas version\b|\b(?:the|scaler) boards?\b" +
+            @"|\bstyle doc\b|\bthe user's (?:request|note|notes|report|answer|point|list|question)\b|\bPlayForge log\b" +
+            @"|\b[Rr]efactor(?:ed| step| plan)\b|\bthe additive phase\b");
+
+        // A name with a tracker ID in it, as a golden scenario's S13_GAS_10_OngoingRequirement_PausesPeriodicTicks
+        private static readonly Regex IdName = new(
+            @"\w*(?:\b|_)(?:PC|TS|GAS|ED|SP|FEAT|TW|AC|FN|LVL|LAB|EP|NUM|TAG|PF)_[A-Z]?\d+(?:_\w*)?\b");
 
         // A C# string literal on one line
         private static readonly Regex Literal = new(@"\$?@?""(?:[^""\\]|\\.)*""");
@@ -181,6 +197,48 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 .Select(path => path.Replace('\\', '/').Substring(samples.Length))
                 .ToList();
             Assert.That(folders, Is.Empty, $"sample folders of tests: {string.Join(", ", folders)}");
+        }
+
+        // Each C# file and style sheet of the package, its tests' among them, as they ship too: a hidden folder, as a
+        // tool's own beside the package, isn't the package's
+        private static IEnumerable<string> CodeFiles(params string[] extensions) =>
+            Directory.GetFiles(PackageRoot, "*.*", SearchOption.AllDirectories)
+                .Where(path => extensions.Contains(Path.GetExtension(path)))
+                .Where(path => !path.Replace('\\', '/').Substring(PackageRoot.Length).Contains("/."));
+
+        /// <summary>
+        /// No comment in the package's code names the refactor's process (EP-26), as a comment's "(TW-30)" or "(Q21,
+        /// ED-21)" did, 2,846 of them in 446 files: no tracker ID, decision or interview question; no doc of the
+        /// repository's own, as Docs/EDITOR_STYLE.md, which doesn't ship; no mockup or design canvas's board; and no "the
+        /// user's request", PlayForge log or refactor step. Read whole, its code and strings with its comments, as no name
+        /// or string carries one either.
+        /// </summary>
+        [Test]
+        public void EP_26_No_comment_names_the_refactors_process()
+        {
+            Assume.That(PackageRoot, Is.Not.Null, "PlayForge is a package here");
+            var named = (from path in CodeFiles(".cs", ".uss", ".uxml")
+                         from each in File.ReadAllLines(path).Select((line, at) => (line, at))
+                         let id = Process.Match(each.line)
+                         let found = id.Success ? id : ProcessWords.Match(each.line)
+                         where found.Success
+                         select $"{Path.GetFileName(path)}:{each.at + 1}: {found.Value}").ToList();
+            Assert.That(named, Is.Empty, $"{named.Count} lines naming the process: {string.Join(", ", named.Take(12))}");
+        }
+
+        /// <summary>
+        /// No name in the package's code carries a tracker ID (EP-26): the golden scenarios from S13 on were named after the
+        /// fix each pins, as S13_GAS_10_OngoingRequirement_PausesPeriodicTicks, and the Test Runner shows a buyer each name.
+        /// </summary>
+        [Test]
+        public void EP_26_No_name_carries_a_tracker_ID()
+        {
+            Assume.That(PackageRoot, Is.Not.Null, "PlayForge is a package here");
+            var names = CodeFiles(".cs")
+                .SelectMany(path => IdName.Matches(File.ReadAllText(path)).Cast<Match>().Select(name => $"{Path.GetFileName(path)}: {name.Value}"))
+                .Distinct()
+                .ToList();
+            Assert.That(names, Is.Empty, $"names carrying a tracker ID: {string.Join(", ", names.Take(12))}");
         }
     }
 }
