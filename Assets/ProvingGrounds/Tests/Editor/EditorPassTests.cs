@@ -139,5 +139,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("playforge", Static("ForgeAssetTypes", "ModifierOf", typeof(ValuePipeline)), "in its own color");
             Assert.AreEqual("None", Static("ForgeAssetTypes", "GlyphOf", typeof(PanelSettings)).ToString(), "and a type not PlayForge's shows none");
         }
+
+        /// <summary>
+        /// No worker's field carries a [Header]: a worker's fields are drawn in its row of an inspector's Workers, where a
+        /// header's bold line stood out of the style (EP-17, the user's note). Every worker kind is checked, its bases' fields
+        /// and its helper types' with it.
+        /// </summary>
+        [Test]
+        public void EP_17_No_workers_field_carries_a_Header()
+        {
+            var bases = new[] { typeof(AbstractAnalysisWorker), typeof(AbstractAttributeWorker), typeof(AbstractEffectWorker), typeof(AbstractImpactWorker), typeof(AbstractTagWorker) };
+            var workers = typeof(Tag).Assembly.GetTypes()
+                .Where(type => bases.Any(each => each.IsAssignableFrom(type)) || type.Name.Contains("Worker"));
+            var headed = workers
+                .SelectMany(type => type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    .Where(field => field.IsDefined(typeof(HeaderAttribute), false))
+                    .Select(field => $"{type.Name}.{field.Name}"))
+                .ToList();
+            Assert.IsEmpty(headed, $"worker fields with a [Header]: {string.Join(", ", headed)}");
+        }
     }
 }

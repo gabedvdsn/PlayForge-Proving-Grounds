@@ -44,7 +44,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }));
             try
             {
-                deletion.GetMethod("MoveToTrash", BindingFlags.Static | BindingFlags.Public).Invoke(null, new object[] { cost });
+                // The one asset's, beside the selection's (EP-19)
+                deletion.GetMethod("MoveToTrash", BindingFlags.Static | BindingFlags.Public, null, new[] { typeof(UnityEngine.Object) }, null)
+                    .Invoke(null, new object[] { cost });
             }
             finally
             {

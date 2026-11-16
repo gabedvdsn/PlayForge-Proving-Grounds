@@ -191,5 +191,43 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(ability);
             }
         }
+
+        /// <summary>
+        /// A Levels row, as a Scaler asset's Try and an effect's Levels show one, holds its two levels in number fields alike:
+        /// the first stretched across the whole row and the last stood 48 px wide (EP-18, the user's screenshot).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_18_A_Levels_rows_number_fields_are_alike([Values("ScalerTryView", "EffectLevelsView")] string view)
+        {
+            var scaler = ScriptableObject.CreateInstance<ScalerAsset>();
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            using var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var type = typeof(FarEmerald.PlayForge.Extended.Editor.TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor." + view, true);
+                ScriptableObject shown = view == "ScalerTryView" ? scaler : effect;
+                var built = (VisualElement)type.GetConstructor(new[] { shown.GetType() }).Invoke(new object[] { shown });
+                // In PlayForge's theme, as the inspector that holds the view gives it
+                var root = new VisualElement();
+                type.Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTheme", true)
+                    .GetMethod("Apply", new[] { typeof(VisualElement) }).Invoke(null, new object[] { root });
+                root.Add(built);
+                host.Add(root);
+                for (int i = 0; i < 6; i++) yield return null;
+
+                var from = built.Q<IntegerField>("From").Q(className: BaseField<int>.inputUssClassName);
+                var to = built.Q<IntegerField>("To").Q(className: BaseField<int>.inputUssClassName);
+                Assert.That(Mathf.Abs(from.worldBound.width - to.worldBound.width), Is.LessThan(Tolerance),
+                    $"the two fields alike: {from.worldBound.width:0.#} and {to.worldBound.width:0.#}");
+                Assert.That(from.worldBound.width, Is.LessThan(100f), $"each a few digits wide: {from.worldBound.width:0.#}");
+            }
+            finally
+            {
+                Object.DestroyImmediate(scaler);
+                Object.DestroyImmediate(effect);
+            }
+        }
     }
 }

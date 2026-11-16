@@ -387,6 +387,113 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The Forge deletes a selection: the Delete key moves every asset selected to the trash, as its menu's Move to Trash
+        /// does, which took the first alone (EP-19, the user's note). It asks once, naming how many go.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_19_The_Forge_deletes_a_selection_with_the_Delete_key() => Guarded(EP_19_The_Forge_deletes_a_selection_with_the_Delete_keyBody());
+
+        private IEnumerator EP_19_The_Forge_deletes_a_selection_with_the_Delete_keyBody()
+        {
+            var a = Save(Ability("EP19 A"), "EP19 A");
+            var b = Save(Ability("EP19 B"), "EP19 B");
+            var c = Save(Ability("EP19 C"), "EP19 C");
+            string kept = AssetDatabase.GetAssetPath(c);
+            var confirm = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetDeletion", true).GetField("Confirm", AnyStatic);
+            var was = confirm.GetValue(null);
+            var asked = new List<string>();
+            confirm.SetValue(null, (System.Func<string, string, bool>)((title, message) =>
+            {
+                asked.Add(message);
+                return true;
+            }));
+            try
+            {
+                var forge = Open();
+                yield return Frames();
+                var list = ListOf(forge);
+                list.SetSelection(new[] { Listed(forge).IndexOf(a), Listed(forge).IndexOf(b) });
+                yield return Frames();
+                using (var key = KeyDownEvent.GetPooled('\0', KeyCode.Delete, EventModifiers.None))
+                {
+                    key.target = list;
+                    list.SendEvent(key);
+                }
+                yield return Frames();
+                Assert.That(asked.Count, Is.EqualTo(1), "it asks once");
+                StringAssert.Contains("2 assets", asked.FirstOrDefault() ?? "", "naming how many go");
+                Assert.IsNull(AssetDatabase.LoadAssetAtPath<Ability>("Assets/ED-27 EP19 A.asset"), "the first selected goes to the trash");
+                Assert.IsNull(AssetDatabase.LoadAssetAtPath<Ability>("Assets/ED-27 EP19 B.asset"), "and the second");
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Ability>(kept), "and the one not selected stays");
+            }
+            finally
+            {
+                confirm.SetValue(null, was);
+            }
+        }
+
+        /// <summary>
+        /// The Forge's tag view shows the active Forge Project's tags: those its assets use, and those no asset uses, as a
+        /// default; a tag only another project's assets use, it showed (EP-20, the user's report), as the tag picker never
+        /// did. A tag's detail counts and lists the project's assets alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_20_The_tag_view_shows_the_active_projects_tags() => Guarded(EP_20_The_tag_view_shows_the_active_projects_tagsBody());
+
+        private IEnumerator EP_20_The_tag_view_shows_the_active_projects_tagsBody()
+        {
+            var projects = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeProjects", true);
+            var active = projects.GetProperty("Active", AnyStatic);
+            var was = active.GetValue(null);
+            var ours = Tag.Generate("Test.EP20.Ours");
+            var shared = Tag.Generate("Test.EP20.Shared");
+            var theirs = Tag.Generate("Test.EP20.Theirs");
+            ForgeProject ProjectIn(string folder)
+            {
+                var name = folder.Substring(folder.LastIndexOf('/') + 1);
+                AssetDatabase.CreateFolder("Assets", name);
+                var project = ScriptableObject.CreateInstance<ForgeProject>();
+                AssetDatabase.CreateAsset(project, $"{folder}/{name}.asset");
+                return project;
+            }
+            try
+            {
+                var arena = ProjectIn("Assets/EP20 Arena");
+                ProjectIn("Assets/EP20 Dungeon");
+                var fire = Ability("EP20 Fire");
+                fire.Tags.ContextTags = new List<Tag> { ours, shared };
+                AssetDatabase.CreateAsset(fire, "Assets/EP20 Arena/EP20 Fire.asset");
+                var torch = Ability("EP20 Torch");
+                torch.Tags.ContextTags = new List<Tag> { theirs, shared };
+                AssetDatabase.CreateAsset(torch, "Assets/EP20 Dungeon/EP20 Torch.asset");
+                active.SetValue(null, arena);
+
+                var forge = Open();
+                yield return Frames();
+                forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+                forge.rootVisualElement.Q<ToolbarSearchField>("Search").value = "EP20";
+                yield return Frames();
+                var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+                var shown = tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().Select(record => record.Tag).ToList();
+                Assert.That(shown, Has.Member(ours).And.Member(shared), "the tags its assets use");
+                Assert.That(shown, Has.No.Member(theirs), "and not one only another project's assets use");
+
+                tags.SetSelection(shown.IndexOf(shared));
+                yield return Frames();
+                var detail = forge.rootVisualElement.Q("Detail");
+                Assert.That(detail.Q(name: "TagUsers").Query<Button>().ToList().Count, Is.EqualTo(1), "its detail lists the project's asset alone");
+                Assert.That(detail.Q(name: "Summary").Query<Label>().ToList().Select(label => label.text), Has.Member("1 asset"),
+                    "and counts it alone");
+            }
+            finally
+            {
+                active.SetValue(null, was);
+                AssetDatabase.DeleteAsset("Assets/EP20 Arena");
+                AssetDatabase.DeleteAsset("Assets/EP20 Dungeon");
+            }
+        }
+
+        /// <summary>
         /// A tag made unique, as the tag picker makes one, showed its padded name in The Forge: its path with a generated
         /// suffix (ED-60, the user's report). The tag list, a tag's detail and the Asset Tag column show its display name.
         /// </summary>
