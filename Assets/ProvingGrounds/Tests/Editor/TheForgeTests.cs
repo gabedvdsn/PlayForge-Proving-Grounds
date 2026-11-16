@@ -4,8 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using FarEmerald.PlayForge.Extended;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.ShortcutManagement;
@@ -399,7 +398,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var b = Save(Ability("EP19 B"), "EP19 B");
             var c = Save(Ability("EP19 C"), "EP19 C");
             string kept = AssetDatabase.GetAssetPath(c);
-            var confirm = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetDeletion", true).GetField("Confirm", AnyStatic);
+            var confirm = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetDeletion", true).GetField("Confirm", AnyStatic);
             var was = confirm.GetValue(null);
             var asked = new List<string>();
             confirm.SetValue(null, (System.Func<string, string, bool>)((title, message) =>
@@ -442,7 +441,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator EP_20_The_tag_view_shows_the_active_projects_tagsBody()
         {
-            var projects = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeProjects", true);
+            var projects = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeProjects", true);
             var active = projects.GetProperty("Active", AnyStatic);
             var was = active.GetValue(null);
             var ours = Tag.Generate("Test.EP20.Ours");
@@ -940,7 +939,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator TAG_2_New_Tag_warns_of_a_core_tags_textBody()
         {
-            var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewTagWindow");
+            var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeNewTagWindow");
             var given = new List<Tag>();
             var window = (EditorWindow)type.GetMethod("Show", AnyStatic).Invoke(null, new object[] { "", (System.Action<Tag>)(tag => given.Add(tag)) });
             try
@@ -1824,7 +1823,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // ED-83: a tag's contexts
         // ═══════════════════════════════════════════════════════════════════════════
 
-        private static System.Type EditorType(string name) => typeof(TheForge).Assembly.GetType($"FarEmerald.PlayForge.Extended.Editor.{name}");
+        private static System.Type EditorType(string name) => typeof(TheForge).Assembly.GetType($"FarEmerald.PlayForge.Editor.{name}");
 
         // Declares a tag for contexts, as The Forge does; none takes its declaration away
         private static void Declare(Tag tag, params string[] contexts) =>

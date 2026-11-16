@@ -1,5 +1,5 @@
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -24,7 +24,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(ECombatLogRecords.HitsTaken | ECombatLogRecords.HitsDealt, settings.Records, "of the hits it takes and deals");
                 Assert.That(settings.Events, Is.Empty, "and no events");
 
-                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages");
                 var section = (VisualElement)pages.GetMethod("ForgeProjectSettings", AnyStatic).Invoke(null, new object[] { project });
                 var fields = section.Query<PropertyField>().ToList();
                 int resolveOrder = fields.FindIndex(field => field.name == "ResolveOrder");

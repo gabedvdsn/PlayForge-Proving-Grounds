@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -170,7 +170,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void ED_55_The_picker_lists_tags_by_display_name_under_their_roots()
         {
-            var picker = typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTagPicker");
+            var picker = typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTagPicker");
             Assert.IsNotNull(picker, "the field has a picker");
             var rows = picker.GetMethod("Rows", AnyStatic);
             Assert.IsNotNull(rows, "which lists its rows");

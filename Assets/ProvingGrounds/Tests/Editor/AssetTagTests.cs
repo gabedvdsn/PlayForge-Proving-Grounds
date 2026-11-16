@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -223,7 +223,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void ED_86_A_file_name_leaves_out_what_any_platform_cant_have()
         {
             const System.Reflection.BindingFlags Internal = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
-            var creation = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetCreation");
+            var creation = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetCreation");
             Assert.IsNotNull(creation, "the asset creation's editor class is there");
             var unportable = creation.GetField("UnportableFileCharacters", Internal)?.GetValue(null) as char[];
             Assert.IsNotNull(unportable, "it keeps one set of the characters no platform's files may have");

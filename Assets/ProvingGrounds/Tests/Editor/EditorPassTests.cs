@@ -4,8 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -26,7 +25,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const BindingFlags Any = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private static readonly Assembly EditorAssembly = typeof(TagDrawer).Assembly;
 
-        private static Type Kit(string name) => EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor." + name, true);
+        private static Type Kit(string name) => EditorAssembly.GetType("FarEmerald.PlayForge.Editor." + name, true);
 
         private static object Get(object target, string member) => target.GetType().GetProperty(member, Any)?.GetValue(target);
 

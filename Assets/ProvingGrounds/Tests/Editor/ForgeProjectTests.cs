@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -21,7 +21,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     public class ForgeProjectTests
     {
         private const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        private static readonly System.Type Projects = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeProjects");
+        private static readonly System.Type Projects = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeProjects");
         private readonly List<string> folders = new();
         private Object keptActive;
 
@@ -133,7 +133,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void FEAT_34_A_new_asset_goes_into_the_active_project()
         {
             Active = Project("Assets/FEAT34 Arena");
-            var made = (Object)typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetCreation")
+            var made = (Object)typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetCreation")
                 .GetMethod("CreateNew", AnyStatic).Invoke(null, new object[] { typeof(Ability), "FEAT34 Made", null });
             StringAssert.StartsWith("Assets/FEAT34 Arena/", AssetDatabase.GetAssetPath(made), "it's made in the active project's folder");
         }
@@ -257,7 +257,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     DurationOperation = new ScalableFloat { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseMagnitude },
                 };
                 var operation = new SerializedObject(effect).FindProperty("DurationSpecification.DurationOperation");
-                var menu = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.MagnitudeField")
+                var menu = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.MagnitudeField")
                     .GetMethod("MenuFor", AnyStatic).Invoke(null, new object[] { operation, "Duration", null });
                 var paths = ((IEnumerable)menu.GetType().GetProperty("Items").GetValue(menu)).Cast<object>()
                     .Select(item => (string)item.GetType().GetField("Item1").GetValue(item)).ToList();

@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -109,7 +109,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             // A project's settings, as the page shows the active project's
             public VisualElement Build(ForgeProject project)
             {
-                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages");
                 var section = (VisualElement)pages.GetMethod("ForgeProjectSettings", AnyStatic).Invoke(null, new object[] { project });
                 Document.rootVisualElement.Add(section);
                 return section;

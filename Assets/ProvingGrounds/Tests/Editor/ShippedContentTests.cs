@@ -67,8 +67,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void EP_21_No_string_a_user_reads_names_the_refactors_process()
         {
             Assume.That(PackageRoot, Is.Not.Null, "PlayForge is a package here");
+            // Not its tests', nor a hidden folder's, as a tool's own beside the package, which is none of Unity's
             var sources = Directory.GetFiles(PackageRoot, "*.cs", SearchOption.AllDirectories)
-                .Where(path => !path.Replace('\\', '/').Contains("/Tests/"));
+                .Where(path => !path.Replace('\\', '/').Contains("/Tests/"))
+                .Where(path => !path.Replace('\\', '/').Substring(PackageRoot.Length).Contains("/."));
             var named = (from path in sources
                          from each in File.ReadAllLines(path).Select((line, at) => (line, at))
                          let code = each.line.TrimStart()
@@ -92,12 +94,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var project = folders.FirstOrDefault(each => each.Folder == root).Project;
                 Assert.IsNotNull(project, $"{root} has a Forge Project at its root");
                 Assert.IsNotNull(project.GameRootEntity, $"{project.name} carries its Game Root entity");
+                Assert.AreEqual($"{root}/GameRoot/GameRoot.asset", AssetDatabase.GetAssetPath(project.GameRootEntity),
+                    $"{project.name}'s Game Root entity is its own, in its GameRoot folder");
                 var strays = AssetDatabase.FindAssets("t:ScriptableObject", new[] { root })
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Where(path => AssetDatabase.LoadAssetAtPath<ScriptableObject>(path) is BaseForgeAsset && ForgeProject.Owner(path, folders) != project)
                     .ToList();
                 Assert.That(strays, Is.Empty, $"every PlayForge asset of {root} in {project.name}: {string.Join(", ", strays.Take(8))}");
             }
+        }
+
+        /// <summary>
+        /// No two of the package's assets share a GUID: the Additional Content's Game Root entity, made from the Demo's, kept
+        /// the Demo's GUID, so where both samples were imported Unity gave one a new GUID and the Additional Content
+        /// project's Game Root named neither (EP-22). A hidden folder, a tool's own, isn't the package's.
+        /// </summary>
+        [Test]
+        public void EP_22_No_two_assets_share_a_GUID()
+        {
+            Assume.That(PackageRoot, Is.Not.Null, "PlayForge is a package here");
+            var owners = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
+            foreach (var meta in Directory.GetFiles(PackageRoot, "*.meta", SearchOption.AllDirectories))
+            {
+                string path = meta.Replace('\\', '/').Substring(PackageRoot.Length);
+                if (path.Contains("/.")) continue;
+                string guid = Regex.Match(File.ReadAllText(meta), @"^guid: ([0-9a-f]{32})", RegexOptions.Multiline).Groups[1].Value;
+                if (guid.Length == 0) continue;
+                if (!owners.TryGetValue(guid, out var paths)) owners[guid] = paths = new System.Collections.Generic.List<string>();
+                paths.Add(path);
+            }
+            var shared = owners.Where(each => each.Value.Count > 1).Select(each => string.Join(" and ", each.Value)).ToList();
+            Assert.That(shared, Is.Empty, $"assets sharing a GUID: {string.Join("; ", shared.Take(6))}");
         }
 
         /// <summary>

@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -115,7 +115,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // A roll's drawer, found by its name, so the test reads as it should where there's none
         private static VisualElement RollDrawn(SerializedProperty roll)
         {
-            var type = typeof(TaskSequenceReferenceDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ChanceRollDrawer");
+            var type = typeof(TaskSequenceReferenceDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor.ChanceRollDrawer");
             Assert.IsNotNull(type, "a roll has a drawer of its own");
             return ((PropertyDrawer)Activator.CreateInstance(type)).CreatePropertyGUI(roll);
         }

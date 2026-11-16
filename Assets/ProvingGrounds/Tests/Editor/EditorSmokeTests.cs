@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -786,14 +786,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
             // The Type Picker is gone: a kind field opens Unity's searchable dropdown (ED-56, ED-61)
             // New Tag, from a tag field's picker (ED-55)
-            var newTag = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewTagWindow");
+            var newTag = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeNewTagWindow");
             yield return new Window
             {
                 Name = "New Tag", Type = newTag,
                 Open = _ => newTag.GetMethod("Show", AnyStatic).Invoke(null, new object[] { "Status.", (Action<Tag>)(_ => { }) }),
             };
             // New Project, from The Forge's project menu (FEAT-34)
-            var newProject = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNewProjectWindow");
+            var newProject = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeNewProjectWindow");
             yield return new Window
             {
                 Name = "New Project", Type = newProject,
@@ -808,7 +808,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     AssetDatabase.GUIDToAssetPath(AssetDatabase.FindAssets("t:Ability").First()))),
             };
             // A name asked for, as a tag's new path in The Forge's Tags view or a new tag context (FN-9)
-            var nameWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeNameWindow");
+            var nameWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeNameWindow");
             yield return new Window
             {
                 Name = "Name", Type = nameWindow,
@@ -822,8 +822,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Open = _ => ForgeSpreadsheetWindow.Show(ForgeSpreadsheets.Read("Asset Tag,Name,Field,Kind,Level 1\n"), "Smoke.csv"),
             };
             // PlayForge's dropdown, every picker's, under a field: a choice in a submenu, and one that says more (EP-1)
-            var dropdown = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeDropdown");
-            var dropdownWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeDropdownWindow");
+            var dropdown = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeDropdown");
+            var dropdownWindow = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeDropdownWindow");
             yield return new Window
             {
                 Name = "Dropdown", Type = dropdownWindow,
@@ -952,7 +952,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             try
             {
                 yield return null;
-                var pages = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+                var pages = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages");
                 var root = new VisualElement();
                 host.Document.rootVisualElement.Add(root);
                 pages.GetMethod(page, AnyStatic).Invoke(null, new object[] { root });

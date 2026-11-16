@@ -136,7 +136,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.name = "EP-4 Effect";
             UnityEditor.Editor editor = null;
-            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Extended.Editor.GameplayEffectEditor), "Tags");
+            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Editor.GameplayEffectEditor), "Tags");
             using var host = new Host();
             try
             {
@@ -170,7 +170,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             ability.Behaviour ??= new AbilityBehaviour();
             ability.Behaviour.Targeting = targetingHasFields ? new SelectGasTargetInRangeTask() : null;
             UnityEditor.Editor editor = null;
-            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Extended.Editor.AbilityEditor), "Activation");
+            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Editor.AbilityEditor), "Activation");
             using var host = new Host();
             try
             {
@@ -206,12 +206,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 yield return null;
                 Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
-                var type = typeof(FarEmerald.PlayForge.Extended.Editor.TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor." + view, true);
+                var type = typeof(FarEmerald.PlayForge.Editor.TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor." + view, true);
                 ScriptableObject shown = view == "ScalerTryView" ? scaler : effect;
                 var built = (VisualElement)type.GetConstructor(new[] { shown.GetType() }).Invoke(new object[] { shown });
                 // In PlayForge's theme, as the inspector that holds the view gives it
                 var root = new VisualElement();
-                type.Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTheme", true)
+                type.Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTheme", true)
                     .GetMethod("Apply", new[] { typeof(VisualElement) }).Invoke(null, new object[] { root });
                 root.Add(built);
                 host.Add(root);

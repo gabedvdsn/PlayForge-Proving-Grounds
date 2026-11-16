@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -214,7 +214,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // An asset as The Forge's Create makes it, in the round trip's folder, saved
         private static ScriptableObject Create(Type kind, string name)
         {
-            var creation = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetCreation");
+            var creation = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetCreation");
             Assert.IsNotNull(creation, "The Forge's Create");
             var asset = (ScriptableObject)creation.GetMethod("CreateNew", AnyStatic).Invoke(null, new object[] { kind, name, Folder });
             Assert.IsNotNull(asset, $"The Forge makes a {kind.Name}");
@@ -290,7 +290,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static List<BaseForgeAsset> Push(BaseForgeAsset template)
         {
-            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTemplatePush");
+            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTemplatePush");
             return (List<BaseForgeAsset>)push.GetMethod("PushToChildren", AnyStatic).Invoke(null, new object[] { template });
         }
 

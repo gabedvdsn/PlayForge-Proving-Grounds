@@ -58,7 +58,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void FEAT_13_The_runtime_reads_time_and_random_numbers_only_through_ForgeTime()
         {
-            Assert.That(ReadsOf(UnityTimeOrRandom, except: "ForgeTime.cs"), Is.Empty,
+            // ForgeRandom and its sources have a file of their own since EP-25, out of ForgeTime.cs
+            Assert.That(ReadsOf(UnityTimeOrRandom, "ForgeTime.cs", "ForgeRandom.cs"), Is.Empty,
                 "the runtime reads time and random numbers through ForgeTime and ForgeRandom");
         }
 
@@ -73,12 +74,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void FEAT_11_The_runtime_reads_input_only_through_ForgeInput()
         {
-            Assert.That(ReadsOf(UnityInputOrMainCamera, except: "ForgeInput.cs"), Is.Empty,
+            Assert.That(ReadsOf(UnityInputOrMainCamera, "ForgeInput.cs"), Is.Empty,
                 "the runtime reads the player's input and the camera through ForgeInput");
         }
 
-        // Each line of the package's runtime whose code reads what the rule matches, but in the one file let do it
-        private static List<string> ReadsOf(Regex rule, string except)
+        // Each line of the package's runtime whose code reads what the rule matches, but in the files let do it
+        private static List<string> ReadsOf(Regex rule, params string[] except)
         {
             var runtime = Path.GetFullPath("Packages/com.faremerald.playforge/Runtime");
             Assert.That(Directory.Exists(runtime), Is.True, $"the package's runtime is at {runtime}");
@@ -86,7 +87,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var found = new List<string>();
             foreach (var file in Directory.GetFiles(runtime, "*.cs", SearchOption.AllDirectories))
             {
-                if (Path.GetFileName(file) == except) continue;
+                if (System.Array.IndexOf(except, Path.GetFileName(file)) >= 0) continue;
                 var lines = File.ReadAllLines(file);
                 bool inBlock = false;
                 for (int i = 0; i < lines.Length; i++)

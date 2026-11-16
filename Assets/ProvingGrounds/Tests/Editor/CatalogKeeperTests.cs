@@ -161,7 +161,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             yield return Settle();
             Assume.That(dungeon.TryGetId(torch, out _), Is.False, "unnamed as it's made, kept by no one");
             dungeon.KeepCatalogCurrent = true;
-            var keeper = typeof(FarEmerald.PlayForge.Extended.Editor.PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeCatalogKeeper", true);
+            var keeper = typeof(FarEmerald.PlayForge.Editor.PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeCatalogKeeper", true);
             var caught = (int)keeper.GetMethod("CatchUp", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
                 .Invoke(null, new object[] { dungeon, ForgeProject.Folders() });
             Assert.AreEqual(1, caught, "kept from before, it catches up on its one");
@@ -179,7 +179,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Make<Ability>(Arena, "EP15 Fireball");
             Make<Attribute>(Arena, "EP15 Health");
             yield return Settle();
-            var line = typeof(FarEmerald.PlayForge.Extended.Editor.ForgeProjectEditor)
+            var line = typeof(FarEmerald.PlayForge.Editor.ForgeProjectEditor)
                 .GetMethod("CatalogLine", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
             Assert.AreEqual("Names 2 assets for saves, kept current as they're made, moved in and deleted", line.Invoke(null, new object[] { arena }));
             arena.KeepCatalogCurrent = false;

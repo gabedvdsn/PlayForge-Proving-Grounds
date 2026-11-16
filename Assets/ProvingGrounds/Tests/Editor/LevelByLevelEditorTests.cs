@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -303,7 +303,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             };
             try
             {
-                var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.EffectLevelsView");
+                var type = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.EffectLevelsView");
                 Assert.IsNotNull(type, "the view is kept");
                 // An array, as a Unity object passed alone converts to the bool of CreateInstance(Type, bool)
                 var view = (VisualElement)System.Activator.CreateInstance(type, new object[] { effect });

@@ -96,8 +96,10 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
-          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: library-
+          # v2: PlayForge's scripts moved (EP-25), and a Library from before maps two moved ScriptableObject scripts to no
+          # class on its first launch, so the cache starts over
+          key: library-v2-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-v2-
       - uses: game-ci/unity-test-runner@v4.3.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -136,8 +138,10 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
-          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: library-
+          # v2: PlayForge's scripts moved (EP-25), and a Library from before maps two moved ScriptableObject scripts to no
+          # class on its first launch, so the cache starts over
+          key: library-v2-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-v2-
       # Every planted test must fail, so the run fails; the check after it reads why each one did
       - uses: game-ci/unity-test-runner@v4.3.2
         continue-on-error: true
@@ -190,8 +194,10 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
-          key: library-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: library-
+          # v2: PlayForge's scripts moved (EP-25), and a Library from before maps two moved ScriptableObject scripts to no
+          # class on its first launch, so the cache starts over
+          key: library-v2-${{ hashFiles('ProvingGrounds/Packages/packages-lock.json', 'ProvingGrounds/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: library-v2-
       - uses: game-ci/unity-test-runner@v4.3.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}

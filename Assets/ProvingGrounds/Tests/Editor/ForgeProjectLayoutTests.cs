@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -25,7 +25,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const BindingFlags Any = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private const string Folder = "Assets/EP10 PlayForge";
 
-        private static Type Kit(string name) => typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor." + name, true);
+        private static Type Kit(string name) => typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor." + name, true);
 
         private static object Static(string type, string member, params object[] args)
         {

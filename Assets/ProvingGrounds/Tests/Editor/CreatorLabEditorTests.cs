@@ -46,7 +46,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
 
         private static readonly Type ForgeProjects =
-            typeof(FarEmerald.PlayForge.Extended.Editor.TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeProjects");
+            typeof(FarEmerald.PlayForge.Editor.TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeProjects");
 
         // The active project, as The Forge reads and sets it
         private static Object ActiveProject

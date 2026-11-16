@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -73,7 +73,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsNull(ForgeMenuAttribute.DescriptionOf(typeof(TopTask)), "a description is a kind's own, not its base's");
 
             var kinds = new List<(Type, string)> { (typeof(DeepTask), "Deep"), (typeof(NamedTask), "EP2 Renamed") };
-            var picker = Activator.CreateInstance(EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTypePicker", true), Any, null,
+            var picker = Activator.CreateInstance(EditorAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeTypePicker", true), Any, null,
                 new object[] { kinds, true, "Ability Task", null, null }, null);
             var dropdown = Get(picker, "Dropdown");
             var root = dropdown.GetType().GetMethod("Build").Invoke(dropdown, null);
@@ -95,7 +95,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var serialized = new SerializedObject(ability);
                 var task = serialized.FindProperty("Behaviour.Stages.Array.data[0].Tasks.Array.data[0]");
                 Assert.IsNotNull(task, "the stage's task");
-                var drawer = Activator.CreateInstance(EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor.AbilityTaskDrawer", true));
+                var drawer = Activator.CreateInstance(EditorAssembly.GetType("FarEmerald.PlayForge.Editor.AbilityTaskDrawer", true));
                 var kindsFor = drawer.GetType().GetMethod("KindsFor", Any);
                 var kinds = (IEnumerable<(Type Type, string Name)>)kindsFor.Invoke(drawer, new object[] { task });
                 Assert.That(kinds.Where(kind => kind.Type == typeof(NamedTask)).Select(kind => kind.Name), Is.EqualTo(new[] { "EP2 Renamed" }),

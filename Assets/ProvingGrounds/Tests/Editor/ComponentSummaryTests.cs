@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -22,7 +22,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const BindingFlags Any = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
         private static string ComponentsLine(IEnumerable<AbstractForgeComponent> components) =>
-            (string)typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeSummaries", true)
+            (string)typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeSummaries", true)
                 .GetMethod("ComponentsLine", Any).Invoke(null, new object[] { components });
 
         private static Ability Ranged()

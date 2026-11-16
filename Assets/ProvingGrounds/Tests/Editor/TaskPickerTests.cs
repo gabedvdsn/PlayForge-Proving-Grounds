@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
@@ -58,7 +58,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void FN_24_A_kinds_picker_lists_each_category_as_a_submenu()
         {
-            var picker = EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTypePicker");
+            var picker = EditorAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeTypePicker");
             Assert.IsNotNull(picker, "the kind picker");
             var kinds = new List<(Type, string)> { (typeof(ApplyEffectsAbilityTask), "Apply Effects"), (typeof(DelayTask), "Delay"), (typeof(Loose), "Loose") };
             var made = Activator.CreateInstance(picker, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,

@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using Object = UnityEngine.Object;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
@@ -23,7 +23,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var project = ScriptableObject.CreateInstance<ForgeProject>();
             try
             {
-                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+                var pages = typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages");
                 var section = (VisualElement)pages.GetMethod("ForgeProjectSettings", AnyStatic).Invoke(null, new object[] { project });
                 var fields = section.Query<PropertyField>().ToList();
                 int crowdControl = fields.FindIndex(field => field.name == "CrowdControl");

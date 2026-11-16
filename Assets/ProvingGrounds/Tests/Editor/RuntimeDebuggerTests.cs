@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -27,7 +27,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
     {
         private const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private const BindingFlags AnyInstance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        private static readonly Type Debugger = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.RuntimeDebugger");
+        private static readonly Type Debugger = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.RuntimeDebugger");
 
         private ProcessControl previous;
         private GameObject host;

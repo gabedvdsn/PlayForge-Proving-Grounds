@@ -36,7 +36,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 Assume.That(editor.CreateInspectorGUI(), Is.Not.Null, "the inspector builds");
                 var listeners = EditorApplication.update?.GetInvocationList() ?? new System.Delegate[0];
-                Assert.IsEmpty(listeners.Where(listener => listener.Target is FarEmerald.PlayForge.Extended.Editor.BasePlayForgeEditor),
+                Assert.IsEmpty(listeners.Where(listener => listener.Target is FarEmerald.PlayForge.Editor.BasePlayForgeEditor),
                     "no inspector listens while no picker is open");
             }
             finally

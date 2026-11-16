@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -26,7 +26,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const string Folder = "Assets/EP-3 Project";
         private const float Tolerance = 1f;
 
-        private static Type Pages => typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages", true);
+        private static Type Pages => typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages", true);
 
         private ForgeProject previous;
         private bool used;

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -139,7 +139,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static List<BaseForgeAsset> Push(BaseForgeAsset template)
         {
-            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTemplatePush");
+            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTemplatePush");
             Assert.IsNotNull(push, "a template can be pushed to its children");
             return (List<BaseForgeAsset>)push.GetMethod("PushToChildren", AnyStatic).Invoke(null, new object[] { template });
         }
@@ -250,7 +250,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsTrue(root.Q(nameof(Ability.MaxLevel)).ClassListContains("pf-override"), "Max Level is marked as the child's own");
                 Assert.IsFalse(root.Q(nameof(Ability.StartingLevel)).ClassListContains("pf-override"), "Starting Level isn't");
 
-                var revert = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTemplatePush")
+                var revert = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTemplatePush")
                     .GetMethod("RevertToTemplate", AnyStatic);
                 revert.Invoke(null, new object[] { editor.serializedObject.FindProperty(nameof(Ability.MaxLevel)) });
                 for (int i = 0; i < 4; i++) yield return null;

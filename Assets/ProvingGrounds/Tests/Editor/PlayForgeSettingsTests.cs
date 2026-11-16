@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -92,7 +92,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             return AssetDatabase.LoadAssetAtPath<T>(path);
         }
 
-        private static Type Pages => typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.PlayForgeSettingsPages");
+        private static Type Pages => typeof(PlayForgeSettings).Assembly.GetType("FarEmerald.PlayForge.Editor.PlayForgeSettingsPages");
 
         // A runtime panel to build a page in, since batch mode can't give the Settings window one
         private sealed class Host
@@ -282,7 +282,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void ED_25_Show_Full_Tag_Paths_changes_the_tag_field()
         {
             var tag = Tag.Generate("Status.Debuff.Burn");
-            var parts = typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTagField")?
+            var parts = typeof(TagDrawer).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTagField")?
                 .GetMethod("Parts", BindingFlags.Static | BindingFlags.NonPublic);
             Assert.IsNotNull(parts, "the tag field says how it reads a tag");
             Assert.AreEqual(("", "Status.Debuff.Burn"), ((string, string))parts.Invoke(null, new object[] { tag, true }), "the full path");

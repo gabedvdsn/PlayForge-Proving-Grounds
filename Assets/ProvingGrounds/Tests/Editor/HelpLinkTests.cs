@@ -2,7 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
@@ -26,7 +26,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(sources.Where(source => source.Contains("docs.playforge.dev")), Is.Empty,
                 "no link to a site PlayForge doesn't own");
 
-            var docs = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeDocs");
+            var docs = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeDocs");
             Assert.IsNotNull(docs, "one table of links");
             var resolve = docs.GetMethod("Resolve", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
 

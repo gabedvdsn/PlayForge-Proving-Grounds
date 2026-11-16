@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using Object = UnityEngine.Object;
 
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests

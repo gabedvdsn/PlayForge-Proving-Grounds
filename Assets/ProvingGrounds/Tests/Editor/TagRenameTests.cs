@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;

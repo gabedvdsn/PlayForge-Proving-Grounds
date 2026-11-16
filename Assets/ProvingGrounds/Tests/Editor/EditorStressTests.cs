@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -29,7 +29,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private const string Folder = "Assets/PlayForge Stress";
         private const int Effects = 2000, Abilities = 500, Children = 2000, Entities = 200;
 
-        private static readonly Type Debugger = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.RuntimeDebugger");
+        private static readonly Type Debugger = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.RuntimeDebugger");
 
         private readonly List<Object> made = new();
 
@@ -233,7 +233,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             double save = watch.Elapsed.TotalMilliseconds;
             Assert.That(family.All(child => child.MaxLevel == 4), "saving the template changes no child");
 
-            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTemplatePush");
+            var push = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTemplatePush");
             watch.Restart();
             var pushed = (List<BaseForgeAsset>)push.GetMethod("PushToChildren", AnyStatic).Invoke(null, new object[] { template });
             watch.Stop();

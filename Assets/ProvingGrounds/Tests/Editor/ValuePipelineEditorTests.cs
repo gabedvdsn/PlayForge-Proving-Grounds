@@ -50,7 +50,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 var serialized = new UnityEditor.SerializedObject(effect);
                 var impact = serialized.FindProperty(nameof(GameplayEffect.ImpactSpecification));
-                var root = new FarEmerald.PlayForge.Extended.Editor.GameplayEffectImpactDrawer().CreatePropertyGUI(impact);
+                var root = new FarEmerald.PlayForge.Editor.GameplayEffectImpactDrawer().CreatePropertyGUI(impact);
                 var pipeline = root.Q<PropertyField>("Pipeline");
                 Assert.IsNotNull(pipeline, "the first impact names its pipeline");
                 Assert.AreEqual(impact.FindPropertyRelative(nameof(GameplayEffectImpact.Pipeline)).propertyPath, pipeline.bindingPath,

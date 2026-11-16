@@ -1,6 +1,6 @@
 using System;
 using System.Reflection;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -23,7 +23,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void ED_8_Deleting_a_used_asset_names_its_users_and_can_be_cancelled()
         {
-            var deletion = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeAssetDeletion");
+            var deletion = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetDeletion");
             Assert.IsNotNull(deletion, "deleting goes through one place that checks references");
             var confirm = deletion.GetField("Confirm", BindingFlags.Static | BindingFlags.NonPublic);
 

@@ -170,8 +170,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsNull(field.Q<PopupField<string>>("Sequence"), "no popup");
                 Assert.AreEqual("None", field.Q(name: "Sequence")?.Q<Label>("TypeName")?.text, "an empty one reads None in its box");
 
-                var drawer = typeof(FarEmerald.PlayForge.Extended.Editor.TaskSequenceReferenceDrawer);
-                var picker = drawer.Assembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeSequencePicker");
+                var drawer = typeof(FarEmerald.PlayForge.Editor.TaskSequenceReferenceDrawer);
+                var picker = drawer.Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeSequencePicker");
                 Assert.IsNotNull(picker, "it opens a dropdown of its own");
                 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
                 var entries = drawer.GetMethod("Entries", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, null);

@@ -82,7 +82,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
     {
         /// <summary>The tag Enrage grants the boss as its phase turns.</summary>
         // A state the recipe grants, exposed where granted tags are picked (TAG-5)
-        [FarEmerald.PlayForge.Extended.ForgeTagExposed(FarEmerald.PlayForge.Extended.ForgeContext.Granted)]
+        [FarEmerald.PlayForge.ForgeTagExposed(FarEmerald.PlayForge.ForgeContext.Granted)]
         public static readonly Tag Enraged = Tag.Generate("Recipe.Enraged");
 
         /// <summary>Builds every recipe, each asset kept by <paramref name="maker"/> before another refers to it.</summary>

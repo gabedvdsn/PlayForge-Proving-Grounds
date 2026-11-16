@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using FarEmerald.PlayForge.Extended.Editor;
+using FarEmerald.PlayForge.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -47,8 +47,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             foreach (var asset in new[] { typeof(Ability), typeof(GameplayEffect), typeof(Item), typeof(EntityIdentity), typeof(RequirementTemplate) })
                 Assert.IsFalse(typeof(ISerializationCallbackReceiver).IsAssignableFrom(asset), $"{asset.Name} moves nothing as it loads");
-            Assert.IsNull(typeof(FarEmerald.PlayForge.Extended.ForgeContext).GetField("Renamed", Every), "no old context name reads as a new one");
-            var contexts = EditorAssembly.GetType("FarEmerald.PlayForge.Extended.Editor.ForgeTagContexts");
+            Assert.IsNull(typeof(FarEmerald.PlayForge.ForgeContext).GetField("Renamed", Every), "no old context name reads as a new one");
+            var contexts = EditorAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeTagContexts");
             Assert.IsNotNull(contexts, "the tag contexts' editor class is there");
             Assert.IsNull(contexts.GetMethod("MigrateLibraries", Every), "nor are the tag libraries' moved");
             Assert.IsFalse(typeof(PlayForgeSettings).BaseType?.Name.StartsWith("ScriptableSingleton", StringComparison.Ordinal) ?? false,
