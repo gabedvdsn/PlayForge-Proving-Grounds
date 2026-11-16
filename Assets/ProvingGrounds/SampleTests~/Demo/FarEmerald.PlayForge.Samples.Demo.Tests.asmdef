@@ -1,0 +1,32 @@
+{
+    "name": "FarEmerald.PlayForge.Samples.Demo.Tests",
+    "rootNamespace": "FarEmerald.PlayForge.Samples.Demo.Tests",
+    "references": [
+        "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.Lab",
+        "FarEmerald.PlayForge.Samples.Demo",
+        "UniTask",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS",
+        "UNITY_TESTS_FRAMEWORK"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework",
+            "expression": "",
+            "define": "UNITY_TESTS_FRAMEWORK"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -73,7 +73,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 .Where(each => each.asmdef.references.Contains("UnityEngine.TestRunner")
                                || each.asmdef.precompiledReferences.Contains("nunit.framework.dll"))
                 .ToList();
-            Assert.That(tests.Count, Is.GreaterThanOrEqualTo(4), "the golden tests, the test kit and the samples' tests");
+            // The samples ship no tests, theirs living in Proving Grounds (EP-24)
+            Assert.That(tests.Count, Is.GreaterThanOrEqualTo(2), "the golden tests and the test kit");
 
             foreach (var (path, asmdef) in tests)
             {

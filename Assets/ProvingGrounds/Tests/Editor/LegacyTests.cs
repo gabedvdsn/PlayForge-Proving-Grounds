@@ -91,7 +91,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         [Test]
         public void FN_21_No_asset_holds_an_older_saves_field()
         {
-            var roots = new[] { "Packages/com.faremerald.playforge", "Assets/ProvingGrounds", "Assets/PlayForgeDemo", "Assets/PlayForgeAdditional" }
+            var roots = new[] { "Packages/com.faremerald.playforge", "Assets/ProvingGrounds", "Assets/PlayForgeDemo", "Assets/PlayForgeAdditional",
+                    "Assets/PlayForge Demo", "Assets/PlayForge Additional Content" }
                 .Where(AssetDatabase.IsValidFolder).ToArray();
             var paths = AssetDatabase.FindAssets("", roots).Select(AssetDatabase.GUIDToAssetPath)
                 .Where(path => path.EndsWith(".asset") || path.EndsWith(".prefab") || path.EndsWith(".unity")).Distinct().ToList();

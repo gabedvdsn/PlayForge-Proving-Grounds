@@ -10,8 +10,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
     /// What PlayForge ships, as a buyer gets it (the user's notes of 2026-11-16): its docs and what its code shows a user
-    /// say nothing of the refactor's process (EP-21), and each sample with assets imports as a Forge Project of its own
-    /// (EP-22). The package is read where it's resolved, as the release check reads it.
+    /// say nothing of the refactor's process (EP-21), each sample with assets imports as a Forge Project of its own
+    /// (EP-22), and no sample ships tests (EP-24). The package is read where it's resolved, as the release check reads it.
     /// </summary>
     public class ShippedContentTests
     {
@@ -24,6 +24,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static string PackageRoot =>
             PackageInfo.FindForAssembly(typeof(Tag).Assembly)?.resolvedPath?.Replace('\\', '/');
+
+        // Where each sample with assets is imported: as the gates' CI copies it in, or as a run of them here does
+        private static readonly string[][] SampleFolders =
+        {
+            new[] { "Assets/PlayForge Demo", "Assets/PlayForgeDemo" },
+            new[] { "Assets/PlayForge Additional Content", "Assets/PlayForgeAdditional" },
+        };
+
+        private static string[] SampleRoots()
+        {
+            var roots = SampleFolders.Select(each => each.FirstOrDefault(AssetDatabase.IsValidFolder)).ToArray();
+            Assume.That(roots, Has.All.Not.Null, "the Demo and Additional Content are imported");
+            return roots;
+        }
 
         /// <summary>
         /// No shipped doc, the package's docs, its CHANGELOG and its samples' READMEs, names the refactor's process, as
@@ -73,9 +87,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void EP_22_Each_sample_with_assets_is_a_Forge_Project_of_its_own()
         {
             var folders = ForgeProject.Folders();
-            foreach (var root in new[] { "Assets/PlayForgeDemo", "Assets/PlayForgeAdditional" })
+            foreach (var root in SampleRoots())
             {
-                Assume.That(AssetDatabase.IsValidFolder(root), $"{root} is imported");
                 var project = folders.FirstOrDefault(each => each.Folder == root).Project;
                 Assert.IsNotNull(project, $"{root} has a Forge Project at its root");
                 Assert.IsNotNull(project.GameRootEntity, $"{project.name} carries its Game Root entity");
@@ -101,9 +114,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var reference = new Regex(@"^  Project: \{fileID: -?\d+(?:, guid: ([0-9a-f]{32}), type: \d+)?\}", RegexOptions.Multiline);
 
             var folders = ForgeProject.Folders();
-            foreach (var root in new[] { "Assets/PlayForgeDemo", "Assets/PlayForgeAdditional" })
+            foreach (var root in SampleRoots())
             {
-                Assume.That(AssetDatabase.IsValidFolder(root), $"{root} is imported");
                 var project = folders.FirstOrDefault(each => each.Folder == root).Project;
                 Assert.IsNotNull(project, $"{root} has a Forge Project at its root");
                 string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(project));
@@ -122,6 +134,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 }
                 Assert.Greater(bootstrappers, 0, $"{root} has a scene with a Bootstrapper");
             }
+        }
+
+        /// <summary>
+        /// No sample ships tests: a sample's tests live in Proving Grounds' SampleTests~, copied in beside the sample for a
+        /// run, so no assembly of a sample references the test framework and no sample holds a Tests folder (EP-24).
+        /// </summary>
+        [Test]
+        public void EP_24_No_sample_ships_tests()
+        {
+            Assume.That(PackageRoot, Is.Not.Null, "PlayForge is a package here");
+            var samples = Path.Combine(PackageRoot, "Samples~");
+            var testing = Directory.GetFiles(samples, "*.asmdef", SearchOption.AllDirectories)
+                .Where(path => Regex.IsMatch(File.ReadAllText(path), @"nunit\.framework|UnityEngine\.TestRunner|UNITY_INCLUDE_TESTS"))
+                .Select(Path.GetFileName)
+                .ToList();
+            Assert.That(testing, Is.Empty, $"sample assemblies of tests: {string.Join(", ", testing)}");
+            var folders = Directory.GetDirectories(samples, "Tests", SearchOption.AllDirectories)
+                .Select(path => path.Replace('\\', '/').Substring(samples.Length))
+                .ToList();
+            Assert.That(folders, Is.Empty, $"sample folders of tests: {string.Join(", ", folders)}");
         }
     }
 }

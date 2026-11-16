@@ -83,12 +83,16 @@ jobs:
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
       # The Demo sample, copied in as Package Manager imports it: its PlayMode tests play it, and the smoke suite sweeps
-      # its assets, which need its scripts
+      # its assets, which need its scripts. Its tests ship no more, so they're copied in beside it from SampleTests~ (EP-24)
       - name: Import the Demo sample
-        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
-      # The Additional Content sample too: its own tests play its feedback components and its Sparring scene (AC-2)
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Demo" "ProvingGrounds/Assets/PlayForge Demo/Scripts/Tests"
+      # The Additional Content sample too: its tests play its feedback components and its Sparring scene (AC-2)
       - name: Import the Additional Content sample
-        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content/Scripts/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
@@ -173,12 +177,16 @@ jobs:
           ref: ${{ env.PLAYFORGE_REF }}
           path: PlayForge
       # The Demo sample, copied in as Package Manager imports it: its PlayMode tests play it, and the smoke suite sweeps
-      # its assets, which need its scripts
+      # its assets, which need its scripts. Its tests ship no more, so they're copied in beside it from SampleTests~ (EP-24)
       - name: Import the Demo sample
-        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
-      # The Additional Content sample too: its own tests play its feedback components and its Sparring scene (AC-2)
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Demo" "ProvingGrounds/Assets/PlayForge Demo"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Demo" "ProvingGrounds/Assets/PlayForge Demo/Scripts/Tests"
+      # The Additional Content sample too: its tests play its feedback components and its Sparring scene (AC-2)
       - name: Import the Additional Content sample
-        run: cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Additional Content" "ProvingGrounds/Assets/PlayForge Additional Content/Scripts/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library

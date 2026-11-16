@@ -68,8 +68,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             foreach (var source in sources)
                 Assert.IsTrue(File.Exists(source + ".meta"), $"{Path.GetFileName(source)} has a meta, as a sample's files need");
 
-            string tests = Path.Combine(scripts, "Tests", Assembly + ".Tests.asmdef");
-            Assert.IsTrue(File.Exists(tests), "its tests have an assembly of their own");
+            // Its tests have an assembly of their own, in Proving Grounds: the sample ships none, and a run copies them in (EP-24)
+            Assert.IsFalse(Directory.Exists(Path.Combine(scripts, "Tests")), "the sample ships no tests");
+            string tests = Path.GetFullPath(Path.Combine("Assets/ProvingGrounds/SampleTests~/Additional Content", Assembly + ".Tests.asmdef"));
+            Assert.IsTrue(File.Exists(tests), "its tests have an assembly of their own, in Proving Grounds");
             var testDefinition = Read(tests);
             Assert.That(testDefinition.defineConstraints, Does.Contain("UNITY_INCLUDE_TESTS"), "they compile only where tests do");
             Assert.That(testDefinition.references, Does.Contain(Assembly));
