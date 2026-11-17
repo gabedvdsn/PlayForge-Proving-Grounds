@@ -260,14 +260,16 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Stage Task") == 1, 10, "the stage ran");
         });
 
-        /// <summary>The range check measured between GameObjects, so with a runtime GAS at either end it always failed.</summary>
+        /// <summary>
+        /// The range check measured between GameObjects, so with a runtime GAS at either end it always failed. The ability's
+        /// Cast Range holds its range now, which its component enforces, and Check Range stands for it among the Target
+        /// Checks (EP-34).
+        /// </summary>
         [UnityTest]
         public IEnumerator GAS_29_A_range_check_measures_any_entity([Values] Hub hub, [Values(3f, 10f)] float distance) => Live(async () =>
         {
-            var range = Make.NewTag("Test.Data.Range");
             var ability = Make.Ability("Ranged", Make.Stage(new ProbeAbilityTask(World, "Stage Task")));
-            ability.LocalData.Add(new DataWrapper { Key = range, floatValue = 5f });
-            ability.TargetActivationRules.Add(new CheckRangeValidation { Tag = range });
+            ability.Components.Add(new CastRangeAbilityComponent { Range = 5f });
 
             var caster = World.Entity(hub, name: "Caster");
             var target = World.Entity(hub, name: "Target");
