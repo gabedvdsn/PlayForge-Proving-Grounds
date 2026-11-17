@@ -1406,13 +1406,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             "Asset Tag", "Context Tag", "Granted", "Affiliation", "Impact Type", "Retention Group", "Event", "Attribute Role",
             "Visibility", "Texture Slot", "Requirement Category", "Data Key", "Local Data Key", "Worker Key", "Set By Caller Key",
-            "Stage Flag", "Code", "Universal",
+            "Stage Flag", "Code", "Universal", "Cue",
         };
 
         /// <summary>
         /// There were 32 contexts: 18 no field named, some overlapping, two kinds mixed, what a tag is and where it's used,
         /// and four whose constants read otherwise than their values, so a library entry typed "RetentionGroup" matched
-        /// nothing (TAG-6). There are 18, one per kind of tag, each constant its value without its spaces (Decision 74).
+        /// nothing (TAG-6). There are 18, one per kind of tag, each constant its value without its spaces (Decision 74), and
+        /// a cue tag's since (EP-47).
         /// </summary>
         [Test]
         public void TAG_6_There_is_one_context_per_kind_of_tag()

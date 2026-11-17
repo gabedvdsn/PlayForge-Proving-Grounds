@@ -1345,7 +1345,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var expected = new[]
             {
                 "Forge Project", "|", "Ability", "Gameplay Effect", "Item", "Attribute", "Attribute Set", "Entity", "|",
-                "Scaler", "Requirement Template", "Value Pipeline", "Effect Modifier", "Crowd Control Rules", "Tag Library", "|",
+                "Scaler", "Requirement Template", "Value Pipeline", "Effect Modifier", "Crowd Control Rules", "Tag Library",
+                "Cue Library", "|",
                 "Lab Rules", "Lab Driver", "|", "Demo/Roster",
             };
             // A line where the next entry's order is more than 10 past the one before, as Unity draws the menu
