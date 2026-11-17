@@ -216,6 +216,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 for (int i = 0; i < 4; i++) yield return null;
                 Assert.IsTrue(Hidden(root, "ProcCoefficient"), "hidden without its own");
 
+                // It edits while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and only it (SP-34); opening the inspector, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 var other = new SerializedObject(effect);
                 other.FindProperty(nameof(GameplayEffect.OwnProcCoefficient)).boolValue = true;
                 other.ApplyModifiedProperties();

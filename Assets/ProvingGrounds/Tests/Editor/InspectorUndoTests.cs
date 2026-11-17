@@ -460,6 +460,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.That(root.Query<HelpBox>().ToList().Select(box => box.text), Has.Some.StartsWith("No level provider"),
                     "and a help box says none is set");
 
+                // It edits while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and the loop's refusal it expects below; opening the inspector, above, stays strict (SP-34)
+                using var unsynced = new UnsyncedBindsTolerated("circular dependency");
                 Undo.IncrementCurrentGroup();
                 provider.value = hero;
                 Assert.AreEqual(hero, item.LinkedProvider, "choosing a provider links the item");
@@ -613,6 +616,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.IsFalse(equipped.enabledSelf, "Equipped Too waits for Allow Duplicates");
                 Assert.AreEqual(DisplayStyle.Flex, needs.resolvedStyle.display, "and the note says so");
 
+                // It edits while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and only it (SP-34); opening the inspector, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 Undo.IncrementCurrentGroup();
                 duplicates.value = true;
                 yield return Frames();

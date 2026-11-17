@@ -43,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 "Pause", "Resume", "DataOfRun", "IsPausedRun", "Delay", "GetRepeatCount", "IsRepeatBroken", "Inject",
                 "InjectStageLocal", "CheckConditions", "RequestStartStageTimeout", "StageIndex", "CurrentStage", "IsRunning",
-                "CompletedSuccessfully", "FailureException", "ElapsedTime", "IsPaused"
+                "CompletedSuccessfully", "FailureException", "ElapsedTime", "IsPaused", "Clock", "ClockOfRun"
             },
         };
 
@@ -57,7 +57,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             typeof(SkipAndMaintainInjection), typeof(StopMaintainedLastInjection), typeof(StopMaintainedAtIndexInjection),
             typeof(StopMaintainedAllInjection), typeof(JumpToStageInjection), typeof(BreakStageRepeatInjection),
             typeof(ChainInterruptInjection), typeof(TaskSequenceProcess), typeof(TaskSequenceReference),
-            typeof(SequenceTimeout)
+            typeof(SequenceTimeout), typeof(UnscaledClock), typeof(ScaledClock)
         };
 
         /// <summary>

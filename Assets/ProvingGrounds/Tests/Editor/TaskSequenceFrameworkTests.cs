@@ -289,6 +289,98 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "a stage runs at least once");
         }
 
+        // ─── A sequence's own clock (EP-32) ─────────────────────────────────────────────────────────────────────────
+
+        /// <summary>A clock a test sets: its step, its unscaled step, its time, and whether it follows the game's ticks.</summary>
+        private sealed class SetClock : IForgeClock
+        {
+            public float Step, UnscaledStep, Now;
+            public bool Ticks = true;
+            public float DeltaTime => Step;
+            public float UnscaledDeltaTime => UnscaledStep;
+            public float FixedDeltaTime => Step;
+            public float Time => Now;
+            public float UnscaledTime => Now;
+            public int FrameCount => 0;
+            public bool FollowsTicks => Ticks;
+        }
+
+        /// <summary>
+        /// A sequence ran by the game's clock or an ability's caster's alone (EP-32). A ScaledClock runs at a scale of its
+        /// own over its source, counts its own time through each change of scale, and follows its source's ticks.
+        /// </summary>
+        [Test]
+        public void EP_32_A_scaled_clock_runs_at_a_scale_of_its_own()
+        {
+            var source = new SetClock { Step = 0.1f, UnscaledStep = 0.2f, Now = 10f };
+            var clock = new ScaledClock(2f, source);
+            Assert.AreEqual(0.2f, clock.DeltaTime, 1e-6f, "twice its source's step");
+            Assert.AreEqual(0.2f, clock.UnscaledDeltaTime, 1e-6f, "and its source's unscaled step, unscaled");
+            Assert.AreEqual(0f, clock.Time, 1e-6f, "its time counts from when it's first read");
+            source.Now = 12f;
+            Assert.AreEqual(4f, clock.Time, 1e-5f, "two seconds of its source's are four of its own");
+            clock.Scale = 0.5f;
+            source.Now = 16f;
+            Assert.AreEqual(6f, clock.Time, 1e-5f, "and four more at half are two: its time goes on through a change of scale");
+            clock.Scale = -1f;
+            Assert.AreEqual(0f, clock.Scale, "a scale under 0 is 0, which stops it");
+            Assert.IsTrue(clock.FollowsTicks, "it follows the game's ticks where its source does");
+            source.Ticks = false;
+            Assert.IsFalse(clock.FollowsTicks, "and not where its source doesn't");
+        }
+
+        /// <summary>
+        /// The unscaled clock reads the game's unscaled time, so a menu's sequence runs while the game's time stands, and
+        /// its waits don't wait for the game's ticks, which stand with it (EP-32).
+        /// </summary>
+        [Test]
+        public void EP_32_The_unscaled_clock_reads_the_games_unscaled_time()
+        {
+            var game = new SetClock { Step = 0f, UnscaledStep = 0.25f, Now = 3f };
+            var previous = ForgeTime.Use(game);
+            try
+            {
+                Assert.AreEqual(0.25f, UnscaledClock.Instance.DeltaTime, 1e-6f, "its step is the game's unscaled one, the game's standing");
+                Assert.AreEqual(3f, UnscaledClock.Instance.Time, 1e-6f, "its time the game's unscaled time");
+                Assert.IsFalse(UnscaledClock.Instance.FollowsTicks, "its sequences don't wait for the game's ticks");
+                Assert.IsTrue(((IForgeClock)UnityClock.Instance).FollowsTicks, "where Unity's clock's do");
+            }
+            finally
+            {
+                ForgeTime.Use(previous);
+            }
+        }
+
+        /// <summary>
+        /// A synced runner stepped by the time its owner gave it, so its sequence had no clock of its own (EP-32). It takes
+        /// its sequence's (WithClock), a packet's before that, and a step with no time given goes by it.
+        /// </summary>
+        [Test]
+        public void EP_32_A_synced_runner_steps_by_its_clock()
+        {
+            var game = new SetClock { Step = 0.1f, UnscaledStep = 0.1f };
+            var twice = new ScaledClock(2f, game);
+            float stepped = 0f;
+            var runner = TaskSequenceBuilder.Create("Twice").WithClock(twice)
+                .Stage(stage => stage.SyncTask((_, deltaTime) =>
+                {
+                    stepped += deltaTime;
+                    return false;
+                }))
+                .BuildSyncRunner();
+            var data = SequenceDataPacket.Default();
+            Assert.AreSame(twice, runner.Clock, "the runner takes its sequence's clock");
+            Assert.AreSame(twice, runner.ClockFor(data), "which a step with a packet that names none goes by");
+            runner.Step(data);
+            Assert.AreEqual(0.2f, stepped, 1e-6f, "a step of it");
+
+            var half = new ScaledClock(0.5f, game);
+            data.Clock = half;
+            Assert.AreSame(half, runner.ClockFor(data), "a packet's clock comes before the sequence's");
+            runner.Step(data);
+            Assert.AreEqual(0.25f, stepped, 1e-6f, "and a step goes by it");
+        }
+
         // Steps a task in a runner of its own until it ends, a frame's time a step; how many steps it took
         private static int StepsToEnd(ISequenceTask task, int fuse = 500)
         {

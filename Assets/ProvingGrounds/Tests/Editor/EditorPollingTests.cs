@@ -148,6 +148,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assume.That(Multiply(), Is.Not.Null, "the drawer has Multiply Behaviour");
                 Assert.AreEqual(DisplayStyle.None, Multiply().resolvedStyle.display, "an Add impact hides it");
 
+                // It edits while the drawer may still be binding, so from here on Unity's out-of-step bind is tolerated,
+                // and only it (SP-34); opening the drawer, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 Undo.IncrementCurrentGroup();
                 var operation = serialized.FindProperty(
                     $"{nameof(GameplayEffect.ImpactSpecification)}.{nameof(GameplayEffectImpact.ImpactOperation)}");

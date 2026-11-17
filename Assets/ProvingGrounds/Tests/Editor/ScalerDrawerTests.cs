@@ -181,6 +181,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
                 var kind = field.Query<PopupField<string>>().ToList().FirstOrDefault();
                 Assert.IsNotNull(kind, "the drawer offers a kind");
+                // It edits while the drawer may still be binding, so from here on Unity's out-of-step bind is tolerated,
+                // and only it (SP-34); opening the drawer, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 kind.value = "Table";
                 yield return Frames();
                 var made = effect.DurationSpecification.DurationOperation.Scaler as SimpleScaler;

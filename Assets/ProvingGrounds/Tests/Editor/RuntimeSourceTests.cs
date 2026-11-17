@@ -92,10 +92,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(ReadsOf(UnityLog, "ForgeLog.cs"), Is.Empty, "the runtime logs through ForgeLog");
         }
 
-        // Each line of the package's runtime whose code reads what the rule matches, but in the files let do it
-        private static List<string> ReadsOf(Regex rule, params string[] except)
+        private static readonly Regex FrameStep = new(@"(?<![\w.])ForgeTime\.(?:DeltaTime|DeltaTimeFor|UnscaledDeltaTime)\b");
+
+        /// <summary>
+        /// A sequence read its time from its packet's owner or the game's clock, so nothing could give it a clock of its
+        /// own (EP-32, the user's question of 2026-11-17). The task sequences and the abilities' tasks read their step of
+        /// time through their run's clock, which takes the packet's, the sequence's, the owner's and the game's in turn.
+        /// </summary>
+        [Test]
+        public void EP_32_Sequences_read_their_time_through_their_runs_clock()
         {
-            var runtime = Path.GetFullPath("Packages/com.faremerald.playforge/Runtime");
+            var found = new List<string>();
+            foreach (var folder in new[] { "PlayForge/Core/TaskSequence", "PlayForge/AbilitySystem/Tasks" })
+                found.AddRange(ReadsOf(FrameStep, folder, new string[0]));
+            Assert.That(found, Is.Empty, "the sequences and the abilities' tasks read their time through their run's clock");
+        }
+
+        // Each line of the package's runtime whose code reads what the rule matches, but in the files let do it
+        private static List<string> ReadsOf(Regex rule, params string[] except) => ReadsOf(rule, "", except);
+
+        // Each line of a folder of the package's runtime whose code reads what the rule matches, but in the files let do it
+        private static List<string> ReadsOf(Regex rule, string folder, string[] except)
+        {
+            var runtime = Path.GetFullPath(Path.Combine("Packages/com.faremerald.playforge/Runtime", folder));
             Assert.That(Directory.Exists(runtime), Is.True, $"the package's runtime is at {runtime}");
 
             var found = new List<string>();

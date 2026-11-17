@@ -207,6 +207,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assert.AreEqual(DisplayStyle.Flex, count.resolvedStyle.display, "shown while the asset has one");
                 StringAssert.Contains("1 problem", count.text);
 
+                // It edits while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and only it (SP-34); opening the inspector, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 editor.serializedObject.FindProperty(nameof(Ability.LinkMode)).intValue = (int)EAbilityLinkMode.Standalone;
                 editor.serializedObject.ApplyModifiedProperties();
                 for (int i = 0; i < 6; i++) yield return null;

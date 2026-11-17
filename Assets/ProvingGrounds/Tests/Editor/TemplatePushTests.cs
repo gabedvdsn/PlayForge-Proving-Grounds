@@ -232,6 +232,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var (template, first, _) = Family();
             Edit(first, nameof(Ability.MaxLevel), 7);
+            string edited = EditorJsonUtility.ToJson(first);
             var settings = ScriptableObject.CreateInstance<PanelSettings>();
             var owner = new GameObject("ED-13") { hideFlags = HideFlags.HideAndDontSave };
             var document = owner.AddComponent<UIDocument>();
@@ -247,9 +248,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 root.Bind(editor.serializedObject);
                 for (int i = 0; i < 4; i++) yield return null;
 
+                Assert.AreEqual(edited, EditorJsonUtility.ToJson(first), "opening the inspector writes nothing");
                 Assert.IsTrue(root.Q(nameof(Ability.MaxLevel)).ClassListContains("pf-override"), "Max Level is marked as the child's own");
                 Assert.IsFalse(root.Q(nameof(Ability.StartingLevel)).ClassListContains("pf-override"), "Starting Level isn't");
 
+                // Revert writes while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and only it (SP-34); opening the inspector, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 var revert = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeTemplatePush")
                     .GetMethod("RevertToTemplate", AnyStatic);
                 revert.Invoke(null, new object[] { editor.serializedObject.FindProperty(nameof(Ability.MaxLevel)) });

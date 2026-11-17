@@ -1167,6 +1167,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 var method = root.Q<PropertyField>(nameof(AbstractMonoProcess.PriorityMethod));
                 var priority = root.Q<PropertyField>(nameof(AbstractMonoProcess.ProcessStepPriority));
                 Assert.IsTrue(method.ClassListContains("pf-hidden"), "a process that doesn't step has no priority method");
+                // It edits while the inspector may still be binding, so from here on Unity's out-of-step bind is
+                // tolerated, and only it (SP-34); opening the inspector, above, stays strict
+                using var unsynced = new UnsyncedBindsTolerated();
                 // Changed from outside the inspector, as an Undo or another inspector changes it
                 var other = new SerializedObject(process);
                 other.FindProperty(nameof(AbstractMonoProcess.ProcessTiming)).intValue = (int)EProcessStepTiming.Update;
