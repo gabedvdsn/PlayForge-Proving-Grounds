@@ -857,5 +857,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             lab.Panels.Redraw();
             Assert.That(line.text, Does.Not.Contain(mine.name), "and no longer once it's let go");
         });
+
+        /// <summary>
+        /// A unit stops a turn its abilities ordered as it walks, and as it's stopped (EP-36): the lab's move takes over, as a
+        /// game's would, so a cast still turning to face its target gives way.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_36_A_unit_stops_a_turn_as_it_walks_or_is_stopped([Values] bool walks) => Live(async () =>
+        {
+            var brute = Fighter("Brute", walk: 5f);
+            Lab(false, brute);
+            var unit = lab.AddUnit(brute, LabSides.Blue, Vector3.zero);
+            await Frames.Step();
+            lab.Step(0.01f);
+
+            unit.Gas.Face(unit.transform.position - unit.transform.forward * 5f, 90f);
+            Assert.Greater(unit.Gas.AngleToFace, 90f, "a turn to make");
+            if (walks)
+            {
+                unit.MoveTo(unit.transform.position + unit.transform.right * 5f);
+                lab.Step(0.1f);
+            }
+            else unit.Stop();
+            Assert.AreEqual(0f, unit.Gas.AngleToFace, walks ? "a walk takes the turn over" : "a stop ends it");
+        });
     }
 }

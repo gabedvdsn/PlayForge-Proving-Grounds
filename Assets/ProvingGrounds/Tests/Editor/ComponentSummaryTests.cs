@@ -126,5 +126,32 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(ability);
             }
         }
+
+        /// <summary>
+        /// The turn to face's components (EP-36): an entity's Turns To Face and an ability's Turn To Face, one at most each,
+        /// say how they turn: the speed, the angle the ability's first stage starts within, and what a turn that takes too
+        /// long does, No Limit by default; an ability's with Turns off says it doesn't turn.
+        /// </summary>
+        [Test]
+        public void EP_36_The_turn_components_say_how_they_turn()
+        {
+            var entity = new TurnsToFaceEntityComponent();
+            Assert.AreEqual(ETurnTooLong.NoLimit, entity.Turn.IfTooLong, "no limit by default");
+            Assert.AreEqual(30f, entity.Turn.StartAngle, "starting within 30 degrees");
+            Assert.AreEqual(2f, entity.Turn.FacingAngle, "and turning on to within 2");
+            Assert.IsFalse(entity.AllowsSeveral, "an entity holds one at most");
+            Assert.AreEqual("540 °/s, starting within 30°", entity.Describe());
+            entity.Turn.IfTooLong = ETurnTooLong.StartAnyway;
+            entity.Turn.MaxWait = 0.5f;
+            Assert.AreEqual("540 °/s, starting within 30°, or after 0.5s", entity.Describe());
+            entity.Turn.IfTooLong = ETurnTooLong.Cancel;
+            Assert.AreEqual("540 °/s, starting within 30°, cancelled after 0.5s", entity.Describe());
+
+            var still = new TurnToFaceAbilityComponent { Turns = false };
+            Assert.IsFalse(still.AllowsSeveral, "an ability holds one at most");
+            Assert.AreEqual("Doesn't turn", still.Describe());
+            var line = ComponentsLine(new List<AbstractAbilityComponent> { new TurnToFaceAbilityComponent { Turn = { TurnSpeed = 900f } } });
+            StringAssert.Contains("Turn To Face: 900 °/s, starting within 30°", line, "its line names it and says how it turns");
+        }
     }
 }
