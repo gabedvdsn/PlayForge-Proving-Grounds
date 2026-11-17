@@ -381,6 +381,103 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual(0.25f, stepped, 1e-6f, "and a step goes by it");
         }
 
+        // ─── A clock picked in an inspector (EP-33) ──────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A run takes a clock of its own, set as it's run, before its packet's and its sequence's, so what runs a sequence
+        /// on a packet others share, as an ability's Run Sequence task, can give it one (EP-33); null takes the rest in turn.
+        /// </summary>
+        [Test]
+        public void EP_33_A_runs_own_clock_comes_before_the_rest()
+        {
+            var sequences = new ScaledClock(3f);
+            var runtime = new TaskSequence(TaskSequenceBuilder.Create("Own").WithClock(sequences).Build()).CreateRuntime();
+            Assert.AreSame(sequences, runtime.Clock, "unset, the sequence's");
+            var own = new ScaledClock(2f);
+            runtime.Clock = own;
+            Assert.AreSame(own, runtime.Clock, "set, its own comes first");
+            runtime.Clock = null;
+            Assert.AreSame(sequences, runtime.Clock, "and null takes the rest in turn");
+        }
+
+        // A choice of your own that names no clock
+        [Serializable]
+        private sealed class NoChoice : AbstractClockChoice
+        {
+        }
+
+        /// <summary>
+        /// The clocks an inspector picks give theirs (EP-33): the game's, which reads the clock in force; unscaled; the
+        /// caster's, the game's with none; and scaled, over the caster's or the clock it picks. One of your own that names
+        /// none leaves the run's. The game's clock can't be the one in force, as it reads that one.
+        /// </summary>
+        [Test]
+        public void EP_33_The_clock_choices_give_their_clocks()
+        {
+            var game = new SetClock { Step = 0.1f, UnscaledStep = 0.3f, Now = 2f };
+            var previous = ForgeTime.Use(game);
+            try
+            {
+                var data = SequenceDataPacket.Default();
+                Assert.AreSame(GameClock.Instance, new GameClockChoice().ClockFor(data), "the game's");
+                Assert.AreEqual(0.1f, GameClock.Instance.DeltaTime, 1e-6f, "which reads the clock in force");
+                Assert.AreSame(UnscaledClock.Instance, new UnscaledClockChoice().ClockFor(data), "unscaled");
+                Assert.AreSame(GameClock.Instance, new CasterClockChoice().ClockFor(data), "the caster's, the game's with no caster");
+
+                var overUnscaled = new ScaledClockChoice { Scale = 2f, Of = new UnscaledClockChoice() }.ClockFor(data);
+                Assert.AreEqual(0.6f, overUnscaled.DeltaTime, 1e-6f, "scaled, twice the clock it picks");
+                Assert.IsFalse(overUnscaled.FollowsTicks, "following that clock's frames");
+                Assert.AreEqual(0.2f, new ScaledClockChoice { Scale = 2f }.ClockFor(data).DeltaTime, 1e-6f,
+                    "and over the caster's when it picks none");
+                Assert.IsNull(new NoChoice().ClockFor(data), "one of your own that names none leaves the run's");
+
+                Assert.Throws<ArgumentException>(() => ForgeTime.Use(GameClock.Instance), "the game's clock can't be the one in force");
+            }
+            finally
+            {
+                ForgeTime.Use(previous);
+            }
+        }
+
+        /// <summary>
+        /// An ability's Run Sequence task picks its clock in its inspector (EP-33): the field offers the caster's, the game's,
+        /// unscaled and scaled, with None, by PlayForge's kind picker, and shows a kind's own fields under it.
+        /// </summary>
+        [Test]
+        public void EP_33_The_Run_Sequence_tasks_clock_is_picked_in_its_inspector()
+        {
+            var drawerType = typeof(FarEmerald.PlayForge.Editor.TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ClockChoiceDrawer");
+            Assert.IsNotNull(drawerType, "a clock choice has a drawer");
+
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            try
+            {
+                var run = new RunSequenceTask { Clock = new ScaledClockChoice { Scale = 0.5f } };
+                ability.Behaviour = new AbilityBehaviour
+                {
+                    Stages = new List<AbilityTaskBehaviourStage> { new AbilityTaskBehaviourStage { Tasks = new List<AbstractAbilityTask> { run } } }
+                };
+                var serialized = new UnityEditor.SerializedObject(ability);
+                var property = serialized.FindProperty("Behaviour.Stages.Array.data[0].Tasks.Array.data[0].Clock");
+                Assert.IsNotNull(property, "the task has a Clock field");
+                Assert.AreEqual(UnityEditor.SerializedPropertyType.ManagedReference, property.propertyType, "of kinds to pick");
+
+                var drawer = (UnityEditor.PropertyDrawer)Activator.CreateInstance(drawerType);
+                var root = drawer.CreatePropertyGUI(property);
+                Assert.IsTrue(root.ClassListContains("pf-type-ref"), "drawn as PlayForge's kind picker");
+                var kinds = ((System.Collections.IEnumerable)drawerType.GetMethod("KindsFor", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .Invoke(drawer, new object[] { property }))
+                    .Cast<object>().Select(kind => (string)kind.GetType().GetField("Item2").GetValue(kind)).ToList();
+                Assert.That(kinds, Is.SupersetOf(new[] { "Caster's", "Game's", "Scaled", "Unscaled" }), $"its kinds: {string.Join(", ", kinds)}");
+                var fields = root.Query<UnityEditor.UIElements.PropertyField>().ToList().Select(field => field.bindingPath).ToList();
+                Assert.That(fields, Has.Some.EndsWith("Scale").And.Some.EndsWith("Of"), $"and the kind's own fields: {string.Join(", ", fields)}");
+            }
+            finally
+            {
+                Object.DestroyImmediate(ability);
+            }
+        }
+
         // Steps a task in a runner of its own until it ends, a frame's time a step; how many steps it took
         private static int StepsToEnd(ISequenceTask task, int fuse = 500)
         {

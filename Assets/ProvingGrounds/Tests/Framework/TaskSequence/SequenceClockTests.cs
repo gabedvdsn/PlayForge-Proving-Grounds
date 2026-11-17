@@ -219,6 +219,98 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(elapsed, Is.InRange(0.49f, 0.76f), "and its elapsed time counts by its clock too");
         });
 
+        // ─── A clock picked in an inspector (EP-33) ──────────────────────────────────────────────────────────────────
+
+        // What the sequence the Run Sequence task runs records, as its method makes it anew each time
+        private static readonly List<float> sequenceSteps = new();
+
+        /// <summary>A sequence that records three steps of its time, as the sequence dropdown offers a method's.</summary>
+        public static TaskSequence StepRecording() =>
+            new(TaskSequenceBuilder.Create("Recorded").Stage(stage => stage.Task((_, token) => Steps(sequenceSteps, token))).Build());
+
+        // An ability's task that records three steps of its run's time, a frame apart
+        [Serializable]
+        private sealed class StepRecorder : AbstractAbilityTask
+        {
+            public readonly List<float> Recorded = new();
+
+            public override bool IsCriticalSection => false;
+
+            public override UniTask Activate(AbilityDataPacket data, System.Threading.CancellationToken token) => Steps(Recorded, token);
+        }
+
+        /// <summary>
+        /// An ability's Run Sequence task runs its sequence by the clock it picks in its inspector (EP-33, the user's word of
+        /// 2026-11-17): a Scaled pick at twice the caster's runs it at twice the caster's pace, and the ability's other task
+        /// in the stage keeps the caster's, as the pick is the sequence's run's alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_33_A_Run_Sequence_task_runs_its_sequence_by_the_clock_it_picks([Values] Hub hub) => Live(async () =>
+        {
+            using var game = new GameClock(0.125f, 0.125f);
+            sequenceSteps.Clear();
+            var run = new RunSequenceTask
+            {
+                Sequence = new TaskSequenceReference(typeof(SequenceClockTests).GetMethod(nameof(StepRecording))),
+                Clock = new ScaledClockChoice { Scale = 2f }
+            };
+            var beside = new StepRecorder();
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(Make.Ability("Picked", Make.Stage(run, beside)), 1, out int index), "the entity knows it");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "the ability activates");
+
+            await Frames.Until(() => !abilities.IsExecuting, 20, "the ability's stage ends");
+            Assert.That(sequenceSteps, Has.Count.EqualTo(3).And.All.EqualTo(0.25f).Within(1e-5f),
+                "its sequence by the clock it picks, twice the caster's");
+            Assert.That(beside.Recorded, Has.Count.EqualTo(3).And.All.EqualTo(0.125f).Within(1e-5f),
+                "and the ability's other task by the caster's");
+        });
+
+        /// <summary>A chain's clock is each of its sequences' runs' own (EP-33).</summary>
+        [UnityTest]
+        public IEnumerator EP_33_A_chain_runs_its_sequences_by_its_clock() => Live(async () =>
+        {
+            using var game = new GameClock(0.125f, 0.125f);
+            var first = new List<float>();
+            var second = new List<float>();
+            var chain = new TaskSequence(TaskSequenceBuilder.Create("First").Stage(stage => stage.Task((_, token) => Steps(first, token))).Build())
+                .Then(next => next.WithName("Second").Stage(stage => stage.Task((_, token) => Steps(second, token))));
+            chain.Clock = new ScaledClock(2f);
+            ProcessControl.Register(chain).Run(out var relay);
+            World.Own(relay);
+
+            await Frames.Until(() => relay.State == EProcessState.Terminated, 20, "the chain ends");
+            Assert.That(first, Has.Count.EqualTo(3).And.All.EqualTo(0.25f).Within(1e-5f), "its first sequence by its clock");
+            Assert.That(second, Has.Count.EqualTo(3).And.All.EqualTo(0.25f).Within(1e-5f), "and its second");
+        });
+
+        /// <summary>A sequence's process runs it by its clock, an async run's and a synced runner's steps alike (EP-33).</summary>
+        [UnityTest]
+        public IEnumerator EP_33_A_sequence_process_runs_by_its_clock() => Live(async () =>
+        {
+            using var game = new GameClock(0.125f, 0.125f);
+            var asyncSteps = new List<float>();
+            var syncSteps = new List<float>();
+            var running = new TaskSequence(TaskSequenceBuilder.Create("Async").Stage(stage => stage.Task((_, token) => Steps(asyncSteps, token))).Build());
+            var synced = new TaskSequence(TaskSequenceBuilder.Create("Synced")
+                .WithLifecycle(EProcessLifecycle.Synchronous, EProcessStepTiming.Update)
+                .Stage(stage => stage.SyncTask((_, deltaTime) =>
+                {
+                    syncSteps.Add(deltaTime);
+                    return syncSteps.Count >= 3;
+                }))
+                .Build());
+            foreach (var sequence in new[] { running, synced })
+            {
+                ProcessControl.Register(new TaskSequenceProcess(sequence) { Clock = new ScaledClock(2f) }).Run(out var relay);
+                World.Own(relay);
+            }
+
+            await Frames.Until(() => asyncSteps.Count >= 3 && syncSteps.Count >= 3, 10, "both take three steps");
+            Assert.That(asyncSteps, Has.All.EqualTo(0.25f).Within(1e-5f), "the async run by the process's clock");
+            Assert.That(syncSteps, Has.All.EqualTo(0.25f).Within(1e-5f), "and the synced runner's steps");
+        });
+
         // Records three steps of a task's time, a frame apart
         private static async UniTask Steps(List<float> steps, System.Threading.CancellationToken token)
         {

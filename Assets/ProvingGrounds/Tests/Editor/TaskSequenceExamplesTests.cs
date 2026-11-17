@@ -57,7 +57,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             typeof(SkipAndMaintainInjection), typeof(StopMaintainedLastInjection), typeof(StopMaintainedAtIndexInjection),
             typeof(StopMaintainedAllInjection), typeof(JumpToStageInjection), typeof(BreakStageRepeatInjection),
             typeof(ChainInterruptInjection), typeof(TaskSequenceProcess), typeof(TaskSequenceReference),
-            typeof(SequenceTimeout), typeof(UnscaledClock), typeof(ScaledClock)
+            typeof(SequenceTimeout), typeof(UnscaledClock), typeof(ScaledClock), typeof(AbstractClockChoice)
         };
 
         /// <summary>
