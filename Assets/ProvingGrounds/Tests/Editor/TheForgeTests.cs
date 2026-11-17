@@ -176,6 +176,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
+        /// The detail pane's summary says the shown asset's problems, and went on saying one after it was fixed (ED-88, the
+        /// user's report of 2026-11-17): it was filled again only as the shown asset changed, and the validator checks an
+        /// edit after that, so it read the problems from before; and a problem another asset fixes, as an effect that
+        /// deals the impact type an On Hit filters for, never filled it again at all. It's filled again as the validator's
+        /// problems change.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_88_The_summary_drops_a_problem_once_its_fixed() => Guarded(ED_88_The_summary_drops_a_problem_once_its_fixedBody());
+
+        private IEnumerator ED_88_The_summary_drops_a_problem_once_its_fixedBody()
+        {
+            const string NeverMatches = "never matches";
+            var frost = Tag.Generate("Test.ED88.Frost");
+            var dagger = ScriptableObject.CreateInstance<Item>();
+            dagger.Definition.Name = "Frost Dagger";
+            dagger.OnHit.Add(new OnHitEntry { ImpactTypes = new List<Tag> { frost } });
+            Save(dagger, "Frost Dagger");
+            ForgeLint.Forget();
+            var forge = Open();
+            yield return Frames();
+            TheForge.OpenToAsset(dagger);
+            yield return Frames();
+            StringAssert.Contains(NeverMatches, ProblemsLine(forge), "the summary says no effect deals the type its On Hit filters for");
+
+            // An effect that deals it, made elsewhere: the dagger itself doesn't change
+            var chill = ScriptableObject.CreateInstance<GameplayEffect>();
+            chill.Definition = new GameplayEffectDefinition { Name = "Chill", Textures = new List<TextureItem>() };
+            chill.Tags = new GameplayEffectTags { AssetTag = Tag.Generate("Test.ED88.Chill"), ContextTags = new List<Tag>(), GrantedTags = new List<Tag>() };
+            chill.ImpactSpecification ??= new GameplayEffectImpact();
+            chill.ImpactSpecification.ImpactTypes = new List<Tag> { frost };
+            Save(chill, "Chill");
+            for (int i = 0; i < 12 && ForgeValidator.ProblemsOf(dagger).Any(problem => problem.Message.Contains(NeverMatches)); i++)
+                yield return null;
+            Assume.That(ForgeValidator.ProblemsOf(dagger).Select(problem => problem.Message), Has.None.Contains(NeverMatches),
+                "the validator has checked the project again");
+            yield return Frames();
+            Assert.That(ProblemsLine(forge), Does.Not.Contain(NeverMatches), "and the summary drops the problem");
+        }
+
+        // What the detail pane's summary says of the shown asset's problems, or "" where it says none
+        private static string ProblemsLine(TheForge forge) =>
+            forge.rootVisualElement.Q("Detail")?.Q("Summary")?.Query(className: "pf-forge__summary-row").ToList()
+                .Where(row => row.Q<Label>(className: "pf-forge__summary-label")?.text == "Problems")
+                .Select(row => row.Q<Label>(className: "pf-forge__summary-value")?.text).FirstOrDefault() ?? "";
+
+        /// <summary>
         /// The Visualizer was blank for items and sets, and after a domain reload (ED-9). The detail pane's summary
         /// shows each type, and the window keeps its selection, which a reload restores.
         /// </summary>
