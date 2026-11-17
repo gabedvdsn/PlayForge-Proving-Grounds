@@ -46,7 +46,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             (typeof(ScalerAsset), "Scaler asset"), (typeof(ValuePipeline), "Value Pipeline"), (typeof(EffectModifier), "Effect Modifier"),
             (typeof(RequirementTemplate), "Requirement Template"), (typeof(CrowdControlRules), "Crowd Control Rules"),
-            (typeof(ForgeTagLibrary), "Tag Library"), (typeof(ForgeProject), "Forge Project"),
+            (typeof(ForgeTagLibrary), "Tag Library"), (typeof(ForgeProject), "Forge Project"), (typeof(CueLibrary), "Cue Library"),
         };
 
         public sealed class SmokeProcess : AbstractMonoProcess
@@ -191,8 +191,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static Object NewAsset(List<Object> made, Type type) => Keep(made, ScriptableObject.CreateInstance(type));
 
-        // An asset with something to edit: a new Crowd Control Rules or Tag Library has an empty list, so it's given a first
-        // element (FN-12)
+        // An asset with something to edit: a new Crowd Control Rules, Tag Library or Cue Library has an empty list, so it's
+        // given a first element (FN-12, EP-52)
         private static Object Filled(Object asset)
         {
             switch (asset)
@@ -202,6 +202,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     break;
                 case ForgeTagLibrary library:
                     library.Entries.Add(new ForgeTagLibrary.Entry { Name = "Smoke.Tag" });
+                    break;
+                case CueLibrary cues:
+                    cues.Routes.Add(new CueRoute { Tag = Tag.Generate("Smoke.Cue") });
                     break;
             }
             return asset;

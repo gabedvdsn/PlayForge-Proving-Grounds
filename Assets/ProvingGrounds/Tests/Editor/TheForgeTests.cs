@@ -1186,7 +1186,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 typeof(Ability), typeof(GameplayEffect), typeof(Item), typeof(Attribute), typeof(AttributeSet), typeof(EntityIdentity),
                 typeof(ScalerAsset), typeof(RequirementTemplate), typeof(ValuePipeline), typeof(EffectModifier), typeof(CrowdControlRules),
-                typeof(ForgeTagLibrary), typeof(ForgeProject), typeof(Lab.LabRules), typeof(Lab.LabDriver),
+                typeof(ForgeTagLibrary), typeof(ForgeProject), typeof(Lab.LabRules), typeof(Lab.LabDriver), typeof(CueLibrary),
             };
             foreach (var type in types)
             {
