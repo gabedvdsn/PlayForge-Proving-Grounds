@@ -117,6 +117,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         private static string Starts(Dictionary<string, float> starts) =>
             string.Join(", ", starts.Select(each => $"{each.Key} {each.Value:0.#}"));
 
+        // Frames until a condition holds or some seconds have gone, the player loop queued each frame, as a runtime panel
+        // runs its bindings and its layout in the player loop, which edit mode runs only when asked
+        private static IEnumerator Until(Func<bool> done, double seconds)
+        {
+            double until = EditorApplication.timeSinceStartup + seconds;
+            while (EditorApplication.timeSinceStartup < until && !done())
+            {
+                EditorApplication.QueuePlayerLoopUpdate();
+                yield return null;
+            }
+        }
+
+        // An element and what it holds, a few levels down, by type, name and classes, for a failure to say what was drawn
+        private static string Tree(VisualElement element, int depth) => element == null ? "null"
+            : $"{element.GetType().Name}#{element.name}[{string.Join(" ", element.GetClasses())}]"
+              + (depth > 0 && element.childCount > 0 ? "{" + string.Join(", ", element.Children().Select(child => Tree(child, depth - 1))) + "}" : "");
+
         // Frames until every row is drawn, as Unity binds an inspector in slices of 50 ms, or five seconds have gone
         private static IEnumerator Drawn(VisualElement inspector, IEnumerable<string> rows)
         {
@@ -227,6 +244,164 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 Object.DestroyImmediate(scaler);
                 Object.DestroyImmediate(effect);
+            }
+        }
+
+        // An effect whose Duration reads an × Attribute scaler
+        private static GameplayEffect AttributeDurationEffect()
+        {
+            var effect = ScriptableObject.CreateInstance<GameplayEffect>();
+            effect.name = "ED-89 Effect";
+            effect.DurationSpecification = new GameplayEffectDuration
+            {
+                DurationPolicy = EEffectDurationPolicy.Durational,
+                DurationOperation = new ScalableFloat { RealMagnitude = EMagnitudeOperation.UseScaler, Scaler = new AttributeBackedScaler() },
+            };
+            return effect;
+        }
+
+        // The block an × Attribute scaler's fields sit on, its rows drawn, once Unity has bound the inspector down to it:
+        // each level of drawers nested in an inspector binds in a later update, and the kind's fields, made after the
+        // inspector was bound, are bound as the Inspector binds them
+        private static IEnumerator ScalerBlock(VisualElement inspector, SerializedObject serialized, string[] rows, Action<VisualElement> found)
+        {
+            VisualElement Block() => inspector.Query(className: "pf-scaler-block").ToList().FirstOrDefault(each => each.Q(name: "CaptureAttribute") != null);
+            yield return Until(() => Block() != null, 30);
+            var block = Block();
+            Assert.IsNotNull(block, "the scaler's fields sit on its block");
+            block.Bind(serialized);
+            yield return Until(() => rows.All(row => block.Q(name: row) is { } each && StartOf(each) < float.MaxValue), 30);
+            yield return null;
+            found(block);
+        }
+
+        /// <summary>
+        /// An × Attribute scaler's block: its Combine, its fields, its Groups and its Behaviours each start in one column
+        /// (ED-89, the user's screenshot of 2026-11-17). Groups, a class drawn as Unity draws one, hung its arrow 12 px into
+        /// the margin, out to the block's edge and to the left of Behaviours' arrow.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_89_An_attribute_scalers_rows_start_in_one_column()
+        {
+            var effect = AttributeDurationEffect();
+            UnityEditor.Editor editor = null;
+            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Editor.GameplayEffectEditor), "Duration");
+            using var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                editor = UnityEditor.Editor.CreateEditor(effect);
+                var inspector = host.Add(new InspectorElement(editor));
+                var rows = new[] { "Combine", "CaptureAttribute", "CaptureFrom", "CaptureWhen", "CaptureWhat", "Groups", "ReadAs", "Behaviours" };
+                VisualElement block = null;
+                yield return ScalerBlock(inspector, editor.serializedObject, rows, found => block = found);
+
+                var starts = rows.ToDictionary(row => row, row => block.Q(name: row) is { } found ? StartOf(found) : float.NaN);
+                Assert.That(starts.Values, Has.None.NaN.And.None.EqualTo(float.MaxValue), $"each row is drawn: {Starts(starts)}");
+                Assert.That(starts.Values.Max() - starts.Values.Min(), Is.LessThan(Tolerance), $"each starts in one column: {Starts(starts)}");
+            }
+            finally
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// A read's list of groups shows only for the reads that name groups, Only These and All But These, as its
+        /// [ForgeShowWhen] says (ED-89). Unity's drawing of the class showed it whatever Read said. Each read is drawn
+        /// afresh: a runtime panel in edit mode doesn't poll the object for a change, which shows or hides it as one's made.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_89_A_reads_list_of_groups_shows_only_for_the_reads_that_name_groups([Values] ERetentionGroupRead reads)
+        {
+            var effect = AttributeDurationEffect();
+            ((AttributeBackedScaler)effect.DurationSpecification.DurationOperation.Scaler).Groups = new RetentionGroups { Read = reads };
+            UnityEditor.Editor editor = null;
+            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Editor.GameplayEffectEditor), "Duration");
+            using var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                editor = UnityEditor.Editor.CreateEditor(effect);
+                // Groups open, as a user opens it
+                var groups = editor.serializedObject.FindProperty("DurationSpecification.DurationOperation.Scaler.Groups");
+                Assert.IsNotNull(groups, "the scaler's Groups");
+                groups.isExpanded = true;
+                var inspector = host.Add(new InspectorElement(editor));
+                VisualElement block = null;
+                yield return ScalerBlock(inspector, editor.serializedObject, new[] { "Groups" }, found => block = found);
+
+                // Its fields, bound as the Inspector binds them where they bind late
+                var row = block.Q(name: "Groups");
+                VisualElement Field(string path) => row.Query<PropertyField>().ToList()
+                    .FirstOrDefault(each => each.bindingPath != null && each.bindingPath.EndsWith(path));
+                yield return Until(() => Field(".Groups.Read") is { } drawn && Shown(drawn), 10);
+                if (!(Field(".Groups.Read") is { } first && Shown(first)))
+                {
+                    row.Bind(editor.serializedObject);
+                    yield return Until(() => Field(".Groups.Read") is { } drawn && Shown(drawn), 10);
+                }
+                yield return null;
+                Assume.That(Field(".Groups.Read") is { } read && Shown(read),
+                    $"Groups' Read is drawn: {Tree(row, 4)}; open {row.Q<Foldout>()?.value}; Read at {Field(".Groups.Read")?.worldBound}");
+                bool shown = Field(".Groups.Groups") is { } list && Shown(list);
+                bool names = reads != ERetentionGroupRead.All;
+                Assert.That(shown, Is.EqualTo(names), names
+                    ? $"{reads} names its groups, so its list of groups shows"
+                    : "All reads every group and names none, so its list of groups is hidden");
+            }
+            finally
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(effect);
+            }
+        }
+
+        /// <summary>
+        /// An ability's Turn To Face: its Turns and its Turn start in one column (ED-89, the user's word of 2026-11-17).
+        /// Turn, a class drawn as Unity draws one, hung its arrow into the margin, to the left of Turns' label.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_89_Turn_To_Faces_rows_start_in_one_column()
+        {
+            var ability = ScriptableObject.CreateInstance<Ability>();
+            ability.name = "ED-89 Ability";
+            ability.Components = new List<AbstractAbilityComponent> { new TurnToFaceAbilityComponent() };
+            UnityEditor.Editor editor = null;
+            using var open = new OpenSection(typeof(FarEmerald.PlayForge.Editor.AbilityEditor), "Components");
+            using var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                editor = UnityEditor.Editor.CreateEditor(ability);
+                // Its component open, as the user's was
+                var element = editor.serializedObject.FindProperty("Components.Array.data[0]");
+                Assert.IsNotNull(element, "the ability's component");
+                element.isExpanded = true;
+                var inspector = host.Add(new InspectorElement(editor));
+                var rows = new[] { "Turns", "Turn" };
+
+                // The component's fields, once Unity has bound the inspector down to them
+                VisualElement Fields() => inspector.Query(name: "TypeFields").ToList().FirstOrDefault(each => each.Q(name: "Turns") != null);
+                yield return Until(() => Fields() != null, 30);
+                var fields = Fields();
+                Assert.IsNotNull(fields, "the component's fields are drawn");
+                fields.Bind(editor.serializedObject);
+                yield return Until(() => rows.All(row => fields.Q(name: row) is { } each && StartOf(each) < float.MaxValue), 30);
+                yield return null;
+
+                var starts = rows.ToDictionary(row => row, row => fields.Q(name: row) is { } found ? StartOf(found) : float.NaN);
+                Assert.That(starts.Values, Has.None.NaN.And.None.EqualTo(float.MaxValue), $"each row is drawn: {Starts(starts)}; {Tree(fields, 3)}");
+                Assert.That(starts.Values.Max() - starts.Values.Min(), Is.LessThan(Tolerance), $"each starts in one column: {Starts(starts)}");
+            }
+            finally
+            {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(ability);
             }
         }
     }
