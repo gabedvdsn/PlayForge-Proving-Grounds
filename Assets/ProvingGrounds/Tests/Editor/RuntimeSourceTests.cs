@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
@@ -148,6 +149,90 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "an ability's activation rule declares its own Validate");
             var proxy = Path.GetFullPath("Packages/com.faremerald.playforge/Runtime/PlayForge/Utils/RuntimeProxy.cs");
             Assert.IsFalse(File.Exists(proxy), "RuntimeProxy's commented-out file is gone");
+        }
+
+        // The core: the code every component of PlayForge's and of a project's goes through, which may need no special case
+        // for one: the GAS's core, an ability's spec, the ability and effect systems, purging, items, the ability proxy and
+        // the targeting tasks; and in the editor, the Problems view's rules and the ability inspector
+        private static readonly string[] Core =
+        {
+            "Runtime/PlayForge/GAS/Core/GASCore.cs",
+            "Runtime/PlayForge/AbilitySystem/Core/AbilitySpec.cs",
+            "Runtime/PlayForge/AbilitySystem/Core/AbilitySystemComponent.cs",
+            "Runtime/PlayForge/GAS/Core/EffectSystemComponent.cs",
+            "Runtime/PlayForge/GameplayEffect/Core/Purging.cs",
+            "Runtime/PlayForge/ItemSystem/Item/Item.cs",
+            "Runtime/PlayForge/AbilitySystem/Ability/AbilityProxy/Core/AbilityProxy.cs",
+            "Runtime/PlayForge/AbilitySystem/Tasks/Targeting",
+            "Editor/Problems/ForgeRules.cs",
+            "Editor/Inspectors/AbilityEditor.cs",
+        };
+
+        // A type declared in a namespace, not one nested in a type, which is its own
+        private static readonly Regex DeclaredType = new(@"(?m)^ {0,4}(?:public |internal )?(?:sealed |static |abstract |partial |readonly )*(?:class|struct|enum|interface) (\w+)");
+        private static readonly Regex Extension = new(@"\bstatic\s+[\w<>\[\],.?\s]+?\s+(\w+)\s*(?:<[^>]*>)?\s*\(\s*this\b");
+
+        /// <summary>
+        /// The core named the components it served, Toggle, Charges and Cast Range in an ability's spec and its proxy, the
+        /// auras and the Respawn's wait in the GAS's core, the toggle in purging, the auras in items and the effect
+        /// system, and the components' rules in the Problems view and the ability inspector, so a component of a project's
+        /// own couldn't reach as far (EP-37 to EP-41, the user's question of 2026-11-17). It names none: no component or
+        /// entity service, by its class, and nothing declared beside a component, its helpers and its shortcuts.
+        /// </summary>
+        [Test]
+        public void EP_41_The_core_names_no_component()
+        {
+            var package = Path.GetFullPath("Packages/com.faremerald.playforge");
+            var runtime = typeof(Ability).Assembly;
+            var service = runtime.GetType("FarEmerald.PlayForge.AbstractEntityService");
+            var named = new HashSet<string>();
+            foreach (var type in runtime.GetTypes())
+            {
+                if (type.IsAbstract) continue;
+                if (typeof(AbstractForgeComponent).IsAssignableFrom(type) || (service != null && service.IsAssignableFrom(type))) named.Add(type.Name);
+            }
+            var components = new HashSet<string>(named);
+            Assert.That(components, Has.Member(nameof(ToggleAbilityComponent)).And.Member(nameof(RespawnEntityComponent)), "the components are found");
+
+            // Each file that declares a component: what it declares, and the shortcuts it gives
+            foreach (var file in Directory.GetFiles(Path.Combine(package, "Runtime"), "*.cs", SearchOption.AllDirectories))
+            {
+                var code = CodeOfFile(file);
+                bool declaresOne = false;
+                foreach (Match declared in DeclaredType.Matches(code)) declaresOne |= components.Contains(declared.Groups[1].Value);
+                if (!declaresOne) continue;
+                foreach (Match declared in DeclaredType.Matches(code)) named.Add(declared.Groups[1].Value);
+                foreach (Match shortcut in Extension.Matches(code)) named.Add(shortcut.Groups[1].Value);
+            }
+
+            var anyNamed = new Regex($@"\b(?:{string.Join("|", named.Select(Regex.Escape))})\b");
+            var found = new List<string>();
+            foreach (var part in Core)
+            {
+                var path = Path.Combine(package, part);
+                var files = Directory.Exists(path) ? Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories) : new[] { path };
+                foreach (var file in files)
+                {
+                    Assert.That(File.Exists(file), Is.True, $"the core's {part} is at {file}");
+                    var lines = File.ReadAllLines(file);
+                    bool inBlock = false;
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var match = anyNamed.Match(CodeOf(lines[i], ref inBlock));
+                        if (match.Success) found.Add($"{Path.GetFileName(file)}:{i + 1}: {match.Value}");
+                    }
+                }
+            }
+            Assert.That(found, Is.Empty, $"the core names no component, nor what's declared beside one: {string.Join("; ", found)}");
+        }
+
+        // A file's code, without its comments and string literals
+        private static string CodeOfFile(string file)
+        {
+            var code = new StringBuilder();
+            bool inBlock = false;
+            foreach (var line in File.ReadAllLines(file)) code.AppendLine(CodeOf(line, ref inBlock));
+            return code.ToString();
         }
     }
 }
