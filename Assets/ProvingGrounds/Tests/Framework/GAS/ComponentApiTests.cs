@@ -237,5 +237,189 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Touch") == 1, 30, "picked the other, it runs");
             Assert.IsTrue(Marked(open), "at the one picked");
         });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // EP-38: a cooldown model, a usage taken over, checks waived, effects claimed
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>A cooldown model of a project's own: so many rounds, which never come back.</summary>
+        [Serializable]
+        private sealed class Ammo : AbstractAbilityComponent, ICooldownModel
+        {
+            public int Rounds = 2;
+
+            private sealed class Fired
+            {
+                public int Count;
+            }
+
+            public int Max(AbilitySpec spec) => Rounds;
+            public int InHand(AbilitySpec spec) => Rounds - spec.ComponentStates.Of<Fired>(this).Count;
+            public void Spend(AbilitySpec spec, ProcessDataPacket data) => spec.ComponentStates.Of<Fired>(this).Count++;
+            public string NoneInHand(AbilitySpec spec) => "It's out of rounds";
+        }
+
+        /// <summary>
+        /// While its caster holds a tag, it waives its ability's cost and cooldown and takes over its usage, paying nothing
+        /// and starting no cooldown, as a toggle turning off does; it counts the commits it hears.
+        /// </summary>
+        [Serializable]
+        private sealed class Overdrive : AbstractAbilityComponent
+        {
+            public Tag While;
+
+            private sealed class Commits
+            {
+                public int Count;
+            }
+
+            private bool On(AbilityComponentContext ctx) => ctx.Source != null && ctx.Source.GetTagWeight(While) > 0;
+
+            public override EUsageCheck Waives(AbilityComponentContext ctx) => On(ctx) ? EUsageCheck.Cost | EUsageCheck.Cooldown : EUsageCheck.None;
+
+            public override bool ApplyUsage(AbilityComponentContext ctx) => On(ctx);
+
+            public override void Commit(AbilityComponentContext ctx) => ctx.GetState<Commits>(this).Count++;
+
+            public int CommitsOf(AbilitySpec spec) => spec.ComponentStates.Of<Commits>(this).Count;
+        }
+
+        /// <summary>A stance of a project's own: its effect on its caster as it starts, which it claims as a toggle's.</summary>
+        [Serializable]
+        private sealed class Stance : AbstractAbilityComponent
+        {
+            public GameplayEffect Effect;
+
+            public override void Start(AbilityComponentContext ctx) => ctx.Source?.ApplyCarrier(ctx.Spec.GenerateUsageEffect(Effect, ctx.Data));
+
+            public override EEffectCategory CategoryOf(AbilityComponentContext ctx, GameplayEffectSpec effect) =>
+                Effect != null && ReferenceEquals(effect?.Base, Effect) ? EEffectCategory.Toggle : EEffectCategory.None;
+        }
+
+        // A caster of a side with Mana, on either hub
+        private IGameplayAbilitySystem Caster(Hub hub, ForgeAttribute mana, float amount)
+        {
+            var set = Make.Set(Make.Element(health, 100f, 100f, EAttributeOverflowPolicy.ZeroToBase), Make.Element(mana, amount, 100f));
+            if (hub == Hub.Runtime)
+            {
+                var runtime = new RuntimeGameplayAbilitySystem(Make.RuntimeIdentity("Caster", set));
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, "Caster");
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        // Over as it's asked for, so several uses in a frame don't overlap
+        private Ability Quick(string name, params AbstractAbilityComponent[] components)
+        {
+            var ability = Make.Ability(name, Make.Stage(new ProbeAbilityTask(World, name)));
+            ability.Components.AddRange(components);
+            return ability;
+        }
+
+        private GameplayEffect Lasting(string name, float seconds) =>
+            Make.Effect(name, new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = seconds });
+
+        private static AbilitySpec SpecOf(IGameplayAbilitySystem gas, Ability ability) =>
+            gas.GetAbilitySystem().TryGetAbilityContainer(ability, out var container) ? container.Spec : null;
+
+        private static bool Carries(IGameplayAbilitySystem gas, GameplayEffect effect) => gas.GetTagCache().GetWeight(effect.Tags.AssetTag) > 0;
+
+        private static float Value(IGameplayAbilitySystem gas, ForgeAttribute attribute) =>
+            gas.TryGetAttributeValue(attribute, out var value) ? value.CurrentValue : float.NaN;
+
+        /// <summary>
+        /// A cooldown model of a project's own is its ability's, as Charges is: the Cooldown check asks it what's in hand,
+        /// and a use spends through it, the ability's own Cooldown never started. The core knew the charges alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_38_A_cooldown_model_of_ones_own_says_what_is_in_hand([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            var caster = Caster(hub, mana, 100f);
+            var ammo = new Ammo { Rounds = 2 };
+            var shot = Quick("Shot", ammo);
+            shot.Cooldown = Lasting("Shot Cooldown", 30f);
+            await Frames.Step();
+            Assert.IsTrue(caster.GetAbilitySystem().GiveAbility(shot, 1, out _), "known");
+            var spec = SpecOf(caster, shot);
+
+            Assert.AreSame(ammo, spec.CooldownModel, "its cooldown model is its ammunition");
+            Assert.AreEqual(2, spec.CooldownModel.InHand(spec), "two rounds in hand");
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, shot).Reason, "one");
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, shot).Reason, "two");
+            Assert.IsFalse(Carries(caster, shot.Cooldown), "its own Cooldown never started: the model spends");
+            Assert.AreEqual(0, spec.CooldownModel.InHand(spec), "none left");
+            Assert.AreEqual(EActivationRefusal.Cooldown, Activate(caster, shot).Reason, "so the Cooldown check refuses it");
+
+            var plain = Quick("Plain");
+            Assert.IsTrue(caster.GetAbilitySystem().GiveAbility(plain, 1, out _));
+            Assert.IsInstanceOf<SingleCooldown>(SpecOf(caster, plain).CooldownModel, "with none, the single cooldown");
+        });
+
+        /// <summary>
+        /// A component may take over its ability's usage and waive its cost and its cooldown, as a Toggle does while it's on:
+        /// overdriven, the ability is used again and again with Mana it can't pay and nothing paid, its commits still heard;
+        /// out of it, it pays and cools down. The core knew the Toggle alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_38_A_component_may_take_over_the_usage_and_waive_its_checks([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            var overdriven = Make.NewTag("Test.EP38.Overdriven");
+            var caster = Caster(hub, mana, 5f);
+            var overdrive = new Overdrive { While = overdriven };
+            var nova = Quick("Nova", overdrive);
+            nova.AttributeCosts.Add(new AttributeCost { Attribute = mana, Amount = 10f });
+            nova.Cooldown = Lasting("Nova Cooldown", 30f);
+            await Frames.Step();
+            Assert.IsTrue(caster.GetAbilitySystem().GiveAbility(nova, 1, out _), "known");
+            var spec = SpecOf(caster, nova);
+
+            Assert.AreEqual(EActivationRefusal.Cost, Activate(caster, nova).Reason, "with 5 Mana it can't pay its 10");
+            caster.AddLooseTag(overdriven);
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, nova).Reason, "overdriven, its cost is waived");
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, nova).Reason, "and used again");
+            Assert.AreEqual(5f, Value(caster, mana), 0.01f, "paying nothing");
+            Assert.IsFalse(Carries(caster, nova.Cooldown), "and starting no cooldown");
+            Assert.AreEqual(2, overdrive.CommitsOf(spec), "each commit heard");
+
+            caster.RemoveLooseTag(overdriven);
+            caster.TryModifyAttribute(mana, SourcedModifiedAttributeValue.GenerateSimple(caster, mana, 20f, 0f));
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, nova).Reason, "out of it, with Mana, it's used");
+            Assert.AreEqual(15f, Value(caster, mana), 0.01f, "paying");
+            Assert.IsTrue(Carries(caster, nova.Cooldown), "and cooling down");
+            Assert.AreEqual(EActivationRefusal.Cooldown, Activate(caster, nova).Reason, "so it's refused");
+            Assert.AreEqual(3, overdrive.CommitsOf(spec), "its third commit heard");
+        });
+
+        /// <summary>
+        /// A component claims the effects its ability puts on, for a purge: a stance of a project's own claims its effect
+        /// as a Toggle's, as the Toggle does its own. The core compared the Toggle's effect alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_38_A_component_claims_the_effects_its_ability_puts_on([Values] Hub hub) => Live(async () =>
+        {
+            var mana = Make.Attribute("Mana");
+            var caster = Caster(hub, mana, 100f);
+            var guard = Make.Effect("Guard", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
+            var shield = Make.Effect("Shield", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
+            var stance = Quick("Stance", new Stance { Effect = guard });
+            var toggle = Quick("Toggle", new ToggleAbilityComponent { Effect = shield });
+            await Frames.Step();
+            Assert.IsTrue(caster.GetAbilitySystem().GiveAbility(stance, 1, out _) && caster.GetAbilitySystem().GiveAbility(toggle, 1, out _), "known");
+
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, stance).Reason);
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, toggle).Reason);
+            await Frames.Step(2);
+            Assert.IsTrue(caster.TryGetEffectContainer(guard, out var guarding), "the stance's effect is on");
+            Assert.AreEqual(EEffectCategory.Toggle, ForgePurge.CategoriesOf(guarding, caster), "claimed as a toggle's");
+            Assert.IsTrue(caster.TryGetEffectContainer(shield, out var shielding), "the toggle's effect is on");
+            Assert.AreEqual(EEffectCategory.Toggle, ForgePurge.CategoriesOf(shielding, caster), "claimed as its own");
+        });
     }
 }
