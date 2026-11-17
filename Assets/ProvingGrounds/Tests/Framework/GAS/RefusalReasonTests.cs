@@ -122,7 +122,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             var range = Refused(gas, bolt, Handing(far));
             Assert.AreEqual(EActivationRefusal.Range, range.Reason, "a target 8 away is beyond Bolt's 5");
-            Assert.AreEqual(ForgeCastRange.Refusal, range.Detail, "in its Cast Range's words");
+            Assert.AreEqual(CastRangeAbilityComponent.OutOfRange, range.Detail, "in its Cast Range's words");
 
             Assert.That(told.Select(each => each.Detail), Is.EqualTo(new[] { cooling.Detail, cost.Detail, level.Detail, range.Detail }),
                 "the callbacks tell the same words");
