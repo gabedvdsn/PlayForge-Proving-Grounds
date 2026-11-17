@@ -339,9 +339,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 VisualElement Field(string path) => row.Query<PropertyField>().ToList()
                     .FirstOrDefault(each => each.bindingPath != null && each.bindingPath.EndsWith(path));
                 yield return Until(() => Field(".Groups.Read") is { } drawn && Shown(drawn), 10);
-                if (!(Field(".Groups.Read") is { } first && Shown(first)))
+                // A field still unbuilt, as one is under a whole suite's load, bound itself as the Inspector binds it
+                for (int attempt = 0; attempt < 3 && !(Field(".Groups.Read") is { } built && Shown(built)); attempt++)
                 {
-                    row.Bind(editor.serializedObject);
+                    foreach (var unbuilt in row.Query<PropertyField>().ToList().Where(each => each.childCount == 0))
+                        unbuilt.Bind(editor.serializedObject);
                     yield return Until(() => Field(".Groups.Read") is { } drawn && Shown(drawn), 10);
                 }
                 yield return null;
