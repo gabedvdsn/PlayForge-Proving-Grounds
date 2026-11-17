@@ -552,9 +552,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 var at = summoner.Position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.4f;
                 var imp = Enlist(EClass.Imp, summoner.Team, at, $"{TeamNames[summoner.Team]} Imp {++summonCount}");
                 var gas = imp.Gas;
-                gas.GetCallbacks().OnEffectRemoved += effect =>
+                gas.GetCallbacks().OnEffectRemoved += spec =>
                 {
-                    if (effect == summoned && imp != null && imp.Alive) gas.MarkDead();
+                    if (spec?.Base == summoned && imp != null && imp.Alive) gas.MarkDead();
                 };
                 world.Apply(caster, gas, summoned);
                 BattleFlash.Ring(at, 0.9f, new Color(0.78f, 0.55f, 1f), 0.5f);

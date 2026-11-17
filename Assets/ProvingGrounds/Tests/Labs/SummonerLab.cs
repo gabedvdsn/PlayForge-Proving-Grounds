@@ -73,9 +73,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             relays[imp] = registration.Relay;
             Imps.Add(imp);
 
-            imp.GetCallbacks().OnEffectRemoved += effect =>
+            imp.GetCallbacks().OnEffectRemoved += spec =>
             {
-                if (effect == Summoned) imp.MarkDead();
+                if (spec?.Base == Summoned) imp.MarkDead();
             };
             world.Apply(Summoner, imp, Summoned);
             world.Apply(Summoner, imp, Bond);
