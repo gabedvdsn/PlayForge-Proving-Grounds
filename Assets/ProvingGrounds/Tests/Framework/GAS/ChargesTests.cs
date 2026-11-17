@@ -79,7 +79,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             gas.TryGetAttributeValue(attribute, out var value) ? value.CurrentValue : float.NaN;
 
         private static int InHand(IGameplayAbilitySystem gas, Ability ability) =>
-            gas.GetAbilitySystem().TryGetAbilityContainer(ability, out var container) ? container.Spec.Charges().InHand : -1;
+            gas.GetAbilitySystem().TryGetAbilityContainer(ability, out var container) ? container.Spec.CooldownModel.InHand(container.Spec) : -1;
 
         private static bool Carries(IGameplayAbilitySystem gas, GameplayEffect effect) => gas.GetTagCache().GetWeight(effect.Tags.AssetTag) > 0;
 

@@ -183,24 +183,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         public void EP_41_The_core_names_no_component()
         {
             var package = Path.GetFullPath("Packages/com.faremerald.playforge");
-            var runtime = typeof(Ability).Assembly;
-            var service = runtime.GetType("FarEmerald.PlayForge.AbstractEntityService");
-            var named = new HashSet<string>();
-            foreach (var type in runtime.GetTypes())
-            {
-                if (type.IsAbstract) continue;
-                if (typeof(AbstractForgeComponent).IsAssignableFrom(type) || (service != null && service.IsAssignableFrom(type))) named.Add(type.Name);
-            }
-            var components = new HashSet<string>(named);
+            var components = ComponentNames();
+            var named = new HashSet<string>(components);
             Assert.That(components, Has.Member(nameof(ToggleAbilityComponent)).And.Member(nameof(RespawnEntityComponent)), "the components are found");
 
-            // Each file that declares a component: what it declares, and the shortcuts it gives
-            foreach (var file in Directory.GetFiles(Path.Combine(package, "Runtime"), "*.cs", SearchOption.AllDirectories))
+            // Each file that declares a component: what it declares, and any shortcut it gives
+            foreach (var (_, code) in ComponentFiles(package, components))
             {
-                var code = CodeOfFile(file);
-                bool declaresOne = false;
-                foreach (Match declared in DeclaredType.Matches(code)) declaresOne |= components.Contains(declared.Groups[1].Value);
-                if (!declaresOne) continue;
                 foreach (Match declared in DeclaredType.Matches(code)) named.Add(declared.Groups[1].Value);
                 foreach (Match shortcut in Extension.Matches(code)) named.Add(shortcut.Groups[1].Value);
             }
@@ -224,6 +213,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 }
             }
             Assert.That(found, Is.Empty, $"the core names no component, nor what's declared beside one: {string.Join("; ", found)}");
+        }
+
+        /// <summary>
+        /// The components' shortcuts, extension methods beside them on the types they serve (an ability's charges and their
+        /// recharge, the effect it toggles and whether it's on, an entity's auras), were a second way to read a built-in
+        /// component that a project's own didn't get. The user chose to drop them before 1.0.0 (EP-45, Decision 90): code
+        /// reads a component through <c>Find&lt;T&gt;()</c> or the component itself, and an entity's service through
+        /// <c>GetService&lt;T&gt;()</c>. No file that declares a component or a service declares an extension method.
+        /// </summary>
+        [Test]
+        public void EP_45_A_component_gives_no_shortcuts()
+        {
+            var package = Path.GetFullPath("Packages/com.faremerald.playforge");
+            var files = ComponentFiles(package, ComponentNames()).ToList();
+            Assert.That(files.Select(file => Path.GetFileName(file.file)), Has.Member("AbilityComponents.cs").And.Member("Auras.cs"),
+                "the components' files are found");
+
+            var shortcuts = new List<string>();
+            foreach (var (file, code) in files)
+                foreach (Match shortcut in Extension.Matches(code)) shortcuts.Add($"{Path.GetFileName(file)}: {shortcut.Groups[1].Value}");
+            Assert.That(shortcuts, Is.Empty, $"a component is read through Find<T>() or itself, not a shortcut: {string.Join("; ", shortcuts)}");
+        }
+
+        // The runtime's components and entity services, by class name
+        private static HashSet<string> ComponentNames()
+        {
+            var runtime = typeof(Ability).Assembly;
+            var service = runtime.GetType("FarEmerald.PlayForge.AbstractEntityService");
+            var names = new HashSet<string>();
+            foreach (var type in runtime.GetTypes())
+            {
+                if (type.IsAbstract) continue;
+                if (typeof(AbstractForgeComponent).IsAssignableFrom(type) || (service != null && service.IsAssignableFrom(type))) names.Add(type.Name);
+            }
+            return names;
+        }
+
+        // Each runtime file that declares one of the components, with its code
+        private static IEnumerable<(string file, string code)> ComponentFiles(string package, HashSet<string> components)
+        {
+            foreach (var file in Directory.GetFiles(Path.Combine(package, "Runtime"), "*.cs", SearchOption.AllDirectories))
+            {
+                var code = CodeOfFile(file);
+                if (DeclaredType.Matches(code).Cast<Match>().Any(declared => components.Contains(declared.Groups[1].Value)))
+                    yield return (file, code);
+            }
         }
 
         // A file's code, without its comments and string literals
