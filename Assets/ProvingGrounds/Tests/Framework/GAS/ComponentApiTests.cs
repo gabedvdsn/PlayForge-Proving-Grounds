@@ -10,7 +10,7 @@ using ForgeAttribute = FarEmerald.PlayForge.Attribute;
 namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     /// <summary>
-    /// EP-37 to EP-39, the component API: the built-in components need no special case in the core, and a component of a
+    /// EP-37 to EP-39 and EP-48, the component API: the built-in components need no special case in the core, and a component of a
     /// project's own reaches as far as theirs. Each test gives an ability, an effect or an entity a component written here,
     /// on the public API alone, and finds it heard where a built-in's would be.
     /// </summary>
@@ -237,6 +237,61 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(EActivationRefusal.None, Activate(caster, touch, data).Reason);
             await Frames.Until(() => Ledger.Cleans("Touch") == 1, 30, "picked the other, it runs");
             Assert.IsTrue(Marked(open), "at the one picked");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // EP-48: a refused pick is told
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// A target its targeting picked that a component refuses is told as a refusal, as the kind the component says and
+        /// in its words: a Cast Range's pick beyond it as Range, and a component of a project's own as it says, a Rule
+        /// unless it says otherwise. The activation ended there untold, where a target handed beyond the range, or a Target
+        /// Check after targeting, was told. Its stage never runs and nothing of it is paid.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_48_A_refused_pick_is_told_as_its_component_says([Values] Hub hub) => Live(async () =>
+        {
+            var picked = Make.NewTag("Test.EP48.Picked");
+            var caster = At(hub, "Caster", red, 0f);
+            var far = At(hub, "Far", blue, 8f);
+            var guarded = At(hub, "Guarded", blue, 2f);
+            guarded.AddLooseTag(spared);
+            var bolt = Marking("Bolt", new AutoTargetFromDataTask { SourceKey = picked }, new CastRangeAbilityComponent { Range = 5f });
+            bolt.Cost = Make.Effect("Bolt Cost", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f });
+            var touch = Marking("Touch", new AutoTargetFromDataTask { SourceKey = picked }, new Untouchable { Spared = spared });
+            await Frames.Step();
+            var abilities = caster.GetAbilitySystem();
+            Assert.IsTrue(abilities.GiveAbility(bolt, 1, out int boltIndex), "Bolt known");
+            Assert.IsTrue(abilities.GiveAbility(touch, 1, out _), "Touch known");
+            var told = new List<ActivationRefusal>();
+            abilities.Callbacks.OnAbilityRefused += refusal => told.Add(refusal);
+
+            // The built-in: a Cast Range, its targeting's pick beyond it
+            var data = ProcessDataPacket.Default();
+            data.SetPrimary(picked, (ITarget)far);
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, bolt, data).Reason, "Bolt starts, its target not yet picked");
+            await Frames.Step(5);
+            Assert.AreEqual(0, Ledger.Prepares("Bolt"), "it picked one 8 away, beyond its 5: its stage never runs");
+            Assert.IsFalse(Marked(far), "nothing lands");
+            Assert.AreEqual(100f, caster.TryGetAttributeValue(health, out var value) ? value.CurrentValue : float.NaN, "and nothing is paid");
+            Assert.That(told, Has.Count.EqualTo(1), $"one refusal is told: {string.Join(", ", told)}");
+            Assert.AreEqual(EActivationRefusal.Range, told[0].Reason, "as Range, so an AI can walk closer and ask again");
+            Assert.AreEqual(CastRangeAbilityComponent.OutOfRange, told[0].Detail, "in its Cast Range's words");
+            Assert.AreSame(bolt, told[0].Ability, "for Bolt");
+            Assert.AreEqual(boltIndex, told[0].Index, "in its slot");
+
+            // A component of one's own, told as it says
+            told.Clear();
+            data = ProcessDataPacket.Default();
+            data.SetPrimary(picked, (ITarget)guarded);
+            Assert.AreEqual(EActivationRefusal.None, Activate(caster, touch, data).Reason, "Touch starts");
+            await Frames.Step(5);
+            Assert.AreEqual(0, Ledger.Prepares("Touch"), "it picked the spared one: its stage never runs");
+            Assert.That(told, Has.Count.EqualTo(1), $"one refusal is told: {string.Join(", ", told)}");
+            Assert.AreEqual(EActivationRefusal.Rule, told[0].Reason, "as a Rule, as its component says by default");
+            Assert.AreEqual("Its target can't be touched", told[0].Detail, "in its words");
+            Assert.AreSame(touch, told[0].Ability, "for Touch");
         });
 
         // ═══════════════════════════════════════════════════════════════════════════
