@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -420,6 +421,221 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.AreEqual(EEffectCategory.Toggle, ForgePurge.CategoriesOf(guarding, caster), "claimed as a toggle's");
             Assert.IsTrue(caster.TryGetEffectContainer(shield, out var shielding), "the toggle's effect is on");
             Assert.AreEqual(EEffectCategory.Toggle, ForgePurge.CategoriesOf(shielding, caster), "claimed as its own");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // EP-39: entity services, and what an effect lends while it lasts
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>A service of a project's own: heat that cools by its entity's own time, told of each revive and its end.</summary>
+        private sealed class Heat : AbstractEntityService
+        {
+            public float Value;
+            public int Revives;
+            public bool Ended;
+
+            public override void Step(float deltaTime) => Value = Mathf.Max(0f, Value - deltaTime);
+            public override void Revive() => Revives++;
+            public override void End() => Ended = true;
+        }
+
+        /// <summary>An entity component of a project's own that heats its entity as it registers.</summary>
+        [Serializable]
+        private sealed class Furnace : AbstractEntityComponent
+        {
+            public float Amount = 10f;
+
+            public override void Register(EntityComponentContext ctx)
+            {
+                if (ctx.System?.GetService<Heat>() is { } heat) heat.Value += Amount;
+            }
+        }
+
+        /// <summary>An effect component of a project's own that counts what it hears while its effect lasts, and as it lands.</summary>
+        [Serializable]
+        private sealed class Banner : AbstractEffectComponent
+        {
+            public int Lends, TakeBacks, Lands;
+
+            public override void Lend(EffectComponentContext ctx) => Lends++;
+            public override void TakeBack(EffectComponentContext ctx) => TakeBacks++;
+            public override void Land(EffectComponentContext ctx) => Lands++;
+        }
+
+        private sealed class SteppingClock : IForgeClock
+        {
+            public float Step;
+            public float DeltaTime => Step;
+            public float UnscaledDeltaTime => Step;
+            public float FixedDeltaTime => Step;
+            public float Time => UnityEngine.Time.time;
+            public float UnscaledTime => UnityEngine.Time.unscaledTime;
+            public int FrameCount => UnityEngine.Time.frameCount;
+        }
+
+        private IForgeClock previousClock;
+        private bool clockSet;
+
+        // The game's own IDs for its entities, which a save names them by
+        private sealed class EntityIds : IForgeEntityIds
+        {
+            private readonly Dictionary<string, IGameplayAbilitySystem> byId = new();
+
+            public EntityIds(params (string Id, IGameplayAbilitySystem Entity)[] entities)
+            {
+                foreach (var (id, entity) in entities) byId[id] = entity;
+            }
+
+            public string IdOf(IGameplayAbilitySystem entity) => byId.FirstOrDefault(pair => ReferenceEquals(pair.Value, entity)).Key;
+
+            public IGameplayAbilitySystem Find(string id) => id != null && byId.TryGetValue(id, out var entity) ? entity : null;
+        }
+
+        [TearDown]
+        public void PutBackTime()
+        {
+            if (clockSet) ForgeTime.Use(previousClock);
+            clockSet = false;
+        }
+
+        // Each frame a step of its own
+        private void Stepping(float seconds)
+        {
+            var was = ForgeTime.Use(new SteppingClock { Step = seconds });
+            if (!clockSet) previousClock = was;
+            clockSet = true;
+        }
+
+        // A mortal entity of a side, on either hub, which stays as it dies or ends, holding the components given
+        private IGameplayAbilitySystem Mortal(Hub hub, string name, Tag side, bool stays, params AbstractEntityComponent[] components)
+        {
+            var set = Make.Set(Make.Element(health, 100f, 100f, EAttributeOverflowPolicy.ZeroToBase));
+            set.WorkerGroup.AnalysisWorkers.Add(new DeathWatcherAnalysisWorker
+            {
+                Target = health, Threshold = 0f, Comparison = EThresholdComparison.LessThanOrEqual, TriggerOnce = true,
+            });
+            var death = stays
+                ? new EntityDeath
+                {
+                    Policy = EDeathPolicy.Stay,
+                    OnRevive = new List<GameplayEffect> { Make.Effect("Mend", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = 1000f }) },
+                }
+                : new EntityDeath();
+            if (hub == Hub.Runtime)
+            {
+                var identity = Make.RuntimeIdentity(name, set);
+                identity.Affiliation = new List<Tag> { side };
+                identity.Death = death;
+                identity.Components = new List<AbstractEntityComponent>(components);
+                var runtime = new RuntimeGameplayAbilitySystem(identity);
+                World.Register(runtime);
+                World.Invariants.Observe(runtime);
+                return runtime;
+            }
+            var mono = World.NewMonoEntity(set, name);
+            mono.EntityData.Affiliation = new List<Tag> { side };
+            mono.EntityData.Death = death;
+            mono.EntityData.Components = new List<AbstractEntityComponent>(components);
+            World.Register(mono);
+            World.Invariants.Observe(mono);
+            return mono;
+        }
+
+        private async Cysharp.Threading.Tasks.UniTask Kill(IGameplayAbilitySystem killer, IGameplayAbilitySystem entity)
+        {
+            var blow = Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1000f });
+            Assert.IsTrue(World.Apply(killer, entity, blow), "a mortal blow");
+            await Frames.Until(() => entity.IsDead, 10, "it dies");
+        }
+
+        /// <summary>
+        /// A service of a project's own is its entity's, as the auras it runs are: made the first time it's asked for and
+        /// found again, stepped each frame by the entity's own time, told as the entity revives, and ended with it. The
+        /// core stepped its auras and its Respawn's wait alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_39_A_service_of_ones_own_steps_by_its_entitys_time([Values] Hub hub) => Live(async () =>
+        {
+            Stepping(0.1f);
+            var killer = Mortal(hub, "Killer", red, stays: false);
+            var hero = Mortal(hub, "Hero", blue, stays: true, new Furnace { Amount = 10f });
+            await Frames.Step();
+
+            var heat = hero.FindService<Heat>();
+            Assert.IsNotNull(heat, "its furnace made it as it registered");
+            Assert.AreSame(heat, hero.GetService<Heat>(), "and asking again finds it");
+            Assert.IsNull(killer.FindService<Heat>(), "finding makes none");
+            hero.GetClock().TimeScale = 0.5f;
+            float before = heat.Value;
+            await Frames.Step(10);
+            Assert.AreEqual(before - 0.5f, heat.Value, 0.06f, "it cools by its entity's own time, half the game's");
+
+            await Kill(killer, hero);
+            Assert.IsTrue(hero.Revive(), "it revives");
+            Assert.AreEqual(1, heat.Revives, "and its service hears it");
+
+            var other = Mortal(hub, "Other", blue, stays: false, new Furnace());
+            await Frames.Step();
+            var its = other.FindService<Heat>();
+            Assert.IsNotNull(its);
+            await Kill(killer, other);
+            await Frames.Step(2);
+            Assert.IsTrue(its.Ended, "an entity that ends as it dies ends its services");
+        });
+
+        /// <summary>
+        /// A Respawn's wait is a service of its entity, which a HUD can read as it counts down. The core kept the wait.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_39_A_respawns_wait_is_its_entitys_service([Values] Hub hub) => Live(async () =>
+        {
+            var killer = Mortal(hub, "Killer", red, stays: false);
+            var hero = Mortal(hub, "Hero", blue, stays: true, new RespawnEntityComponent { Delay = 1f });
+            await Frames.Step();
+            Assert.IsNull(hero.FindService<RespawnTimer>(), "no wait before it dies");
+
+            await Kill(killer, hero);
+            await Frames.Step();
+            var timer = hero.FindService<RespawnTimer>();
+            Assert.IsNotNull(timer, "its death started the wait");
+            Assert.IsTrue(timer.Waiting, "which counts down");
+            Assert.That(timer.TimeLeft, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f));
+            await Frames.Until(() => !hero.IsDead, 240, "then it revives");
+            Assert.IsFalse(timer.Waiting, "the wait over");
+        });
+
+        /// <summary>
+        /// An effect's component hears what its effect lends while it lasts: lent as it lands, taken back as it ends, and
+        /// lent again as a load puts it back, which it doesn't land again, as an effect's aura is. An instant effect lends
+        /// nothing. The core lent an effect's auras alone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_39_An_effects_component_hears_what_it_lends([Values] Hub hub) => Live(async () =>
+        {
+            var killer = Mortal(hub, "Killer", red, stays: false);
+            var hero = Mortal(hub, "Hero", blue, stays: false);
+            var banner = new Banner();
+            var rally = Make.Effect("Rally", new EffectConfig { Policy = EEffectDurationPolicy.Infinite });
+            rally.Components.Add(banner);
+            var flash = new Banner();
+            var spark = Make.Effect("Spark", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
+            spark.Components.Add(flash);
+            var catalog = ScriptableObject.CreateInstance<ForgeAssetCatalog>();
+            Assert.IsTrue(catalog.Add("health", health) && catalog.Add("rally", rally), "the catalog names them");
+            var ids = new EntityIds(("hero", hero), ("killer", killer));
+            await Frames.Step();
+
+            Assert.IsTrue(World.Apply(hero, hero, rally), "the rally's on");
+            Assert.AreEqual((1, 1, 0), (banner.Lands, banner.Lends, banner.TakeBacks), "it lands and lends");
+            Assert.IsTrue(ForgeSave.Restore(hero, ForgeSave.Capture(hero, catalog, ids), catalog, ids), "a load puts it back");
+            Assert.AreEqual((1, 2, 1), (banner.Lands, banner.Lends, banner.TakeBacks), "taken back and lent again, not landed");
+            Assert.IsTrue(hero.RemoveGameplayEffect(rally.Tags.AssetTag), "it ends");
+            await Frames.Step(2);
+            Assert.AreEqual(2, banner.TakeBacks, "and takes back what it lent");
+
+            Assert.IsTrue(World.Apply(hero, hero, spark), "an instant effect lands");
+            Assert.AreEqual((1, 0), (flash.Lands, flash.Lends), "and lends nothing");
+            UnityEngine.Object.DestroyImmediate(catalog);
         });
     }
 }
