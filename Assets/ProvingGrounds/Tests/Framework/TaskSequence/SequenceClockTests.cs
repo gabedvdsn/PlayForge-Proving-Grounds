@@ -311,6 +311,98 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(syncSteps, Has.All.EqualTo(0.25f).Within(1e-5f), "and the synced runner's steps");
         });
 
+        /// <summary>
+        /// A task that linked its token, as for a timeout of its own, waited by the game's clock, as its run knew no token
+        /// but its own and its stages' (EP-58): a slowed caster's wait didn't slow, and a paused run's went on. A token
+        /// linked through TaskSequenceRuntime.CreateLinkedTokenSource is its run's, so a half second's wait on it takes two
+        /// frames of a clock twice the game's, as a wait on the run's own does, not four.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_58_A_task_that_links_its_token_keeps_its_runs_clock() => Live(async () =>
+        {
+            using var game = new GameClock(0.125f, 0.125f);
+            bool done = false;
+            Run(new TaskSequence(TaskSequenceBuilder.Create("Linked").WithClock(new ScaledClock(2f)).Stage(stage => stage.Task(async (_, token) =>
+            {
+                using var linked = TaskSequenceRuntime.CreateLinkedTokenSource(token);
+                await SequenceTaskLibrary.Delay(0.5f, linked.Token);
+                done = true;
+            })).Build()));
+
+            int taken = await Frames.Until(() => done, 10, "the wait on the linked token ends");
+            Assert.That(taken, Is.InRange(2, 3), "by its run's clock, twice the game's: two frames");
+        });
+
+        /// <summary>A wait on a linked token holds while its run is paused, as a wait on the run's own does (EP-58).</summary>
+        [UnityTest]
+        public IEnumerator EP_58_A_wait_on_a_linked_token_holds_while_its_run_is_paused() => Live(async () =>
+        {
+            using var game = new GameClock(0.125f, 0.125f);
+            bool done = false;
+            TaskSequenceRuntime run = null;
+            Run(new TaskSequence(TaskSequenceBuilder.Create("Paused").Stage(stage => stage.Task(async (data, token) =>
+            {
+                run = data.Runtime;
+                using var linked = TaskSequenceRuntime.CreateLinkedTokenSource(token);
+                await SequenceTaskLibrary.Delay(0.25f, linked.Token);
+                done = true;
+            })).Build()));
+
+            await Frames.Until(() => run != null, 5, "the task starts");
+            run.Pause();
+            await Frames.Step(6);
+            Assert.IsFalse(done, "a quarter second's wait, two frames of the game's, holds while its run is paused");
+            run.Resume();
+            await Frames.Until(() => done, 6, "and ends once the run goes on");
+        });
+
+        /// <summary>A linked token is its run's while its source lasts, and the run lets go of it as it's disposed (EP-58).</summary>
+        [UnityTest]
+        public IEnumerator EP_58_A_linked_token_is_its_runs_until_its_source_is_disposed() => Live(async () =>
+        {
+            SequenceDataPacket during = null, after = null;
+            bool done = false;
+            Run(new TaskSequence(TaskSequenceBuilder.Create("Let go").Stage(stage => stage.Task((_, token) =>
+            {
+                var linked = TaskSequenceRuntime.CreateLinkedTokenSource(token);
+                var kept = linked.Token;
+                during = TaskSequenceRuntime.DataOfRun(kept);
+                linked.Dispose();
+                after = TaskSequenceRuntime.DataOfRun(kept);
+                done = true;
+                return UniTask.CompletedTask;
+            })).Build()));
+
+            await Frames.Until(() => done, 5, "the task runs");
+            Assert.IsNotNull(during, "while its source lasts, the linked token is its run's");
+            Assert.IsNull(after, "and once its source is disposed, the run has let it go");
+        });
+
+        /// <summary>A linked token is cancelled as its run's is, as one CancellationTokenSource links is (EP-58).</summary>
+        [UnityTest]
+        public IEnumerator EP_58_A_linked_token_is_cancelled_with_its_run() => Live(async () =>
+        {
+            bool started = false, cancelled = false;
+            var relay = Run(new TaskSequence(TaskSequenceBuilder.Create("Cut").Stage(stage => stage.Task(async (_, token) =>
+            {
+                using var linked = TaskSequenceRuntime.CreateLinkedTokenSource(token);
+                started = true;
+                try
+                {
+                    await SequenceTaskLibrary.Delay(30f, linked.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    cancelled = true;
+                    throw;
+                }
+            })).Build()));
+
+            await Frames.Until(() => started, 5, "the long wait starts");
+            relay.TerminateImmediate();
+            await Frames.Until(() => cancelled, 5, "and is cancelled as its run ends");
+        });
+
         // Records three steps of a task's time, a frame apart
         private static async UniTask Steps(List<float> steps, System.Threading.CancellationToken token)
         {

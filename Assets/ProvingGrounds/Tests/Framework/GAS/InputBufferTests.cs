@@ -172,5 +172,50 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Until(() => Ledger.Cleans("Jab Task") == 1, 12, "it fires once the recovery's block lifts");
             Assert.AreEqual(1, Ledger.Cleans("Recovering"), "after the recovery");
         });
+
+        /// <summary>
+        /// A request said true whether its ability started, waits in the input buffer or starts next frame, so a caller
+        /// couldn't tell a press that started from one that waits without asking IsBuffered (EP-60). Its result says which,
+        /// Started, Buffered, or Refused with why, and still reads as true where it wasn't refused.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_60_A_request_says_whether_it_started_waits_or_was_refused([Values] Hub hub) => Timed(hub, async abilities =>
+        {
+            var hold = Give(abilities, Hold("Hold", frames: 5));
+            var jab = Give(abilities, Quick("Jab", window: 0.3f));
+            var flat = Give(abilities, Quick("Flat", window: 0f));
+
+            var started = abilities.TryActivateAbility(Press(abilities, hold));
+            Assert.AreEqual(EActivationStatus.Started, started.Status, "the hold starts");
+            Assert.IsTrue(started, "and reads as true");
+            await Frames.Step();
+
+            var waits = abilities.TryActivateAbility(Press(abilities, jab));
+            Assert.AreEqual(EActivationStatus.Buffered, waits.Status, "a jab pressed while the hold claims waits in the buffer");
+            Assert.IsTrue(waits, "and reads as true, as it wasn't refused");
+
+            var refused = abilities.TryActivateAbility(Press(abilities, flat));
+            Assert.AreEqual(EActivationStatus.Refused, refused.Status, "one with no window to wait in is refused");
+            Assert.AreEqual(EActivationRefusal.Busy, refused.Refusal.Reason, "as Busy, which its result carries");
+            Assert.IsFalse(refused, "and reads as false");
+        });
+
+        /// <summary>
+        /// An ability asked for again inside its own activation call starts next frame, and its result says so, where it
+        /// said true as one that started did (EP-60).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_60_An_ability_asked_for_inside_its_own_activation_says_it_starts_next_frame([Values] Hub hub) => Timed(hub, async abilities =>
+        {
+            var echo = Give(abilities, Make.Ability("Echo", Make.Stage(new ProbeAbilityTask(World, "Echo Task"))));
+            ActivationResult? again = null;
+            abilities.Callbacks.OnAbilityActivate += _ => again ??= abilities.TryActivateAbility(abilities.CreateActivationRequest(echo.Index));
+
+            Assert.AreEqual(EActivationStatus.Started, abilities.TryActivateAbility(abilities.CreateActivationRequest(echo.Index)).Status, "it starts");
+            Assert.IsTrue(again.HasValue, "and asks for itself as it does");
+            Assert.AreEqual(EActivationStatus.NextFrame, again.Value.Status, "which starts next frame");
+            Assert.IsTrue(again.Value, "and reads as true");
+            await Frames.Until(() => Ledger.Cleans("Echo Task") == 2, 5, "as it does");
+        });
     }
 }

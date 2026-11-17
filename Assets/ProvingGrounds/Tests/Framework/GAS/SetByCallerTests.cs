@@ -115,5 +115,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
             Assert.AreEqual(7f, Value(gas, might), "and the blessing is back for its 7");
         });
+
+        /// <summary>
+        /// A sequence's packet made from another took its data and its clock and dropped its set-by-caller magnitudes, so a
+        /// sequence an ability ran, or one run as a process with a packet, read none of the caller's (EP-59). It takes them,
+        /// as a packet made from another does.
+        /// </summary>
+        [Test]
+        public void EP_59_A_sequence_packet_made_from_another_keeps_its_set_by_caller_magnitudes()
+        {
+            var damage = Make.NewTag("Data.Copied");
+            var packet = ProcessDataPacket.Default();
+            packet.SetByCaller(damage, 25f);
+
+            var sequence = new SequenceDataPacket(packet);
+            Assert.IsTrue(sequence.TryGetSetByCaller(damage, out float set), "a sequence's packet made from it holds the caller's magnitude");
+            Assert.AreEqual(25f, set, "the caller's 25");
+            Assert.IsTrue(sequence.CreateNew().TryGetSetByCaller(damage, out set) && set == 25f, "and so does a packet made from that");
+        }
+
+        /// <summary>
+        /// A sequence run as a process with a packet that isn't a sequence's, as a game's code hands one, read none of the
+        /// caller's magnitudes the packet carried, as its process made a packet of its own from it (EP-59). It reads them.
+        /// An ability's sequence kept them all along, as an ability's packet is a sequence's and isn't copied.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_59_A_sequence_run_with_a_plain_packet_reads_its_callers_magnitudes() => Live(async () =>
+        {
+            var power = Make.NewTag("Data.Power");
+            float read = 0f;
+            var data = ProcessDataPacket.Default();
+            data.SetByCaller(power, 7f);
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Reads")
+                .Do(d => read = d.TryGetSetByCaller(power, out float set) ? set : -1f).Build());
+            Assert.IsTrue(ProcessControl.Register(new TaskSequenceProcess(sequence)).With(data).Run(out var relay),
+                "the sequence runs with the packet");
+            World.Own(relay);
+
+            await Frames.Until(() => read != 0f, 10, "its task reads");
+            Assert.AreEqual(7f, read, "the caller's 7, which its packet carries");
+        });
     }
 }

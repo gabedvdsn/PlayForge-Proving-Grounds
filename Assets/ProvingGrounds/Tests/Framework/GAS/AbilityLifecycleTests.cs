@@ -266,7 +266,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             World.Control.SetControlState(closed);
 
-            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), Is.False, "it's refused");
+            Assert.IsFalse(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "it's refused");
             await Frames.Step(3);
 
             Assert.That(Ledger.Prepares("Late Task"), Is.EqualTo(0), "and nothing of it runs");
@@ -349,7 +349,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(ended, Is.EqualTo(1), "its ability ended with it");
             var left = World.Control.FetchActiveProcesses().Where(p => !before.Contains(p.Key)).Select(p => p.Value.Wrapper.ProcessName).ToList();
             Assert.That(left, Is.Empty, "and nothing it started still runs");
-            Assert.That(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), Is.False, "and it starts none after");
+            Assert.IsFalse(abilities.TryActivateAbility(abilities.CreateActivationRequest(index)), "and it starts none after");
             await Frames.Step();
         });
 
@@ -399,6 +399,94 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(ended, Is.EqualTo(2), "and both end");
             Assert.That(abilities.IsExecuting, Is.False, "and nothing runs");
             abilities.Enabled = true;
+        });
+
+        // The three policies, by their names in the inspector
+        private const EAbilityActivationPolicyExtended Anyway = EAbilityActivationPolicyExtended.AlwaysActivate;
+        private const EAbilityActivationPolicyExtended Refuse = EAbilityActivationPolicyExtended.ActivateIfIdle;
+        private const EAbilityActivationPolicyExtended Queue = EAbilityActivationPolicyExtended.QueueActivationIfBusy;
+
+        private static int Give(AbilitySystemComponent abilities, Ability ability)
+        {
+            Assert.That(abilities.GiveAbility(ability, 1, out int index), $"the entity knows {ability.GetName()}");
+            return index;
+        }
+
+        // An ability whose one task is a critical section lasting the frames given, as a committed swing
+        private int Committed(AbilitySystemComponent abilities, string name, int frames) =>
+            Give(abilities, Make.Ability(name, Make.Stage(new ProbeAbilityTask(World, name + " Task", frames: frames, critical: true))));
+
+        /// <summary>
+        /// A critical section kept out only critical abilities asked for under its own activation policy, where a critical
+        /// task's contract keeps out any other, whatever the policy (EP-57): a dodge under Refuse started in the middle of a
+        /// swing under Activate Anyway, both committed. It's refused as Critical while the swing's critical section holds
+        /// its claim, and starts once the swing lets it go; an ability with no critical section isn't kept out.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_57_A_critical_section_keeps_out_a_critical_Refuse_ability([Values] Hub hub) => Live(async () =>
+        {
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            int swing = Committed(abilities, "Swing", frames: 4);
+            int dodge = Committed(abilities, "Dodge", frames: 1);
+            int step = Give(abilities, Make.Ability("Step", Make.Stage(new ProbeAbilityTask(World, "Step Task", frames: 1))));
+
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(swing, null, Anyway)), "the swing starts, committed");
+            await Frames.Step();
+
+            Assert.IsFalse(abilities.TryActivateAbility(abilities.CreateActivationRequest(dodge, null, Refuse), out var refusal),
+                "a committed dodge under Refuse is kept out mid-swing");
+            Assert.AreEqual(EActivationRefusal.Critical, refusal.Reason, "by the swing's critical section");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(step, null, Refuse)),
+                "a step, with no critical section, isn't");
+
+            await Frames.Until(() => Ledger.Cleans("Swing Task") == 1, 10, "the swing ends");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(dodge, null, Refuse)), "and the dodge starts after it");
+        });
+
+        /// <summary>
+        /// An Activate Anyway ability waited only on Activate Anyway abilities' critical sections; it waits on every
+        /// policy's (EP-57).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_57_A_critical_section_keeps_out_a_critical_Activate_Anyway_ability([Values] Hub hub) => Live(async () =>
+        {
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            int swing = Committed(abilities, "Swing", frames: 4);
+            int parry = Committed(abilities, "Parry", frames: 1);
+
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(swing, null, Refuse)), "the swing starts under Refuse, committed");
+            await Frames.Step();
+
+            Assert.IsFalse(abilities.TryActivateAbility(abilities.CreateActivationRequest(parry, null, Anyway), out var refusal),
+                "a committed parry under Activate Anyway is kept out mid-swing");
+            Assert.AreEqual(EActivationRefusal.Critical, refusal.Reason, "by the swing's critical section");
+
+            await Frames.Until(() => Ledger.Cleans("Swing Task") == 1, 10, "the swing ends");
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(parry, null, Anyway)), "and the parry starts after it");
+        });
+
+        /// <summary>
+        /// A critical press under Queue started in the middle of another policy's critical section; it waits in the input
+        /// buffer for the section to end, then starts (EP-57).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_57_A_critical_Queue_press_waits_out_another_policys_critical_section([Values] Hub hub) => Live(async () =>
+        {
+            var abilities = World.Entity(hub).GetAbilitySystem();
+            int swing = Committed(abilities, "Swing", frames: 4);
+            var jabAbility = Make.Ability("Jab", Make.Stage(new ProbeAbilityTask(World, "Jab Task", frames: 1, critical: true)));
+            jabAbility.Definition.BufferWindow = 5f;
+            int jab = Give(abilities, jabAbility);
+
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(swing, null, Anyway)), "the swing starts, committed");
+            await Frames.Step();
+
+            Assert.IsTrue(abilities.TryActivateAbility(abilities.CreateActivationRequest(jab, null, Queue)), "a committed jab is pressed mid-swing");
+            Assert.IsTrue(abilities.IsBuffered(jab), "and waits in the buffer");
+            Assert.AreEqual(0, Ledger.Prepares("Jab Task"), "unstarted");
+
+            await Frames.Until(() => Ledger.Cleans("Jab Task") == 1, 12, "the jab starts once the swing's section ends, and runs");
+            Assert.AreEqual(1, Ledger.Cleans("Swing Task"), "after the swing");
         });
 
         private AbilitySystemComponent Grant(Hub hub, Ability ability, out int index)
