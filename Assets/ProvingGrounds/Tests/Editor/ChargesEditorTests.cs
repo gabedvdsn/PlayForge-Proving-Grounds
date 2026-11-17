@@ -65,6 +65,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private static List<string> Messages(Object asset) => ForgeValidator.Check(asset).Select(problem => problem.Message).ToList();
 
+        // The notes under an ability's Components list, each a component's problem, as its rule says it
+        private static List<string> Notes(VisualElement root) =>
+            root.Q(name: "ComponentNotes").Query<HelpBox>().ToList().Select(box => box.text).ToList();
+
         /// <summary>Charges are a component, with their Recharge; the Activation section holds neither (FN-14).</summary>
         [Test]
         public void TW_17_Charges_are_a_component_with_their_recharge()
@@ -85,13 +89,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Inspect(shrapnel, root =>
             {
                 Assert.That(Fields(root, "Components"), Has.Member("Components"), "in its Components section");
-                Assert.AreEqual(DisplayStyle.None, root.Q<HelpBox>("ChargesNeverRunOut").style.display.value, "no note, with a Cooldown");
+                Assert.That(Notes(root), Has.None.Contains("never run out"), "no note, with a Cooldown");
             });
 
             shrapnel.Cooldown = null;
             Inspect(shrapnel, root =>
-                Assert.AreNotEqual(DisplayStyle.None, root.Q<HelpBox>("ChargesNeverRunOut").style.display.value,
-                    "and a note under the components where they never run out"));
+                Assert.That(Notes(root), Has.Some.Contains("never run out"), "and a note under the components where they never run out"));
         }
 
         /// <summary>
