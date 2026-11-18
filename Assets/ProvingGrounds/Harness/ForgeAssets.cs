@@ -259,7 +259,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds
                     TargetRequirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() },
                 },
             };
-            ability.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage>(stages) };
+            // Each targets its caster until its targeting picks another, as the tests' abilities are written, which a new
+            // ability no longer does on its own (EP-66)
+            ability.Behaviour = new AbilityBehaviour { Stages = new List<AbilityTaskBehaviourStage>(stages), UseImplicitTargeting = true };
             ability.WorkerGroup = new StandardWorkerGroup();
             return ability;
         }

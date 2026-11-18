@@ -360,6 +360,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             var holder = ScriptableObject.CreateInstance<Holder>();
             holder.Behaviour.AssetLoaders = new List<AbstractSetAssetsTask> { new SetEffectsTask() };
+            // On, as a new behaviour isn't (EP-66), so the toggle's hiding of Implicit Tag can be seen
+            holder.Behaviour.UseImplicitTargeting = true;
             var host = new Host();
             try
             {

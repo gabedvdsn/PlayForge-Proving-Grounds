@@ -293,6 +293,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             ability.Behaviour = new AbilityBehaviour
             {
                 Stages = new List<AbilityTaskBehaviourStage> { new() { Tasks = new List<AbstractAbilityTask>(tasks) } },
+                // Its caster its target until its targeting picks another, as the recipes' saved abilities are (EP-66)
+                UseImplicitTargeting = true,
             };
             ability.WorkerGroup = new StandardWorkerGroup();
             return ability;
