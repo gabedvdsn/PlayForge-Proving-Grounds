@@ -90,13 +90,15 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             public Vector2? Pointer;
             public readonly HashSet<int> Buttons = new();
             public readonly HashSet<KeyCode> Keys = new();
+            // The camera a click aims through, as click targeting reads it; with none, a click aims nowhere
+            public Camera Camera;
 
             public bool PointerPressed(int button) => Buttons.Contains(button);
 
             public bool TryGetPointerRay(out Ray ray)
             {
-                ray = default;
-                return false;
+                ray = Camera && Pointer.HasValue ? Camera.ScreenPointToRay(Pointer.Value) : default;
+                return Camera && Pointer.HasValue;
             }
 
             public bool TryGetPointerPosition(out Vector2 position)
@@ -181,6 +183,32 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
             input.LetGo();
         }
+
+        // An ability that waits for a click on a unit, within its Cast Range
+        private Ability Aimed(string name, float range)
+        {
+            var ability = Make.Ability(name, Make.Stage());
+            ability.Behaviour.Targeting = new SelectGasTargetTask();
+            ability.Components.Add(new CastRangeAbilityComponent { Range = range });
+            return ability;
+        }
+
+        // The author's unit, a hero whose Q is an aimed Bolt of the reach given, put down at the middle, and the input
+        private async Cysharp.Threading.Tasks.UniTask<(LabUnit Mine, Ability Bolt, PressingInput Input)> AuthorWithBolt(bool panels,
+            float reach, params ScriptableObject[] more)
+        {
+            var bolt = Aimed("Bolt", reach);
+            var hero = Fighter("Hero", abilities: new[] { Strike(Hit("Blow", 5f)), bolt });
+            Lab(panels, more.Prepend(hero).ToArray());
+            var input = Press();
+            var mine = lab.PutDownOwnUnit(hero, LabSides.Blue, Vector3.zero);
+            await Frames.Step(2);
+            lab.Step(0.01f);
+            return (mine, bolt, input);
+        }
+
+        private static LineRenderer ReachRing() =>
+            Object.FindObjectsByType<LineRenderer>(FindObjectsSortMode.None).FirstOrDefault(line => line.name == "Reach Ring");
 
         /// <summary>The lab builds its space: the ground, its camera, a world of its own and its own caster, on no side.</summary>
         [UnityTest]
@@ -880,6 +908,188 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
             else unit.Stop();
             Assert.AreEqual(0f, unit.Gas.AngleToFace, walks ? "a walk takes the turn over" : "a stop ends it");
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Room to play, and what the author is told (LAB-19, LAB-20)
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The selected panel docks at the right, over the lab's own, so the middle of the screen stays the space's: a click
+        /// there reaches the space. It sat in the middle, up to more than half the screen's height, over what the author
+        /// clicks. Its tab sets it aside for the lab's panel, the selection kept, and the lab's tab brings it back (LAB-19).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_19_The_selected_docks_at_the_right_and_the_middle_stays_the_spaces() => Live(async () =>
+        {
+            var brute = Fighter("Brute");
+            Lab(true, brute);
+            var unit = lab.AddUnit(brute, LabSides.Red, new Vector3(0f, 0f, 2f));
+            await Frames.Step(2);
+            lab.Select(unit);
+            await Frames.Step(3);
+            var root = lab.Panels.Root;
+            var selected = root.Q(name: "Selected");
+            Assert.AreEqual(DisplayStyle.Flex, selected.style.display.value, "the selected shows");
+            var middle = new Vector2(Screen.width / 2f, Screen.height / 2f);
+            Assert.IsFalse(lab.Panels.IsOverPanel(middle),
+                $"the middle of the screen is the space's: the selected panel spans {selected.worldBound} of {Screen.width}×{Screen.height}");
+
+            Assert.IsNotNull(root.Q<Button>(name: "SelectedToLab"), "the selected panel has a tab for the lab's own");
+            // The tabs' own calls, as a click on either makes
+            void Tab(string call)
+            {
+                var method = typeof(LabPanels).GetMethod(call);
+                Assert.IsNotNull(method, $"the panels' {call}");
+                method.Invoke(lab.Panels, null);
+            }
+            Tab("ShowLabPanel");
+            Assert.AreEqual(DisplayStyle.None, selected.style.display.value, "which sets the selected aside");
+            Assert.AreSame(unit, lab.SelectedUnit, "the selection kept");
+            Assert.AreEqual(DisplayStyle.Flex, root.Q(name: "ModeToSelected").style.display.value, "and the lab's has one back");
+            Tab("ShowSelectedPanel");
+            Assert.AreEqual(DisplayStyle.Flex, selected.style.display.value, "which brings it back");
+
+            Tab("ShowLabPanel");
+            lab.Select((LabUnit)null);
+            lab.Select(unit);
+            await Frames.Step(2);
+            Assert.AreEqual(DisplayStyle.Flex, selected.style.display.value, "a new selection shows itself");
+        });
+
+        // How far apart two colors read, as the web's contrast ratio has it: 1 for the same, 21 for black on white
+        private static float Contrast(Color a, Color b)
+        {
+            static float Channel(float c) => c <= 0.03928f ? c / 12.92f : Mathf.Pow((c + 0.055f) / 1.055f, 2.4f);
+            static float Luminance(Color c) => 0.2126f * Channel(c.r) + 0.7152f * Channel(c.g) + 0.0722f * Channel(c.b);
+            float x = Luminance(a), y = Luminance(b);
+            return (Mathf.Max(x, y) + 0.05f) / (Mathf.Min(x, y) + 0.05f);
+        }
+
+        /// <summary>
+        /// The lab's buttons and fields read: their words at least 4.5 to 1 against their own color, as the editor's style
+        /// asks. The runtime theme's light buttons and fields took the dark panels' light text, and the user found the
+        /// buttons' words hard to read (LAB-21).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_21_The_labs_buttons_and_fields_read() => Live(async () =>
+        {
+            var brute = Fighter("Brute");
+            Lab(true, brute);
+            await Frames.Step(3);
+            var root = lab.Panels.Root;
+            var read = new List<(string What, VisualElement Box, VisualElement Words)>
+            {
+                ("Refresh", root.Q<Button>(name: "Refresh"), root.Q<Button>(name: "Refresh")),
+                ("a mode's button", root.Q<Button>(name: $"Mode{LabMode.Dummies}"), root.Q<Button>(name: $"Mode{LabMode.Dummies}")),
+                ("a collapse", root.Q<Button>(name: "LibraryCollapse"), root.Q<Button>(name: "LibraryCollapse")),
+                ("the search", root.Q<TextField>(name: "Search").Q(className: "unity-base-text-field__input"),
+                    root.Q<TextField>(name: "Search").Q(className: "unity-base-text-field__input")),
+                ("the entity's choice", root.Q<DropdownField>(name: "DummyEntity").Q(className: "unity-base-popup-field__input"),
+                    root.Q<DropdownField>(name: "DummyEntity").Q(className: "unity-base-popup-field__text")),
+            };
+            foreach (var (what, box, words) in read)
+            {
+                Assert.IsNotNull(box, what);
+                float ratio = Contrast(words.resolvedStyle.color, box.resolvedStyle.backgroundColor);
+                Assert.That(ratio, Is.GreaterThanOrEqualTo(4.5f),
+                    $"{what}'s words read: {words.resolvedStyle.color} on {box.resolvedStyle.backgroundColor}, {ratio:0.0} to 1");
+            }
+        });
+
+        /// <summary>
+        /// The status over the space says what a cast waits for and how to give it, what's selected, whom the author
+        /// controls, and the keys for what can be done now; clicks go through it to the space (LAB-19).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_19_The_status_says_whats_waited_on_whats_selected_and_the_keys() => Live(async () =>
+        {
+            var brute = Fighter("Brute");
+            var (mine, _, input) = await AuthorWithBolt(true, 6f, brute);
+            var other = lab.AddUnit(brute, LabSides.Red, new Vector3(3f, 0f, 3f));
+            await Frames.Step(2);
+            lab.Select(other);
+            await Frames.Step(2);
+            var root = lab.Panels.Root;
+            string Line(string name) => root.Q<Label>(name: name)?.text ?? "";
+            Assert.That(Line("StatusState"), Does.Contain("Selected: Brute").And.Contain($"You control {mine.Name}"),
+                "what's selected, and whom the author controls");
+            Assert.That(Line("StatusKeys"), Does.Contain("Right-click: move or attack").And.Contain("Q W E R: cast"), "the author's keys");
+            Assert.AreEqual(PickingMode.Ignore, root.Q(name: "Status").pickingMode, "and clicks go through it");
+
+            await Key(input, KeyCode.Q);
+            await Frames.Step(2);
+            Assert.That(Line("StatusWait"), Does.Contain("Bolt: Click a target").And.Contain("Esc or a right-click cancels"),
+                "the cast that waits, and how to give it its target or let it go");
+            await Key(input, KeyCode.Escape);
+            await Frames.Step(3);
+            Assert.AreEqual(DisplayStyle.None, root.Q(name: "StatusWait").style.display.value, "and nothing once it's cancelled");
+        });
+
+        /// <summary>
+        /// The click that picks a cast's target is the cast's: it selected the unit clicked as well, which brought the
+        /// selected panel up over the space each time a target was picked (LAB-19).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_19_The_click_that_picks_a_target_selects_nothing() => Live(async () =>
+        {
+            var brute = Fighter("Brute");
+            var (mine, bolt, input) = await AuthorWithBolt(false, 6f, brute);
+            var foe = lab.AddUnit(brute, LabSides.Red, new Vector3(2f, 0f, 2f));
+            input.Camera = lab.View.Camera;
+            await Frames.Step(2);
+            lab.Step(0.01f);
+
+            await Key(input, KeyCode.Q);
+            await Frames.Step(2);
+            Assert.IsTrue(mine.Casting(bolt), "the bolt waits for its target");
+            input.Pointer = lab.View.Camera.WorldToScreenPoint(foe.transform.position + Vector3.up);
+            input.Buttons.Add(0);
+            await Frames.Step();
+            input.LetGo();
+            await Frames.Step(2);
+            Assert.IsNull(lab.SelectedUnit, "the click was the cast's, and selected nothing");
+        });
+
+        /// <summary>
+        /// While the author's unit chooses a target for an ability, a ring on the ground shows the ability's reach, its
+        /// Cast Range here; it goes as the cast is let go (LAB-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_20_A_ring_shows_the_reach_while_a_cast_chooses_its_target() => Live(async () =>
+        {
+            var (mine, _, input) = await AuthorWithBolt(false, 6f);
+            Assert.That(ReachRing() == null || !ReachRing().enabled, "no ring before a cast");
+
+            await Key(input, KeyCode.Q);
+            await Frames.Step(2);
+            var ring = ReachRing();
+            Assert.IsNotNull(ring, "a ring is drawn");
+            Assert.IsTrue(ring.enabled, "while the bolt waits for its target");
+            var offset = ring.GetPosition(0) - mine.transform.position;
+            offset.y = 0f;
+            Assert.AreEqual(6f, offset.magnitude, 0.05f, "at its Cast Range");
+
+            await Key(input, KeyCode.Escape);
+            await Frames.Step(3);
+            Assert.IsFalse(ring.enabled, "and it goes as the cast is let go");
+        });
+
+        /// <summary>
+        /// A right-click order lets go of a cast still choosing its target, as a MOBA's does: it waited on for a left-click
+        /// the author no longer meant to give (LAB-20).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LAB_20_A_right_click_order_lets_go_of_a_cast_choosing_its_target() => Live(async () =>
+        {
+            var (mine, bolt, input) = await AuthorWithBolt(false, 6f);
+            await Key(input, KeyCode.Q);
+            await Frames.Step(2);
+            Assert.IsTrue(mine.Casting(bolt), "the bolt waits for its target");
+
+            await Click(input, new Vector3(3f, 0f, -3f));
+            await Frames.Until(() => !mine.Casting(bolt), 4, "a right-click order lets go of it");
+            Assert.IsTrue(mine.Destination.HasValue, "and sends the unit");
         });
     }
 }

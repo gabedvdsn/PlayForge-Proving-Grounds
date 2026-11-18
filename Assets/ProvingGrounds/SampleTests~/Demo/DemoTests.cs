@@ -344,6 +344,47 @@ namespace FarEmerald.PlayForge.Samples.Demo.Tests
             Assert.That(game.Player.HealthShare, Is.LessThan(1f), "the AI hurt the player's hero");
             Assert.That(Enumerable.Range(1, 3).Any(slot => ai.CooldownLeft(ai.AbilityAt(slot)) > 0f), "and cast an ability");
         }
+
+        // Whether an ability waits for the player's click to choose its target
+        private static bool WaitsForAClick(Ability ability) => ability != null && ability.Behaviour.Targeting is SelectGasTargetTask
+            or SelectGasTargetInRangeTask or SelectPositionTargetTask or SelectDirectionTargetTask or SelectGasOrPositionTargetTask;
+
+        /// <summary>
+        /// The HUD is short and centred under the arena, so the arena stays the player's to click, the hero's attributes in
+        /// the panel; above it, what a cast waits for, and under it the keys. It stood a third of the screen tall, the
+        /// attributes in it, and a cast waiting for its click said "left-click its target" whether it waited or ran (SP-35).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SP_35_The_HUD_leaves_the_arena_clear_and_says_what_a_cast_waits_for()
+        {
+            Ability aimed = null;
+            foreach (var hero in roster.Heroes.Select(each => each.Identity.GetName()).ToList())
+            {
+                yield return Face(hero);
+                aimed = Enumerable.Range(1, 3).Select(game.Player.AbilityAt).FirstOrDefault(WaitsForAClick);
+                if (aimed != null) break;
+            }
+            Assume.That(aimed, Is.Not.Null, "a hero's ability waits for a click");
+            yield return Frames(3);
+
+            var root = DemoHud.Current.GetComponent<UIDocument>().rootVisualElement;
+            var hud = root.Q(name: "Hud");
+            Assert.IsNull(hud.Q(name: "Attributes"), "the hero's attributes aren't in the HUD");
+            Assert.IsNotNull(root.Q(name: "Panel").Q(name: "Attributes"), "but in the panel");
+            Assert.That(hud.worldBound.height, Is.GreaterThan(0f).And.LessThan(root.worldBound.height * 0.2f),
+                $"the HUD is short: {hud.worldBound.height} of {root.worldBound.height}");
+            Assert.That(root.Q<Label>(name: "Keys")?.text ?? "", Does.Contain("Right-click: move or attack"), "the keys under it");
+
+            var me = game.Player;
+            Assert.IsTrue(me.Cast(aimed), $"{aimed.GetName()} is cast, and waits for its click");
+            yield return Frames(3);
+            var waiting = root.Q<Label>(name: "Waiting");
+            Assert.That(waiting?.text ?? "", Does.Contain($"{aimed.GetName()}: Click").And.Contain("cancels"),
+                "the HUD says what the cast waits for, and how to let it go");
+            me.CancelCasts();
+            yield return Frames(3);
+            Assert.AreEqual(DisplayStyle.None, waiting.style.display.value, "and nothing once it's let go");
+        }
     }
 }
 #endif
