@@ -518,7 +518,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             AbstractTargetingAbilityTask targeting = byAffinity
                 ? new AutoTargetByAffinityTask
                 {
-                    Range = 5f, MaxTargets = 1, Mode = EAutoTargetMode.Nearest, AffinityFilter = EAffinityFilter.AlliesAndEnemies,
+                    Range = 5f, MaxTargets = 1, Mode = EAutoTargetMode.Nearest, Takes = EAffiliationFilter.AllButSelf,
                     Requirements = requirements,
                 }
                 : new AutoTargetTask { Range = 5f, MaxTargets = 1, Mode = EAutoTargetMode.Nearest, Requirements = requirements };

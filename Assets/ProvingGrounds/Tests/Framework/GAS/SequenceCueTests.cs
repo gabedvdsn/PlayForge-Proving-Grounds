@@ -43,7 +43,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var word = Make.NewTag("Test.Data.Word");
             ProcessDataPacket seen = null;
             var cue = new SequenceCue { Definition = TaskSequenceBuilder.Create("EP-64 Flash").Do(data => seen = data).Build() };
-            cue.Data.Add(new DataWrapper { Key = word, Type = EDataWrapperType.String, stringValue = "flash" });
+            cue.Data.Add(new DataWrapper { Key = word, Value = new LocalString { Value = "flash" } });
             var (target, hit) = Struck(hub, cue);
 
             Assert.IsTrue(World.Apply(target, target, hit), "the hit lands");

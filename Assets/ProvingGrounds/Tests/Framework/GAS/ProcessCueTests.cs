@@ -64,7 +64,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var word = Make.NewTag("Test.Data.Word");
             var spark = World.MonoProbeTemplate("EP-63 Spark", runFrames: 3);
             var cue = new ProcessCue { Process = spark };
-            cue.Data.Add(new DataWrapper { Key = word, Type = EDataWrapperType.String, stringValue = "spark" });
+            cue.Data.Add(new DataWrapper { Key = word, Value = new LocalString { Value = "spark" } });
             var (target, hit) = Struck(hub, cue, new Vector3(2f, 0f, 5f));
 
             Assert.IsTrue(World.Apply(target, target, hit), "the hit lands");

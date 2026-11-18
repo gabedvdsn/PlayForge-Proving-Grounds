@@ -16,30 +16,8 @@ MonoBehaviour:
   - Key:
       Name: Ability.Combustion
       DisplayName: Combustion
-    Type: 4
-    stringValue: 
-    boolValue: 0
-    intValue:
-      Magnitude: 1655
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-      Rounding: 0
-    floatValue:
-      Magnitude: 0
-      RealMagnitude: 2
-      Scaler:
-        rid: -2
-    objectValue: {fileID: 0}
-    monoBehaviourValue: {fileID: 0}
-    scriptableObjectValue: {fileID: 0}
-    tagValue:
-      Name: 
-      DisplayName: 
-    attributeValue: {fileID: 0}
-    effectValue: {fileID: 0}
-    abilityValue: {fileID: 0}
-    entityValue: {fileID: 0}
+    Value:
+      rid: 2403794368834043942
   _template: {fileID: 0}
   _templateOverrides: []
   _templateListSnapshots: []
@@ -419,3 +397,12 @@ MonoBehaviour:
           m_RotationOrder: 4
         Behaviours: []
         Value: -1
+    - rid: 2403794368834043942
+      type: {class: LocalInt, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}
+      data:
+        Value:
+          Magnitude: 1655
+          RealMagnitude: 2
+          Scaler:
+            rid: -2
+          Rounding: 0

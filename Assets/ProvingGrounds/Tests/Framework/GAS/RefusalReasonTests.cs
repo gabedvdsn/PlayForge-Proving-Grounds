@@ -140,7 +140,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ally = At(hub, "Ally", 2f);
             var smite = Quick("Smite");
             smite.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
-            smite.TargetActivationRules.Add(new AffiliationValidation { Target = ETargetAffiliation.Enemy });
+            smite.TargetActivationRules.Add(new AffiliationValidation { Target = EAffiliationFilter.Enemies });
             var abilities = caster.GetAbilitySystem();
             Assert.IsTrue(abilities.GiveAbility(smite, 1, out int index), "Smite granted");
             var told = Hear(caster);
@@ -169,7 +169,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ally = At(hub, "Ally", 2f);
             var mend = Quick("Mend");
             mend.Behaviour.Targeting = new AutoTargetFromDataTask { SourceKey = Tags.TARGET_REAL };
-            mend.TargetActivationRules.Add(new AffiliationValidation { Target = ETargetAffiliation.Ally });
+            mend.TargetActivationRules.Add(new AffiliationValidation { Target = EAffiliationFilter.Allies });
             var abilities = caster.GetAbilitySystem();
             Assert.IsTrue(abilities.GiveAbility(mend, 1, out _), "Mend granted");
             var told = Hear(caster);

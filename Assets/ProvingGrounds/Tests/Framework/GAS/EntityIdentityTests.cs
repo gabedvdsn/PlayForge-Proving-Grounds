@@ -113,12 +113,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         public IEnumerator GAS_S1_Both_hubs_keep_the_entity_s_local_data([Values] Hub hub) => Live(async () =>
         {
             var key = Make.NewTag("Test.Data.Marker");
-            var gas = Kind(hub, identity => identity.LocalData.Add(new DataWrapper { Key = key, Type = EDataWrapperType.Int, intValue = 7 }));
+            var gas = Kind(hub, identity => identity.LocalData.Add(new DataWrapper { Key = key, Value = new LocalInt { Value = 7 } }));
             await Frames.Step();
 
             Assert.That(gas.TryGetLocalData(key, out var data), "the entity's Local Data");
             // A number that can scale since EP-16, a constant here
-            Assert.That(data.intValue.Magnitude, Is.EqualTo(7));
+            Assert.That(data.TryGet(out ScalableInt held) ? held.Magnitude : -1, Is.EqualTo(7));
         });
 
         // A registered entity made from an Entity asset, set up first, on either hub

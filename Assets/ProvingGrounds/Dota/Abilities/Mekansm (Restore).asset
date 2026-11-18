@@ -144,7 +144,7 @@ MonoBehaviour:
           SyncWithTemplate: 0
           AvoidTags: []
           RequireTags: []
-        AffinityFilter: 0
+        Takes: 3
         Mode: 0
         MaxTargets:
           Magnitude: 0
@@ -164,7 +164,6 @@ MonoBehaviour:
         Around: 0
         Flat: 1
         UsePhysics: 0
-        IncludeSelf: 0
         ExcludeDead: 1
     - rid: 2403794372806049887
       type: {class: AllProxyStagePolicy, ns: FarEmerald.PlayForge, asm: FarEmerald.PlayForge}

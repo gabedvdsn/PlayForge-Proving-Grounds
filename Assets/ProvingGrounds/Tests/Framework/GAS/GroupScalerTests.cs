@@ -96,6 +96,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         });
 
         /// <summary>
+        /// A collision policy's rule was written for each group, a Group's, a cached Group's and a magnitude group's, and
+        /// for an attribute set's elements (FEAT-30). One rule settles them all: a cached Group's overriding members settle
+        /// as a Group's do, by the highest, the lowest, their average, the first or the last. A guard: each settled so before.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_A_cached_groups_overrides_settle_as_a_groups_do([Values] Hub hub,
+            [Values(EValueCollisionPolicy.UseMaximum, EValueCollisionPolicy.UseMinimum, EValueCollisionPolicy.UseAverage,
+                EValueCollisionPolicy.UseFirst, EValueCollisionPolicy.UseLast)] EValueCollisionPolicy policy) => Live(async () =>
+        {
+            CachedMagnitudeModifierGroupMember Member(float value, EGroupOperation joins) => new()
+            {
+                Calculation = new CachedSimpleScaler { LevelValues = new[] { value }, StretchOverLevels = false },
+                RelativeOperation = joins,
+            };
+            var settling = new CachedScalerGroup
+            {
+                OverrideMemberCollisionPolicy = policy,
+                Calculations = new[]
+                {
+                    Member(5f, EGroupOperation.Add), Member(40f, EGroupOperation.Override), Member(90f, EGroupOperation.Override),
+                    Member(20f, EGroupOperation.Override),
+                },
+            };
+            var stamina = Make.Attribute("Stamina");
+            var startsAt = new AttributeMagnitudeSpec { Magnitude = 1f, RealMagnitude = EMagnitudeOperation.UseScaler, Scaling = settling };
+            var settled = World.Entity(hub, Make.Set(Make.Element(stamina, 0f, 0f, currentSpecOverride: startsAt)), "Settled");
+            await Frames.Step();
+            float expected = policy switch
+            {
+                EValueCollisionPolicy.UseMaximum => 90f,
+                EValueCollisionPolicy.UseMinimum => 20f,
+                EValueCollisionPolicy.UseAverage => 50f,
+                EValueCollisionPolicy.UseFirst => 40f,
+                _ => 20f,
+            };
+            Assert.AreEqual(expected, Current(settled, stamina), 0.01f, $"its overriding members settle by {policy}");
+        });
+
+        /// <summary>
         /// A Group's members join as the sum of those that add, times each that multiplies, plus each flat bonus, in any
         /// order, so its first member needn't add (the user's question, ED-80): a Multiply first and an Add after read as
         /// an Add first does.

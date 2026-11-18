@@ -80,7 +80,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private AuraEntry Inspiring(float interval = 0f) => new()
         {
             Effect = Make.Effect("Inspire", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, GrantedTags = new List<Tag> { inspired } }),
-            Radius = 5f, Takes = EAffinityFilter.Allies, IncludeHolder = true, Interval = interval,
+            Radius = 5f, Takes = EAffiliationFilter.Allies, Interval = interval,
         };
 
         private bool Inspired(IGameplayAbilitySystem gas) => gas.GetTagCache().GetWeight(inspired) > 0;

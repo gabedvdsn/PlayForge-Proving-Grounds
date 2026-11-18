@@ -341,15 +341,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var spec = caster.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(caster),
                 Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1f }));
 
-            var plain = new RandomizedScaler { LevelValues = new[] { 100f }, StretchOverLevels = false, Variance = 0.25f };
+            var plain = new RandomizedScaler { LevelValues = new[] { 100f }, StretchOverLevels = false, Variance = new PercentageVariance { Share = 0.25f } };
             Assert.AreEqual(75f, plain.GetMinValue(spec), 0.001f, "a constant Variance gives the least it gave");
             Assert.AreEqual(125f, plain.GetMaxValue(spec), 0.001f, "and the most");
 
             var multiplied = new RandomizedScaler
             {
-                LevelValues = new[] { 100f }, StretchOverLevels = false, VarianceMode = EVarianceMode.Multiplier,
-                MinMultiplier = 0.5f,
-                MaxMultiplier = new ScalableFloat(new RelativeToFieldKind { Field = nameof(RandomizedScaler.MinMultiplier) }, 3f),
+                LevelValues = new[] { 100f }, StretchOverLevels = false,
+                Variance = new MultiplierVariance
+                {
+                    Min = 0.5f,
+                    Max = new ScalableFloat(new RelativeToFieldKind { Field = nameof(MultiplierVariance.Min) }, 3f),
+                },
             };
             Assert.AreEqual(50f, multiplied.GetMinValue(spec), 0.001f, "its Min multiplier, 0.5");
             Assert.AreEqual(150f, multiplied.GetMaxValue(spec), 0.001f, "and a Max that is 3 × its Min");
@@ -357,7 +360,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.That(multiplied.Evaluate(spec), Is.InRange(50f, 150f), "and a roll lands between them");
 
             // 10% at level 1, 50% at level 2
-            var widening = Reading(new RandomizedScaler { LevelValues = new[] { 100f }, StretchOverLevels = false, Variance = ByLevel(0.1f, 0.5f) });
+            var widening = Reading(new RandomizedScaler { LevelValues = new[] { 100f }, StretchOverLevels = false, Variance = new PercentageVariance { Share = ByLevel(0.1f, 0.5f) } });
             bool pastTenPercent = false;
             for (int i = 0; i < 200; i++)
             {
@@ -368,6 +371,43 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             }
             Assert.IsTrue(pastTenPercent, "and level 2 does roll past level 1's bounds");
         });
+
+        /// <summary>
+        /// A Randomized scaler's variance was one of three modes, so a game's dice or bell curve needed a scaler of its own
+        /// (FEAT-30). Its variance is a class: one of the game's own, here a roll of two dice, varies the value its way and
+        /// says its lowest and its highest.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_A_randomized_scaler_varies_by_a_variance_of_the_games_own([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var caster = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)), "Caster");
+            await Frames.Step();
+            var spec = caster.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(caster),
+                Make.Effect("Blow", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -1f }));
+
+            var dice = new RandomizedScaler { LevelValues = new[] { 10f }, StretchOverLevels = false, Variance = new TwoDice(), RollOncePerSpec = false };
+            Assert.AreEqual(12f, dice.GetMinValue(spec), 0.001f, "its value and two dice's least, 2");
+            Assert.AreEqual(22f, dice.GetMaxValue(spec), 0.001f, "and their most, 12");
+            dice.Initialize(spec);
+            bool rolledAbove = false;
+            for (int i = 0; i < 100; i++)
+            {
+                float rolled = dice.Evaluate(spec);
+                Assert.That(rolled, Is.InRange(12f, 22f), "each roll lands between them");
+                rolledAbove |= rolled > 12f;
+            }
+            Assert.IsTrue(rolledAbove, "and they do roll");
+        });
+
+        // A game's own variance: two dice, from 2 to 12
+        [System.Serializable]
+        private sealed class TwoDice : AbstractVariance
+        {
+            public override float Vary(float value, float roll, IAttributeImpactCarrier carrier) => value + 2f + Mathf.Round(roll * 10f);
+            public override float Lowest(float value, IAttributeImpactCarrier carrier) => value + 2f;
+            public override float Highest(float value, IAttributeImpactCarrier carrier) => value + 12f;
+        }
 
         // ═══════════════════════════════════════════════════════════════════════════
         // NUM-21: Set By Caller's Default

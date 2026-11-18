@@ -137,7 +137,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             await Cast(caster, Searching("Rally", new AutoTargetByAffinityTask
             {
-                AffinityFilter = EAffinityFilter.Allies, Range = 5f, MaxTargets = 0, IncludeSelf = true,
+                Takes = EAffiliationFilter.Allies, Range = 5f, MaxTargets = 0,
             }));
             Assert.IsTrue(Marked(ally), "its allies");
             Assert.IsTrue(Marked(caster), "and its caster, which it asked for");
@@ -159,13 +159,71 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             var shout = Make.Ability("Shout", Make.Stage(new AreaEffectTask
             {
-                Radius = 3f, Around = EAreaCentre.Caster, Takes = EAffinityFilter.Enemies, Effects = new List<GameplayEffect> { Mark() },
+                Radius = 3f, Around = EAreaCentre.Caster, Takes = EAffiliationFilter.Enemies, Effects = new List<GameplayEffect> { Mark() },
             }));
             await Cast(caster, shout);
             Assert.IsTrue(Marked(near), "an enemy within its radius");
             Assert.IsFalse(Marked(friend), "not an ally");
             Assert.IsFalse(Marked(far), "nor one beyond it");
             Assert.IsFalse(Marked(caster), "nor its caster");
+        });
+
+        /// <summary>
+        /// An Area Effect around its activation's point or its target, with neither given, did nothing, where its centre's
+        /// choice says the caster stands in, as both auto-target tasks and Play Cue take it (FEAT-30). It lands around its
+        /// caster. Around a target, an ability that names its caster its implicit target reached it already.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_An_area_effect_with_no_target_or_point_lands_around_its_caster([Values] Hub hub,
+            [Values(EAreaCentre.Point, EAreaCentre.Target)] EAreaCentre around) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, Vector3.zero);
+            var near = At(hub, "Near", blue, new Vector3(2f, 0f, 0f));
+            await Frames.Step();
+
+            await Cast(caster, Make.Ability("Shout", Make.Stage(new AreaEffectTask
+            {
+                Radius = 3f, Around = around, Takes = EAffiliationFilter.Enemies, Effects = new List<GameplayEffect> { Mark() },
+            })));
+            Assert.IsTrue(Marked(near), $"around its {around}, with none given, it lands around its caster");
+        });
+
+        /// <summary>
+        /// Two choices said whom a search takes, its sides by one enum and its caster by a switch of its own, beside an
+        /// Affiliation check's enum of five (FEAT-30). One filter says both, for every search and the check: Allies takes the
+        /// caster with its side, Other Allies leaves it out, and Self, All But Self and Everyone say it of anyone.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_One_filter_says_whom_a_search_takes_its_caster_among_them([Values] Hub hub) => Live(async () =>
+        {
+            var caster = At(hub, "Caster", red, Vector3.zero);
+            var friend = At(hub, "Friend", red, new Vector3(1f, 0f, 0f));
+            var foe = At(hub, "Foe", blue, new Vector3(2f, 0f, 0f));
+            await Frames.Step();
+
+            var sides = caster.GetAffiliation();
+            bool Takes(EAffiliationFilter filter, IGameplayAbilitySystem other) => ForgeEntities.Takes(filter, caster, sides, other);
+            Assert.IsTrue(Takes(EAffiliationFilter.Allies, caster) && Takes(EAffiliationFilter.Allies, friend), "Allies: its side, itself among them");
+            Assert.IsFalse(Takes(EAffiliationFilter.Allies, foe), "and not the other side");
+            Assert.IsFalse(Takes(EAffiliationFilter.OtherAllies, caster), "Other Allies: its side but itself");
+            Assert.IsTrue(Takes(EAffiliationFilter.OtherAllies, friend), "its ally");
+            Assert.IsTrue(Takes(EAffiliationFilter.Enemies, foe), "Enemies: the other side");
+            Assert.IsFalse(Takes(EAffiliationFilter.Enemies, friend) || Takes(EAffiliationFilter.Enemies, caster), "not its ally nor itself");
+            Assert.IsTrue(Takes(EAffiliationFilter.Self, caster) && !Takes(EAffiliationFilter.Self, friend), "Self: itself alone");
+            Assert.IsTrue(!Takes(EAffiliationFilter.AllButSelf, caster) && Takes(EAffiliationFilter.AllButSelf, foe), "All But Self: anyone else");
+            Assert.IsTrue(Takes(EAffiliationFilter.Everyone, caster) && Takes(EAffiliationFilter.Everyone, foe), "Everyone: anyone");
+
+            await Cast(caster, Make.Ability("Rally", Make.Stage(new AreaEffectTask
+            {
+                Radius = 3f, Around = EAreaCentre.Caster, Takes = EAffiliationFilter.OtherAllies, Effects = new List<GameplayEffect> { Mark() },
+            })));
+            Assert.IsTrue(Marked(friend), "an area of Other Allies marks its caster's ally");
+            Assert.IsFalse(Marked(caster), "and leaves its caster out");
+            await Cast(caster, Make.Ability("Rally Too", Make.Stage(new AreaEffectTask
+            {
+                Radius = 3f, Around = EAreaCentre.Caster, Takes = EAffiliationFilter.Allies, Effects = new List<GameplayEffect> { Mark("Mark Too") },
+            })));
+            Assert.IsTrue(Marked(caster), "one of Allies takes its caster too");
         });
 
         /// <summary>
@@ -180,7 +238,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             var empower = Make.Ability("Empower", Make.Stage(new ApplyToCasterTask { Effects = new List<GameplayEffect> { Mark() } }));
-            empower.Behaviour.Targeting = new AutoTargetByAffinityTask { AffinityFilter = EAffinityFilter.Enemies, Range = 5f, MaxTargets = 1, UseCastRange = false };
+            empower.Behaviour.Targeting = new AutoTargetByAffinityTask { Takes = EAffiliationFilter.Enemies, Range = 5f, MaxTargets = 1, UseCastRange = false };
             await Cast(caster, empower);
             Assert.IsTrue(Marked(caster), "its caster");
             Assert.IsFalse(Marked(enemy), "not the enemy it targets");
@@ -223,7 +281,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             AutoTargetByAffinityTask Search()
             {
-                var search = new AutoTargetByAffinityTask { AffinityFilter = EAffinityFilter.Enemies, MaxTargets = 0, UseCastRange = false };
+                var search = new AutoTargetByAffinityTask { Takes = EAffiliationFilter.Enemies, MaxTargets = 0, UseCastRange = false };
                 // Its Range by its level, set by name, as a number of any kind
                 var range = typeof(AutoTargetByAffinityTask).GetField(nameof(AutoTargetByAffinityTask.Range));
                 range.SetValue(search, new ScalableFloat(new SimpleScaler { LevelValues = new[] { 5f, 10f, 10f, 10f }, MaxLevel = 4, StretchOverLevels = false }, 1f));
@@ -274,7 +332,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
 
             var hammer = Mark("Storm Hammer");
-            hammer.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.Enemies } });
+            hammer.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffiliationFilter.Enemies } });
             Assert.IsTrue(World.Apply(caster, target, hammer), "it lands on its target");
             await Frames.Step(2);
             Assert.IsTrue(Marked(target), "its target");
@@ -284,7 +342,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(Marked(chained), "nor one near those the area took: it spreads no further");
 
             var splash = Mark("Splash");
-            splash.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffinityFilter.AlliesAndEnemies, MaxTargets = 1 } });
+            splash.Components.Add(new AreaEffectComponent { Area = new EffectArea { Radius = 3f, Takes = EAffiliationFilter.AllButSelf, MaxTargets = 1 } });
             var second = At(hub, "Second", blue, new Vector3(30f, 0f, 0f));
             var closest = At(hub, "Closest", red, new Vector3(31f, 0f, 0f));
             var next = At(hub, "Next", blue, new Vector3(32f, 0f, 0f));

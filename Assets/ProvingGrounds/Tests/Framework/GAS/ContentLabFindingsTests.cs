@@ -130,7 +130,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ability = Make.Ability("Area", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { Marking("Mark", mark) } }));
             ability.Behaviour.Targeting = new AutoTargetByAffinityTask
             {
-                AffinityFilter = EAffinityFilter.Enemies, Mode = EAutoTargetMode.Nearest, MaxTargets = 0, Range = 0f,
+                Takes = EAffiliationFilter.Enemies, Mode = EAutoTargetMode.Nearest, MaxTargets = 0, Range = 0f,
                 Requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() },
             };
             await Frames.Step();
@@ -161,7 +161,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var ability = Make.Ability("Area", Make.Stage(new ApplyEffectsAbilityTask { Effects = new List<GameplayEffect> { Marking("Mark", mark) } }));
             ability.Behaviour.Targeting = new AutoTargetByAffinityTask
             {
-                AffinityFilter = EAffinityFilter.Enemies, Mode = EAutoTargetMode.Nearest, MaxTargets = 0, Range = 5f,
+                Takes = EAffiliationFilter.Enemies, Mode = EAutoTargetMode.Nearest, MaxTargets = 0, Range = 5f,
                 Requirements = new AvoidRequireTagGroup { AvoidTags = new List<TagQuery>(), RequireTags = new List<TagQuery>() },
             };
             await Frames.Step();

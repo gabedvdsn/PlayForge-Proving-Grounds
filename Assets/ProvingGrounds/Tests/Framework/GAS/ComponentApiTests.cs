@@ -156,7 +156,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var outside = At(hub, "Outside", blue, 8f);
             await Frames.Step();
             AbstractTargetingAbilityTask search = byAffinity
-                ? new AutoTargetByAffinityTask { Range = 20f, Mode = EAutoTargetMode.Farthest, AffinityFilter = EAffinityFilter.Enemies }
+                ? new AutoTargetByAffinityTask { Range = 20f, Mode = EAutoTargetMode.Farthest, Takes = EAffiliationFilter.Enemies }
                 : new AutoTargetTask { Range = 20f, Mode = EAutoTargetMode.Farthest };
             var leash = new Leash { Range = 5f };
             var bolt = Marking("Bolt", search, leash);

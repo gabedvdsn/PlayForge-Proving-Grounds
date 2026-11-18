@@ -151,6 +151,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsFalse(File.Exists(proxy), "RuntimeProxy's commented-out file is gone");
         }
 
+        /// <summary>
+        /// Effect configs nothing made, read or saved, with the modifiers and the inclusion policy only they held, and a
+        /// cached group's helper nothing called, are gone before the freeze, as a project could name them (FEAT-30).
+        /// </summary>
+        [Test]
+        public void FEAT_30_Effect_configs_and_a_helper_nothing_used_are_gone()
+        {
+            var runtime = typeof(Ability).Assembly;
+            foreach (var name in new[] { "EffectImpactConfig", "AbstractEffectDurationConfig", "EInclusionPolicy", "ValueModifier", "ValueIntModifier" })
+                Assert.IsNull(runtime.GetType($"FarEmerald.PlayForge.{name}"), $"{name} is gone");
+            Assert.IsNull(typeof(ForgeHelper).GetMethod("TryComputeCachedMagnitudeModifierGroupValue"), "and the cached group's helper nothing called");
+            Assert.IsNotNull(runtime.GetType("FarEmerald.PlayForge.AbstractStackingConfig"), "an effect's stack behaviours stay");
+        }
+
         // The core: the code every component of PlayForge's and of a project's goes through, which may need no special case
         // for one: the GAS's core, an ability's spec, the ability and effect systems, purging, items, the ability proxy and
         // the targeting tasks; and in the editor, the Problems view's rules and the ability inspector

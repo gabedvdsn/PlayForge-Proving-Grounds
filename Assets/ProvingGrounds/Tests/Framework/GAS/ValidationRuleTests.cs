@@ -31,6 +31,30 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             Assert.IsFalse(byValue.Validate(null, () => hale, out _), "and 80 isn't");
         });
 
+        /// <summary>
+        /// An ability's rules couldn't read a condition, which an effect's requirements, a modifier and an On Hit can
+        /// (FEAT-30). A Condition rule holds while its condition does, read with the entity its list hands it as the target,
+        /// and says what didn't hold.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_A_condition_rule_holds_while_its_condition_does([Values] Hub hub) => Live(async () =>
+        {
+            var health = Make.Attribute("Health");
+            var hurt = World.Entity(hub, Make.Set(Make.Element(health, 40f, 100f)), "Hurt");
+            var hale = World.Entity(hub, Make.Set(Make.Element(health, 80f, 100f)), "Hale");
+            await Frames.Step();
+
+            var rule = new ConditionValidation
+            {
+                When = new AttributeCondition { On = NumberSide.Target, Attribute = health, Comparison = EComparisonOperator.LessOrEqual, Value = 50f },
+            };
+            Assert.IsTrue(rule.Validate(null, () => hurt, out _), "40 is at most 50");
+            Assert.IsFalse(rule.Validate(null, () => hale, out string why), "80 isn't");
+            StringAssert.Contains(health.GetName(), why, "and it says what didn't hold");
+            Assert.IsTrue(new ConditionValidation().Validate(null, () => hale, out _), "a rule with no condition holds");
+            Assert.AreEqual(EValidationSide.Either, ValidationSideAttribute.Of(typeof(ConditionValidation)), "among either list");
+        });
+
         // ─── The rules' pass and seven new rules (EP-35) ─────────────────────────────────────────────────────────────
 
         private Tag red, blue;
@@ -88,20 +112,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             await Frames.Step();
             var data = CasterData(caster);
 
-            bool Takes(ETargetAffiliation affiliation, IGameplayAbilitySystem target) =>
+            bool Takes(EAffiliationFilter affiliation, IGameplayAbilitySystem target) =>
                 new AffiliationValidation { Target = affiliation }.Validate(data, () => target, out _);
-            Assert.IsTrue(Takes(ETargetAffiliation.Enemy, enemy), "an enemy is an enemy");
-            Assert.IsFalse(Takes(ETargetAffiliation.Enemy, ally), "an ally isn't");
-            Assert.IsFalse(Takes(ETargetAffiliation.Enemy, caster), "nor is the caster");
-            Assert.IsTrue(Takes(ETargetAffiliation.Ally, ally), "an ally is an ally");
-            Assert.IsTrue(Takes(ETargetAffiliation.Ally, caster), "and so is the caster");
-            Assert.IsFalse(Takes(ETargetAffiliation.Ally, enemy), "an enemy isn't");
-            Assert.IsTrue(Takes(ETargetAffiliation.OtherAlly, ally), "another ally is");
-            Assert.IsFalse(Takes(ETargetAffiliation.OtherAlly, caster), "the caster isn't another");
-            Assert.IsTrue(Takes(ETargetAffiliation.Self, caster), "the caster is itself");
-            Assert.IsFalse(Takes(ETargetAffiliation.Self, ally), "an ally isn't");
-            Assert.IsTrue(Takes(ETargetAffiliation.NotSelf, enemy), "anyone else is not itself");
-            Assert.IsFalse(Takes(ETargetAffiliation.NotSelf, caster), "the caster is");
+            Assert.IsTrue(Takes(EAffiliationFilter.Enemies, enemy), "an enemy is an enemy");
+            Assert.IsFalse(Takes(EAffiliationFilter.Enemies, ally), "an ally isn't");
+            Assert.IsFalse(Takes(EAffiliationFilter.Enemies, caster), "nor is the caster");
+            Assert.IsTrue(Takes(EAffiliationFilter.Allies, ally), "an ally is an ally");
+            Assert.IsTrue(Takes(EAffiliationFilter.Allies, caster), "and so is the caster");
+            Assert.IsFalse(Takes(EAffiliationFilter.Allies, enemy), "an enemy isn't");
+            Assert.IsTrue(Takes(EAffiliationFilter.OtherAllies, ally), "another ally is");
+            Assert.IsFalse(Takes(EAffiliationFilter.OtherAllies, caster), "the caster isn't another");
+            Assert.IsTrue(Takes(EAffiliationFilter.Self, caster), "the caster is itself");
+            Assert.IsFalse(Takes(EAffiliationFilter.Self, ally), "an ally isn't");
+            Assert.IsTrue(Takes(EAffiliationFilter.AllButSelf, enemy), "anyone else is not itself");
+            Assert.IsFalse(Takes(EAffiliationFilter.AllButSelf, caster), "the caster is");
 
             Assert.IsFalse(new AffiliationValidation().Validate(data, () => ally, out var error), "an enemy rule refuses an ally");
             Assert.That(error, Is.Not.Null.And.Not.Empty, "saying why");

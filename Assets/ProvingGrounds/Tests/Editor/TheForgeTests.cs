@@ -1462,7 +1462,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         // tag as a value, of whatever kind (TAG-3)
         private static readonly string[] Unauthored =
         {
-            "DataWrapper.tagValue", "SetTagsTask.Tags",
+            "SetTagsTask.Tags",
         };
 
         // A field's contexts, by its type's name and its own

@@ -18,7 +18,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var gas = World.Entity(hub, Make.Set(Make.Element(strength, 10f, 10f)));
             World.Apply(gas, gas, Lucky(strength, new RandomizedScaler
             {
-                VarianceMode = EVarianceMode.Multiplier, MinMultiplier = 0f, MaxMultiplier = 100f,
+                Variance = new MultiplierVariance { Min = 0f, Max = 100f },
             }));
             await Frames.Step();
             float rolled = Current(gas, strength);
@@ -37,7 +37,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var gas = World.Entity(hub, Make.Set(Make.Element(strength, 10f, 10f)));
             World.Apply(gas, gas, Lucky(strength, new RandomizedScaler
             {
-                VarianceMode = EVarianceMode.Multiplier, MinMultiplier = 0f, MaxMultiplier = 100f, RollOncePerSpec = false,
+                Variance = new MultiplierVariance { Min = 0f, Max = 100f }, RollOncePerSpec = false,
             }));
             await Frames.Step();
             float rolled = Current(gas, strength);

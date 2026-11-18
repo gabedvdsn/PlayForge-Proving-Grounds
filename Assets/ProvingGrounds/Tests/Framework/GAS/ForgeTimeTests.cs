@@ -52,7 +52,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private GameplayEffect Lucky(ForgeAttribute strength) => Make.Effect("Lucky", new EffectConfig
         {
             Policy = EEffectDurationPolicy.Infinite, Target = strength, Op = ECalculationOperation.Add, Magnitude = 1f,
-            MagnitudeScaler = new RandomizedScaler { VarianceMode = EVarianceMode.Multiplier, MinMultiplier = 0f, MaxMultiplier = 100f, RollOncePerSpec = true },
+            MagnitudeScaler = new RandomizedScaler { Variance = new MultiplierVariance { Min = 0f, Max = 100f }, RollOncePerSpec = true },
             MagnitudeOp = EMagnitudeOperation.UseScaler,
         });
 

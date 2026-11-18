@@ -112,7 +112,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         private static float Health(IGameplayAbilitySystem gas, Attribute attribute) =>
             gas.TryGetAttributeValue(attribute, out var value) ? value.CurrentValue : float.NaN;
 
-        private static DataWrapper FloatData(Tag key, float value) => new() { Key = key, Type = EDataWrapperType.Float, floatValue = value };
+        private static DataWrapper FloatData(Tag key, float value) => new() { Key = key, Value = new LocalFloat { Value = value } };
 
         // ═══════════════════════════════════════════════════════════════════════════
         // NUM-8: Local Data

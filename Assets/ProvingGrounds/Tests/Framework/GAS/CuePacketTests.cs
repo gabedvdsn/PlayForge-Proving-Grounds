@@ -33,7 +33,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             public override void Burst(CueContext cue) => Loaded.Add((cue, CuePackets.For(cue, Data)));
         }
 
-        private static DataWrapper Word(Tag key, string word) => new() { Key = key, Type = EDataWrapperType.String, stringValue = word };
+        private static DataWrapper Word(Tag key, string word) => new() { Key = key, Value = new LocalString { Value = word } };
 
         private static T First<T>(ProcessDataPacket packet, Tag key)
         {
@@ -60,11 +60,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             brand.LocalData.Add(Word(word, "the effect's"));
             brand.LocalData.Add(new DataWrapper
             {
-                Key = power, Type = EDataWrapperType.Float, floatValue = ScalableFloat.From(context => context.Level.CurrentValue * 2f),
+                Key = power, Value = new LocalFloat { Value = ScalableFloat.From(context => context.Level.CurrentValue * 2f) },
             });
             var cue = new Loading();
             cue.Data.Add(Word(word, "the cue's"));
-            cue.Data.Add(new DataWrapper { Key = extra, Type = EDataWrapperType.Int, intValue = 3 });
+            cue.Data.Add(new DataWrapper { Key = extra, Value = new LocalInt { Value = 3 } });
             brand.Components.Add(new CuesEffectComponent { OnApply = { cue } });
 
             Assert.IsTrue(World.Apply(source, target, brand), "the brand lands");

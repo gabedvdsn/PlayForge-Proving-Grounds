@@ -623,19 +623,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     Assert.IsNotNull(field.Q("Behaviours"), "but its behaviours, which adjust the attribute it reads");
                 });
 
-                var randomized = new RandomizedScaler { VarianceMode = EVarianceMode.Percentage, LevelValues = new[] { 10f, 20f } };
+                // Its variance is a class, whose kind's numbers are its own (FEAT-30)
+                var randomized = new RandomizedScaler { LevelValues = new[] { 10f, 20f } };
                 yield return DrawDuration(host, effect, randomized, field =>
                 {
                     Assert.IsNotNull(field.Q("LevelTable"), "a Randomized shows the table its base value comes from");
-                    Assert.IsTrue(Shown(field.Q<PropertyField>("Variance")), "a percentage's variance");
-                    Assert.IsFalse(Shown(field.Q<PropertyField>("MinMultiplier")), "and not a multiplier's range");
+                    var variance = field.Q<PropertyField>("Variance");
+                    Assert.IsTrue(Shown(variance), "and its variance");
+                    Assert.IsNotNull(variance?.Q<PropertyField>("Share"), "a percentage's share");
+                    Assert.IsNull(variance?.Q<PropertyField>("Min"), "and not a multiplier's range");
                 });
-                randomized.VarianceMode = EVarianceMode.Multiplier;
+                randomized.Variance = new MultiplierVariance();
                 yield return DrawDuration(host, effect, randomized, field =>
                 {
-                    Assert.IsFalse(Shown(field.Q<PropertyField>("Variance")), "a multiplier hides the variance");
-                    Assert.IsTrue(Shown(field.Q<PropertyField>("MinMultiplier")), "and shows its range");
-                    Assert.IsTrue(Shown(field.Q<PropertyField>("MaxMultiplier")));
+                    var variance = field.Q<PropertyField>("Variance");
+                    Assert.IsNull(variance?.Q<PropertyField>("Share"), "a multiplier has no share");
+                    Assert.IsNotNull(variance?.Q<PropertyField>("Min"), "but its range");
+                    Assert.IsNotNull(variance?.Q<PropertyField>("Max"));
                 });
 
                 // Its condition is a class with a drawer of its own, and its branches are numbers (FEAT-29)

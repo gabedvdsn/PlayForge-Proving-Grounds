@@ -92,7 +92,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var friend = At(hub, "Friend", red, 2f);
             var away = At(hub, "Away", blue, 10f);
             var beyond = At(hub, "Beyond", blue, 6.5f);
-            var plague = Plague(new SpreadEffectComponent { When = ESpreadMoment.Death, Radius = 4f, Takes = EAffinityFilter.Enemies });
+            var plague = Plague(new SpreadEffectComponent { When = ESpreadMoment.Death, Radius = 4f, Takes = EAffiliationFilter.Enemies });
             await Frames.Step();
 
             Assert.IsTrue(World.Apply(caster, victim, plague), "the plague lands on its victim");
@@ -174,7 +174,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Policy = EEffectDurationPolicy.Durational, Duration = 2f, PeriodicTicks = true, Ticks = 2,
                 Target = health, Op = ECalculationOperation.Add, Magnitude = -1f,
             });
-            smolder.Components.Add(new SpreadEffectComponent { When = ESpreadMoment.Tick, Effect = ember, Radius = 4f, Takes = EAffinityFilter.Enemies });
+            smolder.Components.Add(new SpreadEffectComponent { When = ESpreadMoment.Tick, Effect = ember, Radius = 4f, Takes = EAffiliationFilter.Enemies });
             await Frames.Step();
 
             Assert.IsTrue(World.Apply(caster, smoldering, smolder), "the smolder lands");

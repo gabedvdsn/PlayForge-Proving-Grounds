@@ -174,7 +174,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var outside = At(hub, "Outside", blue, 8f);
             await Frames.Step();
             AbstractTargetingAbilityTask Search(bool useCastRange) => byAffinity
-                ? new AutoTargetByAffinityTask { Range = 20f, Mode = EAutoTargetMode.Farthest, AffinityFilter = EAffinityFilter.Enemies, UseCastRange = useCastRange }
+                ? new AutoTargetByAffinityTask { Range = 20f, Mode = EAutoTargetMode.Farthest, Takes = EAffiliationFilter.Enemies, UseCastRange = useCastRange }
                 : new AutoTargetTask { Range = 20f, Mode = EAutoTargetMode.Farthest, UseCastRange = useCastRange };
 
             var within = Ranged("Within", 5f, Search(true));

@@ -106,7 +106,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
         public IEnumerator FN_14_A_respawn_revives_its_entity_after_its_delay([Values] Hub hub, [Values] bool home) => Live(async () =>
         {
             var killer = At(hub, "Killer", red, -10f);
-            var hero = At(hub, "Hero", blue, 0f, new RespawnEntityComponent { Delay = 0.3f, At = home ? ERespawnPlace.Home : ERespawnPlace.WhereItDied });
+            var hero = At(hub, "Hero", blue, 0f, new RespawnEntityComponent { Delay = 0.3f, At = home ? new HomeRespawnPlace() : new WhereItDiedRespawnPlace() });
             await Frames.Step();
             var spawn = hero.GetTargetingPacket().position;
             hero.GetTargetingPacket().position = new Vector3(5f, 0f, 2f);
@@ -120,6 +120,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             if (home) Assert.That(Vector3.Distance(spawn, at), Is.LessThan(0.01f), $"at its home, {spawn}, not {at}");
             else Assert.That(Vector3.Distance(new Vector3(5f, 0f, 2f), at), Is.LessThan(0.01f), $"where it died, not {at}");
         });
+
+        /// <summary>
+        /// Where a Respawn brings its entity back was one of three, so a game's checkpoint or base needed a Respawn of its
+        /// own (FEAT-30). Its place is a class: one of the game's own, here the checkpoint its hero passed last, brings it
+        /// back there, and its line says so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_30_A_respawn_revives_its_entity_at_a_place_of_the_games_own([Values] Hub hub) => Live(async () =>
+        {
+            LastCheckpoint.Passed = new Vector3(7f, 0f, -3f);
+            var killer = At(hub, "Killer", red, -10f);
+            var respawn = new RespawnEntityComponent { Delay = 0.3f, At = new LastCheckpoint() };
+            var hero = At(hub, "Hero", blue, 0f, respawn);
+            await Frames.Step();
+
+            await Kill(killer, hero);
+            await Frames.Step(2);
+            Assert.IsTrue(hero.IsDead, "it stays dead a while");
+            await Frames.Until(() => !hero.IsDead, 240, "and revives once its delay passes");
+            var at = hero.GetTargetingPacket().position;
+            Assert.That(Vector3.Distance(LastCheckpoint.Passed, at), Is.LessThan(0.01f), $"at the checkpoint it passed, not {at}");
+            StringAssert.Contains("at the last checkpoint", respawn.Describe(), "and its line says where");
+        });
+
+        // A game's own place: the checkpoint its hero passed last
+        [System.Serializable]
+        private sealed class LastCheckpoint : AbstractRespawnPlace
+        {
+            public static Vector3 Passed;
+            public override Vector3? Where(EntityComponentContext context, Vector3? home) => Passed;
+            public override string Describe() => "at the last checkpoint";
+        }
 
         /// <summary>
         /// A revive before its time, as a buyback, ends the wait: dead again, it waits its own delay, the first wait, which

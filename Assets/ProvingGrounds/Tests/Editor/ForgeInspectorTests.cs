@@ -1380,21 +1380,22 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A Local Data row of type ScriptableObject edited the MonoBehaviour value, and one of type MonoBehaviour the
-        /// ScriptableObject value, so neither kept what was assigned to it.
+        /// ScriptableObject value, so neither kept what was assigned to it. Each is a kind of its own since FEAT-30, and its
+        /// row's field edits its own value.
         /// </summary>
-        [TestCase(EDataWrapperType.ScriptableObject, typeof(ScriptableObject), "scriptableObjectValue")]
-        [TestCase(EDataWrapperType.MonoBehaviour, typeof(MonoBehaviour), "monoBehaviourValue")]
-        public void ED_30_A_Local_Data_object_row_edits_its_own_value(EDataWrapperType type, System.Type objectType, string value)
+        [TestCase(typeof(LocalScriptableObject), typeof(ScriptableObject))]
+        [TestCase(typeof(LocalMonoBehaviour), typeof(MonoBehaviour))]
+        public void ED_30_A_Local_Data_object_row_edits_its_own_value(System.Type kind, System.Type objectType)
         {
             var ability = ScriptableObject.CreateInstance<Ability>();
             try
             {
-                ability.LocalData.Add(new DataWrapper { Type = type });
+                ability.LocalData.Add(new DataWrapper { Value = (LocalDataValue)System.Activator.CreateInstance(kind) });
                 var row = new SerializedObject(ability).FindProperty(nameof(Ability.LocalData)).GetArrayElementAtIndex(0);
                 var root = new DataWrapperDrawer().CreatePropertyGUI(row);
 
                 var field = root.Query<ObjectField>().ToList().Single(f => f.objectType == objectType);
-                Assert.That(field.bindingPath, Does.EndWith(value));
+                Assert.AreEqual(row.FindPropertyRelative("Value.Value").propertyPath, field.bindingPath, "it edits its kind's own value");
             }
             finally
             {
@@ -1416,7 +1417,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var host = new GameObject("ED-68 Panel") { hideFlags = HideFlags.HideAndDontSave };
             try
             {
-                ability.LocalData.Add(new DataWrapper { Type = EDataWrapperType.Tag });
+                ability.LocalData.Add(new DataWrapper { Value = new LocalTag() });
                 var document = host.AddComponent<UIDocument>();
                 document.panelSettings = settings;
                 yield return null;
@@ -1477,7 +1478,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var ability = ScriptableObject.CreateInstance<Ability>();
             try
             {
-                ability.LocalData.Add(new DataWrapper { Type = EDataWrapperType.Int });
+                ability.LocalData.Add(new DataWrapper { Value = new LocalInt() });
                 var row = new SerializedObject(ability).FindProperty(nameof(Ability.LocalData)).GetArrayElementAtIndex(0);
                 var root = new DataWrapperDrawer().CreatePropertyGUI(row);
                 var wrong = root.Query<VisualElement>().ToList()

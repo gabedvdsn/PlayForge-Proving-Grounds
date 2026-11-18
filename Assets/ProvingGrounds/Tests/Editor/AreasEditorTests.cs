@@ -82,7 +82,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Inspect(effect, root => AurasAreComponents(root, "Aura", "Area"));
                 var area = new SerializedObject(effect).FindProperty("Components.Array.data[1].Area");
                 var drawn = new EffectAreaDrawer().CreatePropertyGUI(area).Query<PropertyField>().ToList().Select(field => field.name).ToList();
-                Assert.That(drawn, Is.EqualTo(new[] { "Radius", "Flat", "Takes", "IncludeCaster", "MaxTargets", "UseResolveOrder" }),
+                Assert.That(drawn, Is.EqualTo(new[] { "Radius", "Flat", "Takes", "MaxTargets", "UseResolveOrder" }),
                     $"the area's own fields: {string.Join(", ", drawn)}");
                 Inspect(item, root =>
                 {
