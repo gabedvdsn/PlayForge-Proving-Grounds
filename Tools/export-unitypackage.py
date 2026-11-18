@@ -377,7 +377,7 @@ played = True
 if "--build" in args:
     path = os.path.join(logs, "player.log")
     done = subprocess.run([UNITY, "-batchmode", "-nographics", "-projectPath", check, "-executeMethod",
-                           "FarEmerald.PlayForge.Extended.Editor.BuildVerification.BuildWindowsPlayer", "-logFile", path])
+                           "FarEmerald.PlayForge.Editor.BuildVerification.BuildWindowsPlayer", "-logFile", path])
     result = next((line.strip() for line in open(path, encoding="utf-8", errors="replace")
                    if "[BuildVerification] Result:" in line), f"no result; see {path}")
     print(f"the Windows player: exit={done.returncode}", result)
