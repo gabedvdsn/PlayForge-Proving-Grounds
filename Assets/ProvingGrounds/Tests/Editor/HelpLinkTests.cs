@@ -50,11 +50,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A help button opens its section on PlayForge's documentation site, which DocFX builds from these same
-        /// Documentation pages: the page as HTML under guides/, and the heading as its anchor, named as the site names
-        /// it (EP-68).
+        /// Documentation pages (EP-68). Each page is a folder under guides/, its opening at index.html and each of its
+        /// sections a page of its own, named as the site names its heading (EP-69).
         /// </summary>
         [Test]
-        public void EP_68_A_help_button_opens_its_section_on_the_docs_site()
+        public void EP_69_A_help_button_opens_its_sections_own_page()
         {
             var docs = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeDocs");
             var urlOf = docs.GetMethod("UrlOf", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
@@ -62,11 +62,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             string Url(string topic) => (string)urlOf.Invoke(null, new object[] { topic });
 
             const string guides = "https://gabedvdsn.github.io/PlayForge-Docs/guides/";
-            Assert.AreEqual(guides + "EFFECTS.html#local-data", Url("effects/localdata"), "a section, at its heading's anchor");
-            Assert.AreEqual(guides + "ATTRIBUTE_SETS.html#sub-sets", Url("attributesets/subsets"), "a heading's hyphen kept");
-            Assert.AreEqual(guides + "ATTRIBUTES.html#used-by", Url("attributes/usage"), "a topic named apart from its heading");
-            Assert.AreEqual(guides + "CUES.html", Url("cues"), "a whole page");
-            Assert.AreEqual(guides + "GETTING_STARTED.html", Url("nowhere"), "an unknown topic, the getting-started page");
+            Assert.AreEqual(guides + "effects/local-data.html", Url("effects/localdata"), "a section, its own page");
+            Assert.AreEqual(guides + "attribute-sets/sub-sets.html", Url("attributesets/subsets"),
+                "the page's folder a hyphen for the underscore, and a heading's hyphen kept");
+            Assert.AreEqual(guides + "attributes/used-by.html", Url("attributes/usage"), "a topic named apart from its heading");
+            Assert.AreEqual(guides + "cues/index.html", Url("cues"), "a whole page, at its opening");
+            Assert.AreEqual(guides + "getting-started/index.html", Url("nowhere"), "an unknown topic, the getting-started page");
         }
     }
 }
