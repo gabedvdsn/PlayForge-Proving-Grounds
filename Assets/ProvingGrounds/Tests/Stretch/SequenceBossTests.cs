@@ -64,12 +64,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 Exposed = make.NewTag("Boss.Exposed");
 
                 slam = make.Effect("Slam", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = Health, Magnitude = -20f });
-                slam.Cues.Add(new CameraShakeCue { Strength = 1f, Duration = 0.2f });
+                make.CuesOf(slam).OnApply.Add(new CameraShakeCue { Strength = 1f, Duration = 0.2f });
                 rain = make.Effect("Meteor Rain", new EffectConfig
                 {
                     Policy = EEffectDurationPolicy.Durational, Duration = 2f, Target = Health, Magnitude = -5f, PeriodicTicks = true, Ticks = 4,
                 });
-                rain.Cues.Add(new CameraShakeCue { Strength = 0.5f, Duration = 0.1f, OnEachTick = true });
+                var rainShake = new CameraShakeCue { Strength = 0.5f, Duration = 0.1f };
+                make.CuesOf(rain).OnApply.Add(rainShake);
+                make.CuesOf(rain).OnTick.Add(rainShake);
                 exposed = make.Effect("Exposed", new EffectConfig
                 {
                     Policy = EEffectDurationPolicy.Infinite, Target = null, GrantedTags = new List<Tag> { Exposed },

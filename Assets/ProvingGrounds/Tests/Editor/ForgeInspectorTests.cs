@@ -862,15 +862,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                     var sections = root.Query(className: "pf-section").ToList();
                     Assert.That(sections.Select(section => section.name.Replace("_CONTAINER", "")), Is.EqualTo(new[]
                     {
-                        "Identity", "Leveling", "Tags", "Duration", "Impact", "Requirements", "Components", "Cues", "Workers", "LocalData", "UsedBy",
-                    }), "the style doc's order, with Cues after Components and no Levels section, as the user has it (Decision 87)");
+                        "Identity", "Leveling", "Tags", "Duration", "Impact", "Requirements", "Components", "Workers", "LocalData", "UsedBy",
+                    }), "the style doc's order, its cues its Cues component's and no Levels section, as the user has it (Decision 87, EP-61)");
 
                     Assert.That(Summary(root, "Leveling"), Is.EqualTo("From what applies it"), "a standalone effect takes its origin's level");
                     Assert.That(Summary(root, "Tags"), Is.EqualTo("None"), "no tags");
                     Assert.That(Summary(root, "Duration"), Is.EqualTo("Durational · 6 s · 6 ticks"), "how long, and how often it ticks");
                     Assert.That(Summary(root, "Impact"), Is.EqualTo("Health −8 · Periodic"), "what it changes, and when");
                     Assert.That(Summary(root, "Requirements"), Is.EqualTo("None"), "no requirements");
-                    Assert.That(Summary(root, "Cues"), Is.EqualTo("None"), "no cues");
                     Assert.That(Summary(root, "Workers"), Is.EqualTo("None"), "no workers");
                     Assert.That(Summary(root, "LocalData"), Is.EqualTo("None"), "no Local Data");
                     Assert.That(Summary(root, "UsedBy"), Is.EqualTo("None"), "nothing uses an unsaved effect");

@@ -50,7 +50,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             var effect = ScriptableObject.CreateInstance<GameplayEffect>();
             effect.name = name;
             effect.Definition.Name = name;
-            foreach (var tag in tags) effect.Cues.Add(new TagCue { Tag = Tag.Generate(tag) });
+            var cues = new CuesEffectComponent();
+            foreach (var tag in tags) cues.OnApply.Add(new TagCue { Tag = Tag.Generate(tag) });
+            effect.Components.Add(cues);
             return effect;
         }
 

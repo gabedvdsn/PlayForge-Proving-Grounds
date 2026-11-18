@@ -12,8 +12,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 {
     /// <summary>
     /// Gameplay cues (FEAT-1): an effect changed attributes and tags and nothing else, so what it showed and sounded was
-    /// each game's own code. An effect lists cue handlers, as it lists workers: a burst as it lands or ticks, a lasting
-    /// cue while it's on, and a camera shake through the shaker the game gives.
+    /// each game's own code. An effect's Cues component lists cue handlers (EP-61): a burst as it lands or ticks, a
+    /// lasting cue while it's on, and a camera shake through the shaker the game gives.
     /// </summary>
     public class GameplayCueTests : ProvingGroundsTest
     {
@@ -65,7 +65,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var health = Make.Attribute("Health");
             var gas = World.Entity(hub, Make.Set(Make.Element(health, 100f, 100f)));
             var slam = Make.Effect("Slam", new EffectConfig { Policy = EEffectDurationPolicy.Instant, Target = health, Magnitude = -10f });
-            slam.Cues.Add(new CameraShakeCue { Strength = 2f, Duration = 0.3f });
+            Make.CuesOf(slam).OnApply.Add(new CameraShakeCue { Strength = 2f, Duration = 0.3f });
 
             Assert.IsTrue(World.Apply(gas, gas, slam), "a slam lands");
             await Frames.Step();
@@ -86,8 +86,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             try
             {
                 var aura = Make.Effect("Aura", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
-                aura.Cues.Add(new PrefabCue { Prefab = glow, WhileActive = true });
-                aura.Cues.Add(new CameraShakeCue { Strength = 1f, Duration = 0.1f });
+                Make.CuesOf(aura).WhileActive.Add(new PrefabCue { Prefab = glow });
+                Make.CuesOf(aura).OnApply.Add(new CameraShakeCue { Strength = 1f, Duration = 0.1f });
                 int Glows() => Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                     .Count(t => t.name == "FEAT-1 Glow(Clone)");
 
@@ -130,11 +130,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                     Policy = EEffectDurationPolicy.Durational, Duration = 3f, Target = health, Magnitude = -1f, PeriodicTicks = true, Ticks = 3,
                 });
                 var cue = new RecordingCue();
-                burn.Cues.Add(cue);
+                Make.CueAtEachMoment(burn, cue);
 
                 Assert.IsTrue(World.Apply(gas, gas, burn), "a burn lands");
                 await Frames.Until(() => !gas.TryGetEffectContainer(burn, out _), 8, "and runs its course");
-                CollectionAssert.AreEqual(new[] { "Applied", "Begin", "Ticked 1", "Ticked 1", "Ticked 1", "Removed", "End" }, cue.Moments,
+                CollectionAssert.AreEqual(new[] { "Begin", "Applied", "Ticked 1", "Ticked 1", "Ticked 1", "End", "Removed" }, cue.Moments,
                     "each moment, in order");
             }
             finally
@@ -183,23 +183,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                     Policy = EEffectDurationPolicy.Durational, Duration = 3f, Target = health, Magnitude = -1f, PeriodicTicks = true, Ticks = 3,
                 });
                 var cue = new RecordingCue();
-                burn.Cues.Add(cue);
+                Make.CueAtEachMoment(burn, cue);
 
                 Assert.IsTrue(World.Apply(gas, gas, burn), "a burn lands");
                 await Frames.Until(() => !gas.TryGetEffectContainer(burn, out _), 8, "and runs its course");
 
-                CollectionAssert.AreEqual(new[] { "Applied", "Begin", "Ticked 1", "Ticked 1", "Ticked 1", "Removed", "End" }, cue.Moments,
-                    "its cue plays as it did");
+                CollectionAssert.AreEqual(new[] { "Begin", "Applied", "Ticked 1", "Ticked 1", "Ticked 1", "End", "Removed" }, cue.Moments,
+                    "its cue plays at each moment, through its component");
                 var heard = listening.Heard.Where(each => each.Cue.Spec?.Base == burn).ToList();
                 CollectionAssert.AreEqual(new (ECueEvent, ECueMoment)[]
                 {
-                    (ECueEvent.Burst, ECueMoment.Applied), (ECueEvent.Begin, ECueMoment.Applied), (ECueEvent.Burst, ECueMoment.Ticked),
-                    (ECueEvent.Burst, ECueMoment.Ticked), (ECueEvent.Burst, ECueMoment.Ticked), (ECueEvent.Burst, ECueMoment.Removed),
-                    (ECueEvent.End, ECueMoment.Removed),
+                    (ECueEvent.Begin, ECueMoment.Applied), (ECueEvent.Burst, ECueMoment.Applied), (ECueEvent.Burst, ECueMoment.Ticked),
+                    (ECueEvent.Burst, ECueMoment.Ticked), (ECueEvent.Burst, ECueMoment.Ticked), (ECueEvent.End, ECueMoment.Removed),
+                    (ECueEvent.Burst, ECueMoment.Removed),
                 }, heard.Select(each => (each.Event, each.Moment)).ToArray(), "each heard through ForgeCues, with what raised it");
                 Assert.That(heard.Select(each => each.Cue.Source), Has.All.SameAs(gas), "and who's behind it");
-                Assert.IsNotNull(heard[1].Cue.Key, "its lasting cue has a key");
-                Assert.AreSame(heard[1].Cue.Key, heard[6].Cue.Key, "which its beginning and its end share");
+                Assert.IsNotNull(heard[0].Cue.Key, "its lasting cue has a key");
+                Assert.AreSame(heard[0].Cue.Key, heard[5].Cue.Key, "which its beginning and its end share");
             }
             finally
             {
@@ -242,7 +242,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var gas = World.Entity(hub);
             var aura = Make.Effect("Aura", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
             var cue = new RecordingCue();
-            aura.Cues.Add(cue);
+            Make.CueAtEachMoment(aura, cue);
             try
             {
                 ForgeCues.Enabled = false;
@@ -253,7 +253,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
                 ForgeCues.Enabled = true;
                 gas.RemoveGameplayEffect(aura);
                 await Frames.Step(2);
-                CollectionAssert.AreEqual(new[] { "Removed", "End" }, cue.Moments, "its end plays once they're on");
+                CollectionAssert.AreEqual(new[] { "End", "Removed" }, cue.Moments, "its end plays once they're on");
 
                 cue.Moments.Clear();
                 ForgeCues.Mute(gas, true);

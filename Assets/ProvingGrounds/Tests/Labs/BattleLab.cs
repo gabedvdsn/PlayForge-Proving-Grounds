@@ -107,9 +107,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             // ─── The effects ─────────────────────────────────────────────────────
             var cleave = Damage("Cleave", 26f, Physical);
-            cleave.Cues.Add(new KnockbackCue { Strength = 7f });
+            cleave.Components.Add(new CuesEffectComponent { OnApply = { new KnockbackCue { Strength = 7f } } });
             var bash = Damage("Shield Bash", 12f, Physical);
-            bash.Cues.Add(new KnockbackCue { Strength = 4f });
+            bash.Components.Add(new CuesEffectComponent { OnApply = { new KnockbackCue { Strength = 4f } } });
             var stun = Status("Stunned", 1.4f, new Color(1f, 0.88f, 0.2f), Stunned);
             var arrow = Damage("Arrow", 15f, Physical);
             var dart = Damage("Poison Dart", 5f, Physical);

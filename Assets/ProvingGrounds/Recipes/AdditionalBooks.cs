@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using ForgeAttribute = FarEmerald.PlayForge.Attribute;
@@ -114,7 +115,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
 
             // A bolt: 25 to the one it's cast at, once in three seconds
             var boltHit = RecipeBook.Effect("Bolt Hit", health, -25f, family: Family);
-            boltHit.Cues.Add(new CameraShakeCue { Strength = 0.6f, Duration = 0.2f });
+            boltHit.Components.Add(new CuesEffectComponent { OnApply = { new CameraShakeCue { Strength = 0.6f, Duration = 0.2f } } });
             AddSampleCue(boltHit, "FlashCue", ("Color", new Color(0.45f, 0.75f, 1f)));
             set.BoltHit = maker.Keep("Bolt/Bolt Hit", boltHit);
             set.BoltCooldown = maker.Keep("Bolt/Bolt Cooldown", Hidden(
@@ -166,7 +167,9 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             var cue = (AbstractCueHandler)Activator.CreateInstance(cueType);
             foreach (var (field, value) in fields)
                 (cueType.GetField(field) ?? throw new MissingFieldException(type, field)).SetValue(cue, value);
-            effect.Cues.Add(cue);
+            var cues = effect.Components.OfType<CuesEffectComponent>().FirstOrDefault();
+            if (cues == null) effect.Components.Add(cues = new CuesEffectComponent());
+            cues.OnApply.Add(cue);
         }
     }
 

@@ -71,7 +71,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             var glow = Prefab("EP-51 Glow");
             var gas = World.Entity(hub);
             var aura = Make.Effect("Aura", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
-            aura.Cues.Add(new PrefabCue { Prefab = glow, WhileActive = true, Pooled = true });
+            Make.CuesOf(aura).WhileActive.Add(new PrefabCue { Prefab = glow, Pooled = true });
 
             Assert.IsTrue(World.Apply(gas, gas, aura), "an aura lands");
             await Frames.Step();

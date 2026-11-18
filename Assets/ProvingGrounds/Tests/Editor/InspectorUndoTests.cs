@@ -2244,7 +2244,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
         /// <summary>
         /// An effect changed attributes and tags and nothing else, so what it showed and sounded was each game's own code
-        /// (FEAT-1). The Effect inspector has a Cues section, an effect's own after Impact, which edits its cue handlers.
+        /// (FEAT-1). The Effect inspector edits its cues in its Components section, as its Cues component's, and has no Cues
+        /// section of its own (EP-61).
         /// </summary>
         [UnityTest]
         public IEnumerator FEAT_1_The_Effect_inspector_edits_its_cues()
@@ -2253,6 +2254,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             using var unsynced = new UnsyncedBindsTolerated();
             var slam = ScriptableObject.CreateInstance<GameplayEffect>();
             slam.Definition = new GameplayEffectDefinition { Name = "Slam", Textures = new List<TextureItem>() };
+            slam.Components.Add(new CuesEffectComponent { OnApply = { new CameraShakeCue() } });
             var host = new Host();
             try
             {
@@ -2260,9 +2262,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
                 var root = host.Inspect(slam);
                 yield return Frames();
-                var cues = root.Q(name: "Cues_CONTAINER");
-                Assert.IsNotNull(cues, "the inspector has a Cues section");
-                Assert.IsNotNull(cues.Q<PropertyField>("Cues"), "which edits the effect's cue handlers");
+                Assert.IsNull(root.Q(name: "Cues_CONTAINER"), "the inspector has no Cues section of its own");
+                var components = root.Q(name: "Components_CONTAINER");
+                Assert.IsNotNull(components, "the inspector has a Components section");
+                Assert.IsNotNull(components.Q<PropertyField>("Components"), "which edits the effect's components");
+                StringAssert.Contains("Cues", components.Q<Label>(className: "pf-section__summary")?.text,
+                    "its Cues component among them");
             }
             finally
             {

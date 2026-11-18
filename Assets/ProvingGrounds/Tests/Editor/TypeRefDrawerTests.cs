@@ -251,13 +251,13 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         /// <summary>
         /// A generic field folds, as an attribute set element does, to one line of its values, where it drew colored
-        /// badges: a camera shake reads "Strength 2 · Duration 0.5 · On Each Tick" (ED-56).
+        /// badges: a camera shake reads "Strength 2 · Duration 0.5" (ED-56).
         /// </summary>
         [UnityTest]
         public IEnumerator ED_56_A_generic_kind_folds_to_a_line_of_its_values()
         {
             var holder = ScriptableObject.CreateInstance<TypeRefHolder>();
-            holder.Cue = new CameraShakeCue { Strength = 2f, Duration = 0.5f, OnEachTick = true };
+            holder.Cue = new CameraShakeCue { Strength = 2f, Duration = 0.5f };
             var host = new Host();
             try
             {
@@ -268,7 +268,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 yield return Frames();
 
                 Assert.IsNotNull(field.Q(name: "CollapseBtn"), "it folds");
-                Assert.AreEqual("Strength 2 · Duration 0.5 · On Each Tick", field.Q<Label>("Summary")?.text, "to a line of its values");
+                Assert.AreEqual("Strength 2 · Duration 0.5", field.Q<Label>("Summary")?.text, "to a line of its values");
                 Assert.IsNull(field.Q(name: "summary"), "with no badges");
             }
             finally

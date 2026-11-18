@@ -140,6 +140,29 @@ namespace FarEmerald.PlayForge.ProvingGrounds
             };
         }
 
+        /// <summary>The effect's Cues component, given it where it has none.</summary>
+        public CuesEffectComponent CuesOf(GameplayEffect effect)
+        {
+            foreach (var component in effect.Components)
+                if (component is CuesEffectComponent own) return own;
+            var cues = new CuesEffectComponent();
+            effect.Components.Add(cues);
+            return cues;
+        }
+
+        /// <summary>
+        /// A cue the effect plays at each of its moments, as an effect's own list played one: as it lands, as each tick
+        /// executes, as it comes off, and while it lasts.
+        /// </summary>
+        public void CueAtEachMoment(GameplayEffect effect, AbstractCueHandler cue)
+        {
+            var cues = CuesOf(effect);
+            cues.OnApply.Add(cue);
+            cues.OnTick.Add(cue);
+            cues.OnRemove.Add(cue);
+            cues.WhileActive.Add(cue);
+        }
+
         public GameplayEffect Effect(string name, EffectConfig cfg)
         {
             var fx = Own(ScriptableObject.CreateInstance<GameplayEffect>());

@@ -134,7 +134,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
             ForgeCueRoutes.Library = Library(("Test.Cue.Hit", true, "hit"));
             var gas = World.Entity(hub);
             var aura = Make.Effect("Aura", new EffectConfig { Policy = EEffectDurationPolicy.Infinite, Target = null });
-            aura.Cues.Add(new TagCue { Tag = Tag.Generate("Test.Cue.Hit") });
+            Make.CueAtEachMoment(aura, new TagCue { Tag = Tag.Generate("Test.Cue.Hit") });
 
             Assert.IsTrue(World.Apply(gas, gas, aura), "an aura lands");
             await Frames.Step();
@@ -143,7 +143,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Tests
 
             Assert.That(heard, Is.EqualTo(new[]
             {
-                "hit burst Test.Cue.Hit", "hit begin Test.Cue.Hit", "hit burst Test.Cue.Hit", "hit end Test.Cue.Hit",
+                "hit begin Test.Cue.Hit", "hit burst Test.Cue.Hit", "hit end Test.Cue.Hit", "hit burst Test.Cue.Hit",
             }), "its route plays its landing, its lasting and its coming off");
         });
 

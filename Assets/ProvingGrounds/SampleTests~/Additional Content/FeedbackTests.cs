@@ -225,7 +225,7 @@ namespace FarEmerald.PlayForge.AdditionalContent.Tests
             await Frames.Step();
 
             var quake = Change(-1f, "Quake");
-            quake.Cues.Add(new CameraShakeCue { Strength = 1f, Duration = 0.3f });
+            quake.Components.Add(new CuesEffectComponent { OnApply = { new CameraShakeCue { Strength = 1f, Duration = 0.3f } } });
             World.Hit(Dummy("Foe"), dummy, quake);
             Assert.IsTrue(shaker.Shaking, "PlayForge's Camera Shake cue shakes it");
             await Frames.Step();
@@ -251,14 +251,14 @@ namespace FarEmerald.PlayForge.AdditionalContent.Tests
             On<FloatingNumbers>(dummy);
             await Frames.Step();
             var slow = Make.Effect("Slow", new EffectConfig { Policy = EEffectDurationPolicy.Durational, Duration = 2f });
-            slow.Cues.Add(new FloatingWordCue { Text = "Slowed", Color = Color.cyan });
+            slow.Components.Add(new CuesEffectComponent { OnApply = { new FloatingWordCue { Text = "Slowed", Color = Color.cyan } } });
             World.Hit(Dummy("Foe"), dummy, slow);
             var words = Words("Slowed");
             Assert.AreEqual(1, words.Length, "the word floats as the effect lands");
             Assert.IsTrue(Same(Color.cyan, words[0].Color), "in the cue's color");
 
             var named = Make.Effect("Rooted", new EffectConfig { Policy = EEffectDurationPolicy.Instant });
-            named.Cues.Add(new FloatingWordCue());
+            named.Components.Add(new CuesEffectComponent { OnApply = { new FloatingWordCue() } });
             var bare = Dummy("Bare");
             World.Hit(Dummy("Foe"), bare, named);
             Assert.AreEqual(1, Words(named.GetName()).Length, "with no word, the effect's name, over an entity with no numbers too");
@@ -271,7 +271,7 @@ namespace FarEmerald.PlayForge.AdditionalContent.Tests
             GameObject.CreatePrimitive(PrimitiveType.Cube).transform.SetParent(dummy.transform, false);
             await Frames.Step();
             var freeze = Change(-1f, "Freeze");
-            freeze.Cues.Add(new FlashCue { Color = Color.blue, Duration = 0.2f });
+            freeze.Components.Add(new CuesEffectComponent { OnApply = { new FlashCue { Color = Color.blue, Duration = 0.2f } } });
             World.Hit(Dummy("Foe"), dummy, freeze);
 
             var flash = dummy.GetComponentInChildren<HitFlash>();
