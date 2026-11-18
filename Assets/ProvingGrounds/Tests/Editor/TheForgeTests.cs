@@ -2022,5 +2022,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 Object.DestroyImmediate(editor);
             }
         }
+
+        /// <summary>
+        /// The Forge's toolbar opens its guide (EP-72): a help button at its end, whose topic is The Forge's section of the
+        /// editor tools guide on the docs site.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_72_A_The_Forges_toolbar_opens_its_guide() => Guarded(EP_72_A_The_Forges_toolbar_opens_its_guideBody());
+
+        private IEnumerator EP_72_A_The_Forges_toolbar_opens_its_guideBody()
+        {
+            var forge = Open();
+            yield return Frames();
+            var help = forge.rootVisualElement.Q<ToolbarButton>("Help");
+            Assert.IsNotNull(help, "the toolbar has a help button");
+            Assert.AreEqual("editor/forge", help.userData as string, "its topic, The Forge's");
+            var urlOf = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeDocs").GetMethod("UrlOf", AnyStatic);
+            Assert.AreEqual("https://gabedvdsn.github.io/PlayForge-Docs/guides/editor/the-forge.html",
+                (string)urlOf.Invoke(null, new object[] { "editor/forge" }), "the editor tools guide's section on The Forge");
+        }
     }
 }

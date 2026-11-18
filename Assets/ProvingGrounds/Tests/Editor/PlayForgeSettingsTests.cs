@@ -311,5 +311,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreSame(ability, PlayForgeSettings.NewAssetDefault(typeof(Ability)), "the defaults stay");
             Assert.AreSame(cost, PlayForgeSettings.UsageEffect("Cost"), "and so does the Cost effect");
         }
+
+        /// <summary>
+        /// Project Settings → PlayForge links PlayForge's documentation and says which PlayForge it is (EP-72): a row of
+        /// links to the online guides, the editor tools guide, the API reference and the changelog, each site link's
+        /// tooltip its address, and the package's version and the Unity it needs, as its package.json says.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_72_B_Project_settings_link_the_docs_and_show_the_package()
+        {
+            var host = new Host();
+            try
+            {
+                yield return null;
+                Assume.That(host.Document.rootVisualElement?.panel, Is.Not.Null, "the document has a panel");
+                var root = host.Build("BuildProjectPage");
+                yield return Frames();
+
+                var docs = root.Q("Documentation");
+                Assert.IsNotNull(docs, "the page links the documentation");
+                const string site = "https://gabedvdsn.github.io/PlayForge-Docs/";
+                Assert.AreEqual(site, docs.Q<Button>("Guides")?.tooltip, "the guides, at the site's opening");
+                Assert.AreEqual(site + "guides/editor/index.html", docs.Q<Button>("EditorTools")?.tooltip, "the editor tools guide");
+                Assert.AreEqual(site + "api/index.html", docs.Q<Button>("ApiReference")?.tooltip, "the API reference");
+                Assert.IsNotNull(docs.Q<Button>("Changelog"), "and the changelog");
+
+                var package = root.Q<Label>("PackageVersion");
+                Assert.IsNotNull(package, "the page says which PlayForge it is");
+                var packageFolder = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(Tag).Assembly)?.resolvedPath;
+                Assume.That(packageFolder, Is.Not.Null, "PlayForge is a package here");
+                var json = File.ReadAllText(Path.Combine(packageFolder, "package.json"));
+                var version = System.Text.RegularExpressions.Regex.Match(json, "\"version\"\\s*:\\s*\"([^\"]+)\"").Groups[1].Value;
+                Assert.That(version, Is.Not.Empty, "package.json has a version");
+                StringAssert.Contains(version, package.text, "its version, as package.json says");
+                StringAssert.Contains("6000.0", package.text, "and the Unity it needs");
+            }
+            finally
+            {
+                host.Destroy();
+            }
+        }
     }
 }
