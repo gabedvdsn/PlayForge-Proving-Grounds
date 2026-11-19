@@ -695,6 +695,10 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         {
             using var assets = new KeptPreference("PlayForge_Columns_Forge.Assets");
             using var tags = new KeptPreference("PlayForge_Columns_Forge.Tags");
+            // The columns hidden are a preference each user keeps, which the user's own choice or another run's test can
+            // leave set (ED-92): the test drags Type and For, so it shows every column
+            using var hiddenAssets = new KeptPreference("PlayForge_HiddenColumns_Forge.Assets");
+            using var hiddenTags = new KeptPreference("PlayForge_HiddenColumns_Forge.Tags");
             Save(Ability("Fireball"), "Fireball");
             var forge = Open();
             yield return Frames();
