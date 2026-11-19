@@ -30,6 +30,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
 
         private static string output;
         private static bool quitAfter;
+        private static bool closeUpsOnly;
         private static IEnumerator shots;
         private static double resumeAt;
         private static bool optionsKept;
@@ -43,18 +44,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
             Begin(EditorUtility.SaveFolderPanel("Save the screenshots in", Application.dataPath, "editor"), false);
 
         /// <summary>The command line's entry: the screenshots go in -docsOut's folder, then the editor quits.</summary>
-        public static void CaptureAndQuit()
+        public static void CaptureAndQuit() => Begin(OutputArg(), true);
+
+        /// <summary>The command line's entry for the close-ups of the inspectors' parts alone, a minute's run.</summary>
+        public static void CaptureCloseUpsAndQuit() => Begin(OutputArg(), true, true);
+
+        private static string OutputArg()
         {
             var args = Environment.GetCommandLineArgs();
             var at = Array.IndexOf(args, "-docsOut");
-            Begin(at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.GetFullPath("DocsScreenshots"), true);
+            return at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.GetFullPath("DocsScreenshots");
         }
 
-        private static void Begin(string folder, bool quit)
+        private static void Begin(string folder, bool quit, bool onlyCloseUps = false)
         {
             if (string.IsNullOrEmpty(folder)) return;
             output = folder;
             quitAfter = quit;
+            closeUpsOnly = onlyCloseUps;
             Directory.CreateDirectory(output);
             shots = Shots();
             resumeAt = 0;
@@ -116,6 +123,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
             KeepPref(listKey);
             if (listKey != null) EditorPrefs.SetString(listKey, "800");
             yield return 1f;
+
+            if (closeUpsOnly)
+            {
+                var closeUpEffect = Find<GameplayEffect>(asset => asset.name.Contains("Damage")) ?? Find<GameplayEffect>(_ => true);
+                var closeUpAbility = Find<Ability>(asset => asset.name.Contains("Fireball")) ?? Find<Ability>(_ => true);
+                foreach (var step in CloseUps(demo, closeUpEffect, closeUpAbility)) yield return step;
+                yield break;
+            }
 
             // The Forge: every asset beside an effect, its toolbar, an ability's summary and inspector, and the Tags view
             var forge = Floating<TheForge>(1600, 900);
@@ -224,6 +239,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 EditorApplication.EnterPlaymode();
                 yield return 8f;
                 Save(game, "demo");
+                // The store's, a few seconds on, while the fight is under way: 1280 by 720, and 1300 by 867 for the
+                // cover's 1950 by 1300
+                Place(game, 1280, 720);
+                yield return 3f;
+                Save(game, "store/demo");
+                Place(game, 1300, 866.6667f);
+                yield return 1.5f;
+                Save(game, "store/cover-base");
                 // The Debugger, then an entity selected in the scene, which it follows once it's open, so it shows the
                 // entity's attributes and effects
                 var debugger = Floating<RuntimeDebugger>(1360, 800);
@@ -267,7 +290,26 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                     yield return 1.5f;
                     Save(debugger, "debugger-" + name.ToLowerInvariant());
                 }
+                // The store's: the Timeline, then the Entities view, at 1280 by 720
+                Place(debugger, 1280, 720);
+                yield return 1.5f;
+                Save(debugger, "store/timeline");
+                var entities = debugger.rootVisualElement.Q<ToolbarToggle>("ShowEntities");
+                if (entities != null) entities.value = true;
+                yield return 1.5f;
+                Save(debugger, "store/debugger");
                 debugger.Close();
+
+                // The hero's hub in the Inspector, as the scene runs it
+                if (hero != null)
+                {
+                    Selection.activeGameObject = hero.gameObject;
+                    var hub = Floating(InspectorType, 640, 1000);
+                    yield return 2f;
+                    Save(hub, "entity-hub-inspector");
+                    hub.Close();
+                    Selection.activeGameObject = null;
+                }
                 EditorApplication.ExitPlaymode();
                 yield return 3f;
             }
@@ -298,9 +340,461 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 }
                 yield return 2f;
                 Save(game, "creator-lab");
+                Place(game, 1280, 720);
+                yield return 2f;
+                Save(game, "store/lab");
                 EditorApplication.ExitPlaymode();
                 yield return 3f;
             }
+
+            // Last, as a failure in them ends the run: the inspectors' parts, each a close-up of one; the windows a number
+            // field's menu, an inspector's Import and The Forge's Spreadsheets menu open; each asset guide's sections, as
+            // a Demo asset's inspector draws them, named for their titles, as the guide's headings are; and the Asset
+            // Store's shots of The Forge and the Problems view, 1280 by 720, which a 150% screen makes 1920 by 1080
+            foreach (var step in CloseUps(demo, effect, ability)) yield return step;
+            foreach (var step in ToolWindows()) yield return step;
+            foreach (var (asset, prefix) in GuideAssets())
+                foreach (var step in SectionShots(asset, prefix)) yield return step;
+            foreach (var step in StoreForge()) yield return step;
+        }
+
+        // Close-ups of PlayForge's inspectors, each part cropped from a Demo asset's inspector, scrolled to show it
+        private static IEnumerable CloseUps(ForgeProject demo, GameplayEffect effect, Ability ability)
+        {
+            var inspectorType = typeof(EditorWindow).Assembly.GetType("UnityEditor.InspectorWindow");
+
+            // An effect made from a template: its header, a number field, a tag field and a field it overrides
+            var templated = Find<GameplayEffect>(asset => asset.name == "Fireball Damage") ?? effect;
+            if (templated != null)
+            {
+                Selection.activeObject = templated;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                var header = root.Q(className: "pf-asset-header");
+                if (header != null) Save(inspector, "inspector-header", header);
+                // Every section open, so each field has its size; then the first field of each kind drawn, and the
+                // smallest override
+                var expanded = SectionExpanded;
+                foreach (var section in root.Query(className: "pf-section").ToList()) expanded?.SetValue(section, true);
+                yield return 1f;
+                // The smallest number field, a single row; a tag field showing a tag with a path; and the top of the
+                // smallest override, enough to show its mark
+                var number = Drawn(root, "pf-magnitude").Where(each => each.worldBound.height >= 16).OrderBy(each => each.worldBound.height).FirstOrDefault();
+                foreach (var step in Scrolled(inspector, "number-field", number)) yield return step;
+                var tags = Drawn(root, "pf-tag-field").ToList();
+                var tag = tags.FirstOrDefault(each => each.Query<TextElement>().ToList().Any(text => (text.text ?? "").Contains('.'))) ?? tags.FirstOrDefault();
+                foreach (var step in Scrolled(inspector, "tag-field", tag)) yield return step;
+                var overridden = Drawn(root, "pf-override").Where(each => each.worldBound.height >= 20).OrderBy(each => each.worldBound.height).FirstOrDefault();
+                foreach (var step in Scrolled(inspector, "template-overrides", overridden, 220f)) yield return step;
+                inspector.Close();
+            }
+
+            // An ability: an effect field and its levels line, then every section closed, to show each one's summary.
+            // Closing a section from code leaves the open state the inspector keeps for a user's clicks as it was
+            if (ability != null)
+            {
+                Selection.activeObject = ability;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                foreach (var step in Scrolled(inspector, "effect-field-levels", root.Q(className: "pf-link-line")?.parent)) yield return step;
+                var expanded = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeSection")?.GetProperty("Expanded", Any);
+                var sections = root.Query(className: "pf-section").ToList();
+                foreach (var section in sections) expanded?.SetValue(section, false);
+                var scroll = sections.FirstOrDefault()?.GetFirstAncestorOfType<ScrollView>();
+                if (scroll != null) scroll.scrollOffset = Vector2.zero;
+                yield return 1.5f;
+                var header = root.Q(className: "pf-asset-header");
+                if (header != null && sections.Count > 0) Save(inspector, "inspector-sections", Around(inspector, header, sections.Last()));
+                inspector.Close();
+            }
+
+            // A Scaler asset's Try section
+            var scaler = AssetDatabase.FindAssets("t:ScalerAsset", new[] { "Assets/PlayForgeDemo" }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<ScalerAsset>).FirstOrDefault(asset => asset != null);
+            if (scaler != null)
+            {
+                Selection.activeObject = scaler;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                foreach (var step in Scrolled(inspector, "try-section", inspector.rootVisualElement.Q(className: "pf-try"))) yield return step;
+                inspector.Close();
+            }
+
+            // An asset field with its button: the Forge Project's, which holds several
+            if (demo != null)
+            {
+                Selection.activeObject = demo;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var button = inspector.rootVisualElement.Query<Button>().ToList()
+                    .FirstOrDefault(each => (each.text == "New" || each.text == "Open") && each.parent?.Q<ObjectField>() != null);
+                foreach (var step in Scrolled(inspector, "asset-field", button?.parent)) yield return step;
+                inspector.Close();
+            }
+
+            // A process's inspector: a Demo prefab whose root has a MonoBehaviour process
+            var process = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/PlayForgeDemo" }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<GameObject>)
+                .FirstOrDefault(each => each != null && each.GetComponent<AbstractMonoProcess>() != null);
+            if (process != null)
+            {
+                Selection.activeObject = process;
+                var inspector = Floating(inspectorType, 640, 900);
+                yield return 2.5f;
+                Save(inspector, "process-inspector");
+                inspector.Close();
+            }
+            Selection.activeObject = null;
+        }
+
+        // The windows a number field's menu, an inspector's Import and The Forge's Spreadsheets menu open, each shown as
+        // its menu shows it, and closed with nothing applied
+        private static IEnumerable ToolWindows()
+        {
+            var effects = AssetDatabase.FindAssets("t:GameplayEffect", new[] { "Assets/PlayForgeDemo" }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<GameplayEffect>).Where(each => each != null).OrderBy(each => each.name).ToList();
+
+            // A scaler a number field holds as a table of its own: the property the field's menu hands these windows
+            SerializedProperty table = null;
+            GameplayEffect owner = null;
+            foreach (var each in effects)
+            {
+                table = TableScalerOf(new SerializedObject(each));
+                if (table == null) continue;
+                owner = each;
+                break;
+            }
+            if (table != null)
+            {
+                var name = owner.name;
+                foreach (var step in Shown(Guarded(() => ScalerValuesWindow.Show(table, name)), "import-values-window", 560, 420)) yield return step;
+                var quickFill = Guarded(() =>
+                {
+                    QuickFillWizard.Show(table, () => { });
+                    return Resources.FindObjectsOfTypeAll<QuickFillWizard>().FirstOrDefault();
+                });
+                foreach (var step in Shown(quickFill, "quick-fill-window", 520, 380)) yield return step;
+                var operation = table.serializedObject.FindProperty(ParentPath(table.propertyPath));
+                var save = operation == null ? null : Guarded(() => SaveScalerAssetWindow.Show(operation, name));
+                foreach (var step in Shown(save, "save-as-scaler-asset-window", 520, 200)) yield return step;
+            }
+
+            // Import, as an effect inspector's Import opens it
+            var into = effects.FirstOrDefault(each => each.name.Contains("Damage")) ?? effects.FirstOrDefault();
+            if (into != null)
+            {
+                foreach (var step in Shown(Guarded(() => ForgeImportWindow.ShowForAsset(new SerializedObject(into))), "import-window", 720, 560))
+                    yield return step;
+            }
+
+            // A sheet's changes, as The Forge's Spreadsheets → Import lists them: the Demo's effects' numbers, one changed
+            var sheet = Guarded(() =>
+            {
+                var csv = ChangeOne(ForgeSpreadsheets.NumbersOf(effects.Cast<Object>()));
+                return ForgeSpreadsheetWindow.Show(ForgeSpreadsheets.Read(csv), "Demo Effects.csv");
+            });
+            foreach (var step in Shown(sheet, "spreadsheet-import-window", 900, 560)) yield return step;
+        }
+
+        private static Type InspectorType => typeof(EditorWindow).Assembly.GetType("UnityEditor.InspectorWindow");
+
+        // A section's Expanded, which opens or closes it as drawn, leaving the open state its inspector keeps alone
+        private static PropertyInfo SectionExpanded =>
+            typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeSection")?.GetProperty("Expanded", Any);
+
+        // The Demo asset each asset guide shows, and the prefix its images take
+        private static IEnumerable<(Object asset, string prefix)> GuideAssets()
+        {
+            var picks = new (Func<Object> find, string prefix)[]
+            {
+                (() => Find<Ability>(each => each.name == "Fireball"), "ability"),
+                (() => Find<GameplayEffect>(each => each.name == "Burning"), "effect"),
+                (() => Find<FarEmerald.PlayForge.Attribute>(each => each.name == "Health"), "attribute"),
+                (() => Find<AttributeSet>(each => each.name == "Ranger Attributes"), "attribute-set"),
+                (() => Find<Item>(each => each.name == "Arcane Tome"), "item"),
+                (() => Find<EntityIdentity>(each => each.name == "Ranger"), "entity"),
+                (() => Find<ValuePipeline>(each => each.name == "Physical Damage"), "value-pipeline"),
+                (() => Find<ScalerAsset>(_ => true), "scaler"),
+            };
+            foreach (var (find, prefix) in picks)
+            {
+                var asset = Guarded(find);
+                if (asset != null) yield return (asset, prefix);
+            }
+        }
+
+        // An asset's inspector: its top, every section open, then a close-up of each of its own sections, and of its Try
+        private static IEnumerable SectionShots(Object asset, string prefix)
+        {
+            Selection.activeObject = asset;
+            var inspector = Floating(InspectorType, 640, 1000);
+            yield return 2.5f;
+            var root = inspector.rootVisualElement;
+            var expanded = SectionExpanded;
+            var sections = root.Query(className: "pf-section").ToList().Where(each => !InSection(each)).ToList();
+            foreach (var section in sections) expanded?.SetValue(section, true);
+            yield return 1f;
+            Save(inspector, prefix + "-inspector");
+            foreach (var section in sections)
+            {
+                var title = (section.Q(className: "pf-section__title") as Label)?.text;
+                if (string.IsNullOrEmpty(title)) continue;
+                foreach (var step in Scrolled(inspector, prefix + "-" + Slug(title), section)) yield return step;
+            }
+            var tryIt = root.Q(className: "pf-try");
+            if (tryIt != null)
+                foreach (var step in Scrolled(inspector, prefix + "-try", tryIt)) yield return step;
+            inspector.Close();
+            Selection.activeObject = null;
+        }
+
+        private static bool InSection(VisualElement element)
+        {
+            for (var at = element.parent; at != null; at = at.parent)
+                if (at.ClassListContains("pf-section")) return true;
+            return false;
+        }
+
+        private static string Slug(string text) =>
+            new string(text.ToLowerInvariant().Select(each => char.IsLetterOrDigit(each) ? each : '-').ToArray()).Trim('-');
+
+        // The store's shots of The Forge: every asset beside an ability, then an ability, an effect and a value pipeline
+        // each with the sections that show it best open; and the Problems view on a copy of an effect broken on purpose
+        private static IEnumerable StoreForge()
+        {
+            // The list narrower, leaving the asset room, and its Type and Asset Tag hidden, leaving the names room; the run
+            // puts both back after
+            var listKey = typeof(TheForge).GetProperty("ListWidthKey", Any)?.GetValue(null) as string;
+            if (listKey != null) EditorPrefs.SetString(listKey, "500");
+            var hiddenKey = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeColumnWidths")
+                ?.GetMethod("HiddenKeyOf", Any)?.Invoke(null, new object[] { "Forge.Assets" }) as string;
+            if (hiddenKey != null) EditorPrefs.SetString(hiddenKey, "AssetTag;Type");
+            var forge = Floating<TheForge>(1280, 720);
+            yield return 2f;
+            var refill = typeof(TheForge).GetMethod("Refill", Any, null, Type.EmptyTypes, null);
+            var fireball = Find<Ability>(each => each.name == "Fireball");
+            if (fireball != null)
+            {
+                TheForge.OpenToAsset(fireball);
+                typeof(TheForge).GetField("typeFilter", Any)?.SetValue(forge, "");
+                refill?.Invoke(forge, null);
+                yield return 2f;
+                Save(forge, "store/forge");
+                TheForge.OpenToAsset(fireball);
+                yield return 2f;
+                OpenOnly(forge, "Stages", "Components");
+                yield return 1.5f;
+                Save(forge, "store/ability");
+            }
+            var burning = Find<GameplayEffect>(each => each.name == "Burning");
+            if (burning != null)
+            {
+                TheForge.OpenToAsset(burning);
+                yield return 2f;
+                OpenOnly(forge, "Duration", "Impact", "Cues", "Components");
+                yield return 1.5f;
+                Save(forge, "store/effect");
+            }
+            var pipeline = Find<ValuePipeline>(each => each.name == "Physical Damage");
+            if (pipeline != null)
+            {
+                TheForge.OpenToAsset(pipeline);
+                yield return 2f;
+                Save(forge, "store/pipeline");
+            }
+            forge.Close();
+
+            var broken = BreakACopy();
+            if (broken == null) yield break;
+            yield return 3f;
+            var problems = ForgeProblemsWindow.ShowWindow();
+            Place(problems, 1280, 720);
+            yield return 2f;
+            typeof(ForgeProblemsWindow).GetMethod("ShowView", Any, null, new[] { typeof(bool) }, null)
+                ?.Invoke(problems, new object[] { true });
+            yield return 1.5f;
+            Save(problems, "store/problems");
+            problems.Close();
+            AssetDatabase.DeleteAsset(broken);
+            yield return 1f;
+        }
+
+        // Every section of a window's inspector closed but those named
+        private static void OpenOnly(EditorWindow window, params string[] titles)
+        {
+            var expanded = SectionExpanded;
+            foreach (var section in window.rootVisualElement.Query(className: "pf-section").ToList())
+            {
+                var title = (section.Q(className: "pf-section__title") as Label)?.text;
+                expanded?.SetValue(section, titles.Contains(title));
+            }
+        }
+
+        // A copy of a Demo effect whose levels come from an ability, that ability cleared, so the Problems view flags it
+        // and offers its fix; its path, for the caller to delete, or null
+        private static string BreakACopy()
+        {
+            try
+            {
+                var effects = AssetDatabase.FindAssets("t:GameplayEffect", new[] { "Assets/PlayForgeDemo" })
+                    .Select(AssetDatabase.GUIDToAssetPath).OrderBy(path => path);
+                foreach (var from in effects)
+                {
+                    var effect = AssetDatabase.LoadAssetAtPath<GameplayEffect>(from);
+                    if (effect == null) continue;
+                    var provider = AbilityReferenceOf(new SerializedObject(effect));
+                    if (provider == null) continue;
+                    var to = AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(from).Replace('\\', '/') + "/Frost Bolt Damage.asset");
+                    if (!AssetDatabase.CopyAsset(from, to)) return null;
+                    var copy = new SerializedObject(AssetDatabase.LoadAssetAtPath<GameplayEffect>(to));
+                    copy.FindProperty(provider).objectReferenceValue = null;
+                    // A name of its own, which its copied asset tag doesn't follow, for a second problem with its fix
+                    var named = NamedField(copy);
+                    if (named != null) named.stringValue = "Frost Bolt Damage";
+                    copy.ApplyModifiedPropertiesWithoutUndo();
+                    AssetDatabase.SaveAssets();
+                    return to;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            return null;
+        }
+
+        // An asset's own name, the first text field called Name
+        private static SerializedProperty NamedField(SerializedObject asset)
+        {
+            var each = asset.GetIterator();
+            while (each.Next(true))
+            {
+                if (each.propertyType == SerializedPropertyType.String && each.name == "Name") return each.Copy();
+            }
+            return null;
+        }
+
+        // The path of the first field an asset holds an ability in, as an effect's level provider is
+        private static string AbilityReferenceOf(SerializedObject asset)
+        {
+            var each = asset.GetIterator();
+            while (each.Next(true))
+            {
+                if (each.propertyType == SerializedPropertyType.ObjectReference && each.objectReferenceValue is Ability)
+                    return each.propertyPath;
+            }
+            return null;
+        }
+
+        // An element's close-up, its scroll view scrolled to show it first; no taller than tallest, where given
+        private static IEnumerable Scrolled(EditorWindow window, string name, VisualElement part, float tallest = 0f)
+        {
+            if (part == null)
+            {
+                Debug.LogWarning($"[Docs] {name}: not found");
+                yield break;
+            }
+            var scroll = part.GetFirstAncestorOfType<ScrollView>();
+            scroll?.ScrollTo(part);
+            yield return 1f;
+            // An inspector's header stays at the top as its content scrolls: the element below it, not under it
+            var header = window.rootVisualElement.Q(className: "pf-asset-header");
+            if (scroll != null && header != null && header != part && part.worldBound.yMin < header.worldBound.yMax + 4)
+            {
+                scroll.scrollOffset -= new Vector2(0, header.worldBound.yMax + 8 - part.worldBound.yMin);
+                yield return 1f;
+            }
+            if (tallest <= 0f || part.worldBound.height <= tallest)
+            {
+                Save(window, name, part, 6f);
+                yield break;
+            }
+            var bound = part.worldBound;
+            bound.position -= window.rootVisualElement.worldBound.position;
+            Save(window, name, new Rect(bound.x, bound.y, bound.width, tallest), 6f);
+        }
+
+        // The elements of a class that are drawn, with a size of their own, in the window's order
+        private static IEnumerable<VisualElement> Drawn(VisualElement root, string className) =>
+            root.Query(className: className).ToList().Where(each =>
+                each.resolvedStyle.display != DisplayStyle.None && each.worldBound.width > 60 && each.worldBound.height > 12);
+
+        // A window a menu item opens, placed again once the editor has sized it, saved and closed
+        private static IEnumerable Shown(EditorWindow window, string name, int width, int height)
+        {
+            if (window == null)
+            {
+                Debug.LogWarning($"[Docs] {name}: not shown");
+                yield break;
+            }
+            yield return 0.5f;
+            Place(window, width, height);
+            yield return 1.5f;
+            Save(window, name);
+            window.Close();
+        }
+
+        // What a menu item's call returns, or null where it throws, so one window's failure leaves the run going
+        private static T Guarded<T>(Func<T> make) where T : class
+        {
+            try
+            {
+                return make();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
+        }
+
+        // The first scaler a number field holds as a table of its own, in the order the inspector draws them
+        private static SerializedProperty TableScalerOf(SerializedObject asset)
+        {
+            var each = asset.GetIterator();
+            while (each.Next(true))
+            {
+                if (each.propertyType == SerializedPropertyType.ManagedReference &&
+                    (each.managedReferenceFullTypename ?? "").EndsWith("SimpleScaler")) return each.Copy();
+            }
+            return null;
+        }
+
+        private static string ParentPath(string path)
+        {
+            int at = path.LastIndexOf('.');
+            return at > 0 ? path.Substring(0, at) : path;
+        }
+
+        // The sheet with the first number after its header row raised by one, so its import has a change to list
+        private static string ChangeOne(string csv)
+        {
+            var lines = csv.Split('\n');
+            for (int row = 1; row < lines.Length; row++)
+            {
+                var cells = lines[row].Split(',');
+                for (int cell = cells.Length - 1; cell > 0; cell--)
+                {
+                    var text = cells[cell].TrimEnd('\r');
+                    if (!float.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)) continue;
+                    cells[cell] = (value + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + cells[cell].Substring(text.Length);
+                    lines[row] = string.Join(",", cells);
+                    return string.Join("\n", lines);
+                }
+            }
+            return csv;
+        }
+
+        // The rect from one element's top to another's bottom, in the window's root's space
+        private static Rect Around(EditorWindow window, VisualElement first, VisualElement last)
+        {
+            var origin = window.rootVisualElement.worldBound.position;
+            var top = first.worldBound;
+            var bottom = last.worldBound;
+            float xMin = Mathf.Min(top.xMin, bottom.xMin), xMax = Mathf.Max(top.xMax, bottom.xMax);
+            return new Rect(xMin - origin.x, top.yMin - origin.y, xMax - xMin, bottom.yMax - top.yMin);
         }
 
         // Puts back what the run changed: the play mode options, and the active project, unset again if it was
@@ -344,18 +838,38 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
             return window;
         }
 
-        private static void Place(EditorWindow window, int width, int height)
+        private static void Place(EditorWindow window, float width, float height)
         {
             window.position = new Rect(80, 80, width, height);
             window.Focus();
             window.Repaint();
         }
 
-        // The window drawn into a texture by its view, as the editor draws a tab dragged out, and saved as a PNG; or only
-        // the part of it an element covers, where one is given
-        private static void Save(EditorWindow window, string name, UnityEngine.UIElements.VisualElement part = null)
+        // The part of a window an element covers, with a margin round it, saved as a PNG; or the whole window, where no
+        // element is given
+        private static void Save(EditorWindow window, string name, VisualElement part = null, float margin = 0f)
         {
             if (window == null) return;
+            if (part == null)
+            {
+                SaveArea(window, name, null);
+                return;
+            }
+            // The element's world rect is the panel's, which starts above the window's own root, at the tab the window
+            // hangs from
+            var bound = part.worldBound;
+            bound.position -= window.rootVisualElement.worldBound.position;
+            Save(window, name, bound, margin);
+        }
+
+        // An area of a window, in its root's space, with a margin round it, saved as a PNG
+        private static void Save(EditorWindow window, string name, Rect area, float margin = 6f) =>
+            SaveArea(window, name, new Rect(area.x - margin, area.y - margin, area.width + 2 * margin, area.height + 2 * margin));
+
+        // The window drawn into a texture by its view, as the editor draws a tab dragged out, and saved as a PNG; or only
+        // an area of it, as much of the area as the window shows
+        private static void SaveArea(EditorWindow window, string name, Rect? area)
+        {
             var view = typeof(EditorWindow).GetField("m_Parent", Any)?.GetValue(window);
             var grab = view?.GetType().GetMethod("GrabPixels", Any, null, new[] { typeof(RenderTexture), typeof(Rect) }, null);
             if (grab == null)
@@ -382,23 +896,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 Array.Copy(pixels, row * width, flipped, (height - 1 - row) * width, width);
             image.SetPixels32(flipped);
             image.Apply();
-            if (part != null)
+            if (area is Rect bound)
             {
-                // The element's rect in the image, whose rows run bottom up: its world rect is the panel's, which starts
-                // above the window's own root, at the tab the window hangs from
-                var bound = part.worldBound;
-                bound.position -= window.rootVisualElement.worldBound.position;
-                int x = Mathf.Clamp(Mathf.RoundToInt(bound.x * scale), 0, width - 1);
-                int w = Mathf.Clamp(Mathf.RoundToInt(bound.width * scale), 1, width - x);
-                int h = Mathf.Clamp(Mathf.RoundToInt(bound.height * scale), 1, height);
-                int y = Mathf.Clamp(height - Mathf.RoundToInt(bound.yMax * scale), 0, height - h);
+                // The area's edges in pixels, kept within the window; the image's rows run bottom up
+                int left = Mathf.Clamp(Mathf.RoundToInt(bound.xMin * scale), 0, width - 1);
+                int right = Mathf.Clamp(Mathf.RoundToInt(bound.xMax * scale), left + 1, width);
+                int top = Mathf.Clamp(Mathf.RoundToInt(bound.yMin * scale), 0, height - 1);
+                int bottom = Mathf.Clamp(Mathf.RoundToInt(bound.yMax * scale), top + 1, height);
+                int w = right - left, h = bottom - top;
                 var cropped = new Texture2D(w, h, TextureFormat.RGB24, false);
-                cropped.SetPixels(image.GetPixels(x, y, w, h));
+                cropped.SetPixels(image.GetPixels(left, height - bottom, w, h));
                 cropped.Apply();
                 Object.DestroyImmediate(image);
                 image = cropped;
             }
-            File.WriteAllBytes(Path.Combine(output, name + ".png"), image.EncodeToPNG());
+            var file = Path.Combine(output, name + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            File.WriteAllBytes(file, image.EncodeToPNG());
             Object.DestroyImmediate(image);
             target.Release();
             Object.DestroyImmediate(target);
