@@ -279,6 +279,12 @@ namespace FarEmerald.PlayForge.Samples.Survivors.Tests
             foreach (var ability in abilities)
             {
                 var range = ability.Find<CastRangeAbilityComponent>();
+                // The dash goes its own distance, whatever point it's handed, so it has no reach (FEAT-41)
+                if (ability == roster.Dash)
+                {
+                    if (range != null) wrong.Add("the Dash has a Cast Range, though it goes its own distance");
+                    continue;
+                }
                 if (!expected.TryGetValue(ability.GetName(), out float reach)) wrong.Add($"{ability.GetName()} isn't expected");
                 else if (range == null) wrong.Add($"{ability.GetName()} has no Cast Range");
                 else if (!range.Range.IsConstant || Mathf.Abs(range.Range.Constant - reach) > 0.001f)
@@ -406,6 +412,119 @@ namespace FarEmerald.PlayForge.Samples.Survivors.Tests
             yield return Frames(2);
             Assert.That(game.Hero.LevelOf(passive), Is.EqualTo(2), "it's at level 2");
             Assert.That(Read(), Is.GreaterThan(first), "its second level raises it more");
+        }
+
+        // An input that presses one key once, as a player's tap, and holds nothing
+        private sealed class Tap : IForgeInput
+        {
+            public KeyCode Key;
+            public bool Pending = true;
+            public bool PointerPressed(int button) => false;
+            public bool TryGetPointerRay(out Ray ray) { ray = default; return false; }
+            public bool KeyPressed(KeyCode key)
+            {
+                if (!Pending || key != Key) return false;
+                Pending = false;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Space casts the hero's dash the way it last walked, a short way ahead, and the horde's blows pass it by as it
+        /// goes: the user's word of 2026-11-19 (FEAT-41).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_41_Space_dashes_the_hero_ahead_past_the_hordes_blows()
+        {
+            yield return Calm();
+            var hero = game.Hero;
+            var dash = roster.Dash;
+            Assert.That(dash, Is.Not.Null, "the roster names the hero's dash");
+            Assert.That(hero.Known(), Does.Contain(dash), "the hero starts with it");
+            var folder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(roster))?.Replace('\\', '/');
+            var blow = AssetDatabase.FindAssets("Claw Hit t:GameplayEffect", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<GameplayEffect>).FirstOrDefault(effect => effect && effect.GetName() == "Claw Hit");
+            Assert.That(blow, Is.Not.Null, "the horde's blow");
+            Assert.That(blow.TargetRequirements.ApplicationRequirements.AvoidTags.Select(query => query.Tag.Name),
+                Does.Contain("Survivors.State.Dashing"), "lands on no dashing hero");
+            var dashing = new List<Tag> { Tag.Generate("Survivors.State.Dashing") };
+            var shambler = game.Horde.Spawn(KindOf("Shambler"), 1, new Vector3(30f, 0f, -30f), false);
+            var start = hero.transform.position;
+            var previous = ForgeInput.Use(new Tap { Key = KeyCode.Space });
+            try
+            {
+                yield return Until(() => hero.CooldownLeft(dash) > 0f, 2f);
+                Assert.That(hero.CooldownLeft(dash), Is.GreaterThan(0f), "Space cast it");
+                Assert.That(hero.HasAny(dashing), Is.True, "and the hero is dashing");
+                float before = Health(hero);
+                Strike(blow, shambler.Unit, hero);
+                yield return Frames(2);
+                Assert.That(Health(hero), Is.GreaterThanOrEqualTo(before - 0.01f), "the blow passes the dashing hero by");
+                yield return Until(() => hero.transform.position.z - start.z > 4f, 1f);
+                Assert.That(hero.transform.position.z - start.z, Is.GreaterThan(4f), "it dashed ahead, the way it faces");
+            }
+            finally
+            {
+                ForgeInput.Use(previous);
+            }
+            yield return Until(() => !hero.HasAny(dashing), 1f);
+            Assert.That(hero.HasAny(dashing), Is.False, "the dash ends");
+            float after = Health(hero);
+            Strike(blow, shambler.Unit, hero);
+            yield return Frames(2);
+            Assert.That(Health(hero), Is.LessThan(after - 0.5f), "once it ends, the blow lands");
+        }
+
+        // An effect of the horde's lands on a unit, from the enemy given, as its ability would land it
+        private static void Strike(GameplayEffect effect, LabUnit from, LabUnit onto) =>
+            onto.Gas.ApplyGameplayEffect(onto.Gas.GenerateEffectSpec(IEffectOrigin.GenerateSourceDerivation(from.Gas), effect));
+
+        /// <summary>The dash waits for its key: it never casts on its own, and no card offers it (FEAT-41).</summary>
+        [UnityTest]
+        public IEnumerator FEAT_41_The_dash_never_casts_on_its_own_nor_comes_as_a_card()
+        {
+            yield return Calm();
+            var hero = game.Hero;
+            var dash = roster.Dash;
+            Assert.That(dash, Is.Not.Null, "the roster names the hero's dash");
+            Assert.That(roster.AbilityPool.Contains(dash), Is.False, "it isn't in the pool the cards draw from");
+            for (int i = 0; i < 3; i++)
+                game.Horde.Spawn(KindOf("Shambler"), 1, new Vector3(Mathf.Cos(i * 2.1f), 0f, Mathf.Sin(i * 2.1f)) * 3f, false);
+            float until = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < until)
+            {
+                Heal(hero);
+                yield return null;
+            }
+            Assert.That(hero.CooldownLeft(dash), Is.EqualTo(0f), "with enemies near, it still waits for its key");
+            for (int i = 0; i < 50; i++)
+            {
+                var draft = SurvivorsDraft.For(ESurvivorsDraftKind.Ability, game);
+                Assert.That(draft == null || draft.Cards.All(card => card.Ability != dash), Is.True, "no card offers it");
+            }
+        }
+
+        /// <summary>
+        /// Waves last 25 seconds, each sending its enemies as fast as a 15-second wave did, and the first boss waves are a
+        /// little gentler: the Brute Pack four Brutes at the wave's level, the Ogre Warlord with one Brute and less Health
+        /// (FEAT-41).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_41_Waves_last_25_seconds_and_the_first_boss_waves_are_gentler()
+        {
+            Assert.That(roster.WaveSeconds, Is.EqualTo(25f));
+            Assert.That(game.WaveLeft, Is.GreaterThan(20f).And.LessThanOrEqualTo(25f), "the first wave's time");
+            Assert.That(roster.CountFor(1) / roster.WaveSeconds, Is.EqualTo(14f / 15f).Within(0.05f), "as fast as a 15-second wave sent them");
+            var pack = roster.BossWaves[0];
+            Assert.That(pack.Units.Sum(entry => entry.Count), Is.LessThanOrEqualTo(4), "the Brute Pack");
+            Assert.That(pack.Units.All(entry => entry.ExtraLevels == 0), Is.True, "at the wave's own level");
+            var ogreWave = roster.BossWaves[1];
+            Assert.That(ogreWave.Units.Where(entry => entry.Kind.Identity.GetName() != "Ogre Warlord").Sum(entry => entry.Count),
+                Is.LessThanOrEqualTo(1), "the Ogre Warlord's escort");
+            yield return Calm();
+            var ogre = game.Horde.Spawn(ogreWave.Units.First(entry => entry.Kind.Identity.GetName() == "Ogre Warlord").Kind, 1,
+                new Vector3(30f, 0f, 30f), false);
+            Assert.That(ogre.Unit.Base(roster.HealthAttribute), Is.EqualTo(1000f).Within(0.5f), "the Ogre Warlord's Health");
         }
 
         // Whether a passive's bonus, a table by its level, is more at level 2 than at level 1
