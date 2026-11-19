@@ -1328,7 +1328,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         /// <summary>
         /// Assets → Create → PlayForge lists its assets in an order of its own (FN-13): the Forge Project; then the assets
         /// The Forge lists first, in its order; then the numbers, rules and the tag library; then the lab's; then the Demo's
-        /// roster, each group apart from the next by a line. Its entries were in no order, each at Unity's default, and a
+        /// roster and the Survivors demo's, each group apart from the next by a line. Its entries were in no order, each at Unity's default, and a
         /// Templates submenu held one.
         /// </summary>
         [Test]
@@ -1346,7 +1346,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 "Forge Project", "|", "Ability", "Gameplay Effect", "Item", "Attribute", "Attribute Set", "Entity", "|",
                 "Scaler", "Requirement Template", "Value Pipeline", "Effect Modifier", "Crowd Control Rules", "Tag Library",
                 "Cue Library", "|",
-                "Lab Rules", "Lab Driver", "|", "Demo/Roster",
+                "Lab Rules", "Lab Driver", "|", "Demo/Roster", "Survivors/Roster",
             };
             // A line where the next entry's order is more than 10 past the one before, as Unity draws the menu
             var shown = new List<string>();

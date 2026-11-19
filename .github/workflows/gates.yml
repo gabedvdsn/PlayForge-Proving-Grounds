@@ -101,6 +101,12 @@ jobs:
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples/Tests"
           cp -r "PlayForge/Assets/PlayForge/Samples~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples"
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples/Tests"
+      # The Survivors sample, its tests beside its scripts as the Demo's are: they play its scene, its abilities and its
+      # horde, and the smoke suite and the hook-up checks sweep its assets (FEAT-40)
+      - name: Import the Survivors sample
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Survivors" "ProvingGrounds/Assets/PlayForge Survivors"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Survivors" "ProvingGrounds/Assets/PlayForge Survivors/Scripts/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library
@@ -207,6 +213,12 @@ jobs:
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Task Sequence Examples" "ProvingGrounds/Assets/PlayForge Task Sequence Examples/Tests"
           cp -r "PlayForge/Assets/PlayForge/Samples~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples"
           cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Process Group Examples" "ProvingGrounds/Assets/PlayForge Process Group Examples/Tests"
+      # The Survivors sample, its tests beside its scripts as the Demo's are: they play its scene, its abilities and its
+      # horde, and the smoke suite and the hook-up checks sweep its assets (FEAT-40)
+      - name: Import the Survivors sample
+        run: |
+          cp -r "PlayForge/Assets/PlayForge/Samples~/Survivors" "ProvingGrounds/Assets/PlayForge Survivors"
+          cp -r "ProvingGrounds/Assets/ProvingGrounds/SampleTests~/Survivors" "ProvingGrounds/Assets/PlayForge Survivors/Scripts/Tests"
       - uses: actions/cache@v6
         with:
           path: ProvingGrounds/Library

@@ -10,17 +10,19 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
     /// The samples hooked up as they ship (SP-36). The Demo's Flame Wall named its fire, a process on a prefab, but the
-    /// process's class sat in a script of another name, which Unity can't bind, so the prefab held a missing script, the
-    /// ability's process read None, and the wall burned nothing. And a sample's assets opened The Forge's Problems on
+    /// process's class sat in a script of another name, which binds by Unity's fallback alone, and a copy saved while it
+    /// didn't load read None, so the wall burned nothing. And a sample's assets opened The Forge's Problems on
     /// warnings: each tag under its sample's prefix, and Burning, whose damage read its stacks as they already ticked.
     /// </summary>
     public class SampleHookupTests
     {
-        // The samples where this project holds them: as Proving Grounds' runs copy them in, or as the Package Manager
-        // imports them
+        // The samples where this project holds them: as Proving Grounds' local runs copy them in, as CI's gates do, or as
+        // the Package Manager imports them
         private static string[] SampleFolders() =>
             new[] { "Assets/PlayForgeDemo", "Assets/PlayForgeAdditional", "Assets/PlayForgeTaskSequences", "Assets/PlayForgeProcessGroups",
-                    "Assets/PlayForgeSurvivors", "Assets/Samples/PlayForge" }
+                    "Assets/PlayForgeSurvivors", "Assets/PlayForge Demo", "Assets/PlayForge Additional Content",
+                    "Assets/PlayForge Task Sequence Examples", "Assets/PlayForge Process Group Examples", "Assets/PlayForge Survivors",
+                    "Assets/Samples/PlayForge" }
                 .Where(AssetDatabase.IsValidFolder).ToArray();
 
         // PlayForge's assemblies a game builds with, its samples' among them: not editor code, nor tests

@@ -1,0 +1,390 @@
+#if UNITY_EDITOR
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using FarEmerald.PlayForge.Lab;
+using NUnit.Framework;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+using UnityEngine.UIElements;
+
+namespace FarEmerald.PlayForge.Samples.Survivors.Tests
+{
+    /// <summary>
+    /// The Survivors demo, played in its own scene (FEAT-40): the run starts with its hero and its first wave, every
+    /// ability of the pool hurts the horde, every kind of the horde fights the hero, a level-up's cards teach and level
+    /// abilities, a boss wave's end offers passives that raise what they name, the hero falls and a run starts again,
+    /// hundreds of enemies stand at once, a volley goes on as its targets fall, and the shapes the game makes take their
+    /// fields. Each test loads the scene, calms the waves where it sets its own fight, and takes PlayForge down after.
+    /// </summary>
+    public class SurvivorsTests
+    {
+        private SurvivorsGame game;
+        private SurvivorsRoster roster;
+
+        // The panel settings the scene's UI document draws on, disposed after as the Demo's tests do (SP-28)
+        private readonly List<PanelSettings> panels = new();
+        private const BindingFlags Members = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        private static readonly PropertyInfo PanelOf = typeof(PanelSettings).GetProperty("panel", Members);
+        private static readonly MethodInfo DisposePanel = typeof(PanelSettings).GetMethod("DisposePanel", Members, null, System.Type.EmptyTypes, null);
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // The scene
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        [UnitySetUp]
+        public IEnumerator LoadTheScene()
+        {
+            var rosterPath = AssetDatabase.FindAssets("t:SurvivorsRoster").Select(AssetDatabase.GUIDToAssetPath).FirstOrDefault();
+            Assume.That(rosterPath, Is.Not.Null, "the Survivors demo is in the project");
+            var folder = Path.GetDirectoryName(rosterPath)?.Replace('\\', '/');
+            roster = AssetDatabase.LoadAssetAtPath<SurvivorsRoster>(rosterPath);
+
+            yield return EditorSceneManager.LoadSceneAsyncInPlayMode($"{folder}/Survivors.unity", new LoadSceneParameters(LoadSceneMode.Single));
+            yield return Frames(5);
+            panels.Clear();
+            panels.AddRange(Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Select(document => document.panelSettings).Where(settings => settings != null).Distinct());
+            game = SurvivorsGame.Current;
+            Assert.That(game, Is.Not.Null, "the scene has its game");
+        }
+
+        [UnityTearDown]
+        public IEnumerator TakePlayForgeDown()
+        {
+            Time.timeScale = 1f;
+            if (ProcessControl.Instance) ProcessControl.Instance.TerminateAllImmediately();
+            yield return Frames(3);
+            var empty = SceneManager.CreateScene($"After Survivors {Time.frameCount}");
+            SceneManager.SetActiveScene(empty);
+            for (int i = SceneManager.sceneCount - 1; i >= 0; i--)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (scene != empty && scene.isLoaded) yield return SceneManager.UnloadSceneAsync(scene);
+            }
+            if (GameRoot.Instance) Object.Destroy(GameRoot.Instance.gameObject);
+            if (ProcessControl.Instance) Object.Destroy(ProcessControl.Instance.gameObject);
+            yield return null;
+            ProcessControl.Instance = null;
+            GameRoot.Instance = null;
+            TagRegistry.Reset();
+            if (PanelOf != null && DisposePanel != null)
+                foreach (var settings in panels)
+                {
+                    if (settings == null) continue;
+                    PanelOf.GetValue(settings);
+                    DisposePanel.Invoke(settings, null);
+                }
+            panels.Clear();
+        }
+
+        private static IEnumerator Frames(int count)
+        {
+            for (int i = 0; i < count; i++) yield return null;
+        }
+
+        private static IEnumerator Until(System.Func<bool> done, float seconds)
+        {
+            float until = Time.realtimeSinceStartup + seconds;
+            while (!done() && Time.realtimeSinceStartup < until) yield return null;
+        }
+
+        /// <summary>
+        /// The waves calmed: a copy of the roster that sends no one, starts no wave and levels the hero only as a test
+        /// gives it a level's experience, as a level-up's cards stop time; the horde cleared, the hero at the middle and
+        /// at full health, so a test sets its own fight.
+        /// </summary>
+        private IEnumerator Calm()
+        {
+            var calm = Object.Instantiate(roster);
+            calm.FirstWaveCount = 0;
+            calm.WaveGrowth = 0;
+            calm.WaveCurve = 0f;
+            calm.WaveSeconds = 100000f;
+            calm.FirstLevel = 100000f;
+            calm.LevelGrowth = 0f;
+            calm.LevelCurve = 0f;
+            game.Roster = calm;
+            game.Horde.Clear();
+            game.Crystals.Clear();
+            yield return Frames(2);
+            game.Hero.transform.position = Vector3.zero;
+            game.Hero.Stop();
+            Heal(game.Hero);
+            yield return Frames(2);
+        }
+
+        private float Health(LabUnit unit) => unit ? unit.Value(roster.HealthAttribute) : 0f;
+
+        private void Heal(LabUnit unit) =>
+            unit.Gas.TryModifyAttribute(roster.HealthAttribute,
+                SourcedModifiedAttributeValue.GenerateSimple(unit.Gas, roster.HealthAttribute, unit.Base(roster.HealthAttribute) - Health(unit), 0f));
+
+        private void Hurt(LabUnit unit, float amount) =>
+            unit.Gas.TryModifyAttribute(roster.HealthAttribute,
+                SourcedModifiedAttributeValue.GenerateSimple(unit.Gas, roster.HealthAttribute, -amount, 0f));
+
+        private SurvivorsEnemyKind KindOf(string name) =>
+            roster.Enemies.Concat(roster.BossWaves.SelectMany(wave => wave.Units).Select(entry => entry.Kind))
+                .FirstOrDefault(kind => kind?.Identity && kind.Identity.GetName() == name);
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Tests
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        [UnityTest]
+        public IEnumerator FEAT_40_The_run_starts_with_its_hero_knowing_its_first_ability_and_the_first_wave_coming()
+        {
+            Assert.That(game.Hero, Is.Not.Null, "the hero stands");
+            Assert.That(game.Hero.Alive, Is.True);
+            var first = roster.Hero.StartingAbilities[0];
+            Assert.That(game.Hero.Known(), Does.Contain(first), "it knows its first ability");
+            Assert.That(game.Wave, Is.EqualTo(1));
+            Assert.That(game.Level, Is.EqualTo(1));
+            yield return Until(() => game.Horde.Count > 0, 6f);
+            Assert.That(game.Horde.Count, Is.GreaterThan(0), "the first wave's enemies come in");
+        }
+
+        /// <summary>
+        /// The arena's floor and the crystals are shapes the game makes as it plays. A shape made its primitive as it woke,
+        /// which a component added to an active object does as it's added, before its fields were set, so the floor and
+        /// each crystal came out a plain white sphere a unit wide.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_40_The_shapes_the_game_makes_take_their_fields()
+        {
+            var floor = Object.FindObjectsByType<SurvivorsShape>(FindObjectsSortMode.None).FirstOrDefault(shape => shape.name == "Floor");
+            Assert.That(floor, Is.Not.Null, "the arena has its floor");
+            Assert.That(floor.Made, Is.Not.Null);
+            Assert.That(floor.Made.localScale.x, Is.EqualTo(game.ArenaSize).Within(0.01f), "the floor is the arena's size");
+            Assert.That(floor.Made.GetComponent<MeshFilter>().sharedMesh.name, Does.StartWith("Cube"), "the floor is a slab");
+            Assert.That(floor.Made.GetComponent<Renderer>().HasPropertyBlock(), Is.True, "the floor is tinted");
+            var block = new MaterialPropertyBlock();
+            floor.Made.GetComponent<Renderer>().GetPropertyBlock(block);
+            Assert.That(block.GetColor("_Color"), Is.EqualTo(game.FloorColor), "in the floor's color");
+
+            yield return Calm();
+            game.Crystals.Drop(new Vector3(9f, 0f, 9f), 1f);
+            yield return null;
+            var crystal = Object.FindObjectsByType<SurvivorsShape>(FindObjectsSortMode.None).FirstOrDefault(shape => shape.name == "Crystal");
+            Assert.That(crystal, Is.Not.Null, "a crystal lies");
+            Assert.That(crystal.Made.GetComponent<MeshFilter>().sharedMesh.name, Does.StartWith("Cube"), "a crystal is a cube");
+            Assert.That(crystal.Made.localScale.x, Is.LessThan(0.5f), "a crystal is small");
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_Each_ability_of_the_pool_casts_itself_and_hurts_the_horde()
+        {
+            yield return Calm();
+            var hero = game.Hero;
+            var shambler = KindOf("Shambler");
+            Assert.That(shambler, Is.Not.Null, "the roster sends Shamblers");
+            var failed = new List<string>();
+            foreach (var ability in roster.AbilityPool)
+            {
+                foreach (var known in hero.Known().ToList()) hero.Forget(known);
+                game.Horde.Clear();
+                hero.transform.position = Vector3.zero;
+                hero.Stop();
+                yield return Frames(2);
+                Assert.That(hero.Teach(ability, 1), Is.True, $"the hero learns {ability.GetName()}");
+                // A ring of Shamblers within its reach; the hero mends as they claw it, so it stands to cast
+                var standing = new List<SurvivorsHorde.Enemy>();
+                for (int i = 0; i < 6; i++)
+                {
+                    float angle = Mathf.PI * 2f * i / 6f;
+                    var enemy = game.Horde.Spawn(shambler, 1, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 2.5f, false);
+                    if (enemy != null) standing.Add(enemy);
+                }
+                yield return Frames(2);
+                var before = standing.Select(enemy => Health(enemy.Unit)).ToArray();
+                yield return Until(() =>
+                {
+                    Heal(hero);
+                    return standing.Where((enemy, i) => !enemy.Unit || Health(enemy.Unit) < before[i]).Any();
+                }, 6f);
+                bool hurt = standing.Where((enemy, i) => !enemy.Unit || Health(enemy.Unit) < before[i]).Any();
+                if (!hurt) failed.Add(ability.GetName());
+                Heal(hero);
+            }
+            Assert.That(failed, Is.Empty, "each ability hurts the horde within its reach");
+        }
+
+        /// <summary>
+        /// A volley spaces its shots, so a target can fall, and its body be taken out, between them: Arcane Bolt at its
+        /// last level, its targets felled as its first bolt flies, threw as its next read the gone one's place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FEAT_40_A_volley_goes_on_as_its_targets_fall_between_its_shots()
+        {
+            yield return Calm();
+            var hero = game.Hero;
+            foreach (var known in hero.Known().ToList()) hero.Forget(known);
+            game.Horde.Clear();
+            yield return Frames(2);
+            var bolt = roster.AbilityPool.First(ability => ability.GetName() == "Arcane Bolt");
+            var shambler = KindOf("Shambler");
+            var standing = new List<SurvivorsHorde.Enemy>();
+            for (int i = 0; i < 3; i++) standing.Add(game.Horde.Spawn(shambler, 1, new Vector3(-2f + 2f * i, 0f, 6f), false));
+            Assert.That(hero.Teach(bolt, bolt.MaxLevel), Is.True);
+            yield return Until(() => hero.CooldownLeft(bolt) > 0f, 3f);
+            Assert.That(hero.CooldownLeft(bolt), Is.GreaterThan(0f), "the hero cast its volley");
+            foreach (var enemy in standing.Where(enemy => enemy.Unit)) Hurt(enemy.Unit, 100000f);
+            yield return Until(() => standing.All(enemy => !enemy.Unit), 2f);
+            Assert.That(standing.All(enemy => !enemy.Unit), Is.True, "its targets fell and were taken out mid-volley");
+            // The rest of the volley flies on, aimed ahead, with nothing logged
+            yield return Frames(30);
+            Heal(hero);
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_Each_kind_of_the_horde_fights_the_hero()
+        {
+            yield return Calm();
+            var hero = game.Hero;
+            var player = hero.GetComponent<SurvivorsHero>();
+            player.enabled = false;
+            var names = roster.Enemies.Select(kind => kind.Identity.GetName())
+                .Concat(new[] { "Ogre Warlord", "Lich", "Hive Queen" }).ToList();
+            var failed = new List<string>();
+            foreach (var name in names)
+            {
+                var kind = KindOf(name);
+                if (kind == null)
+                {
+                    failed.Add($"{name}: no kind");
+                    continue;
+                }
+                game.Horde.Clear();
+                hero.transform.position = Vector3.zero;
+                Heal(hero);
+                yield return Frames(2);
+                float before = Health(hero);
+                var enemy = game.Horde.Spawn(kind, 1, new Vector3(0f, 0f, 3f), false);
+                yield return Until(() => Health(hero) < before, 8f);
+                if (Health(hero) >= before) failed.Add(name);
+            }
+            player.enabled = true;
+            Assert.That(failed, Is.Empty, "each kind hurts the hero");
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_A_level_up_offers_three_ability_cards_and_taking_one_teaches_or_levels_it()
+        {
+            yield return Calm();
+            game.Gain(game.ExperienceNeeded);
+            yield return Until(() => game.Draft != null, 2f);
+            Assert.That(game.Draft, Is.Not.Null, "a level-up's cards come");
+            Assert.That(game.Level, Is.EqualTo(2));
+            Assert.That(game.Draft.Kind, Is.EqualTo(ESurvivorsDraftKind.Ability));
+            Assert.That(game.Draft.Cards.Count, Is.EqualTo(roster.AbilityCards));
+            Assert.That(Time.timeScale, Is.EqualTo(0f), "time stands while the cards are up");
+            var card = game.Draft.Cards[0];
+            game.Choose(0);
+            yield return Frames(2);
+            Assert.That(game.Draft, Is.Null);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(game.Hero.Known(), Does.Contain(card.Ability), "the card's ability is held");
+            Assert.That(game.Hero.LevelOf(card.Ability), Is.EqualTo(card.To), "at the level the card brings");
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_A_boss_wave_defeated_offers_five_passive_cards_and_a_passive_raises_what_it_names()
+        {
+            yield return Calm();
+            var boss = game.Horde.Spawn(KindOf("Brute"), 1, new Vector3(0f, 0f, 8f), true);
+            Assert.That(game.Horde.BossesLeft, Is.EqualTo(1));
+            Hurt(boss.Unit, 100000f);
+            yield return Until(() => game.Draft != null, 3f);
+            Assert.That(game.Draft, Is.Not.Null, "the passives' cards come as the boss wave falls");
+            Assert.That(game.Draft.Kind, Is.EqualTo(ESurvivorsDraftKind.Passive));
+            Assert.That(game.Draft.Cards.Count, Is.EqualTo(roster.PassiveCards));
+
+            var passive = game.Draft.Cards[0].Passive;
+            var bonus = passive.GrantedEffects[0].ImpactSpecification;
+            bool byBase = bonus.TargetImpact == EAttributeTarget.Base;
+            float Read() => byBase ? game.Hero.Base(bonus.AttributeTarget) : game.Hero.Value(bonus.AttributeTarget);
+            float before = Read();
+            game.Choose(0);
+            yield return Frames(2);
+            Assert.That(game.Hero.Items(), Does.Contain(passive), "the passive is held");
+            float first = Read();
+            Assert.That(first, Is.GreaterThan(before), $"{passive.GetName()} raises {bonus.AttributeTarget.GetName()}");
+
+            // A level more of it, from a draft that offers it
+            SurvivorsDraft again = null;
+            for (int i = 0; i < 200 && again == null; i++)
+            {
+                var draft = SurvivorsDraft.For(ESurvivorsDraftKind.Passive, game);
+                if (draft != null && draft.Cards.Any(card => card.Passive == passive && !card.IsNew)) again = draft;
+            }
+            Assert.That(again, Is.Not.Null, "a later draft offers its next level");
+            again.Apply(again.Cards.FindIndex(card => card.Passive == passive), game);
+            yield return Frames(2);
+            Assert.That(game.Hero.LevelOf(passive), Is.EqualTo(2), "it's at level 2");
+            Assert.That(Read(), Is.GreaterThan(first), "its second level raises it more");
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_A_kill_drops_a_crystal_the_hero_picks_up()
+        {
+            yield return Calm();
+            var enemy = game.Horde.Spawn(KindOf("Shambler"), 1, new Vector3(1.5f, 0f, 0f), false);
+            Hurt(enemy.Unit, 100000f);
+            yield return Until(() => game.Kills > 0, 2f);
+            Assert.That(game.Kills, Is.EqualTo(1));
+            yield return Until(() => game.Experience > 0f || game.Level > 1, 3f);
+            Assert.That(game.Experience > 0f || game.Level > 1, Is.True, "its crystal flew to the hero and gave its worth");
+            Assert.That(game.Crystals.Count, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_The_hero_falls_and_a_new_run_starts()
+        {
+            yield return Calm();
+            Hurt(game.Hero, 100000f);
+            yield return Until(() => game.Over, 3f);
+            Assert.That(game.Over, Is.True, "the run ends as the hero falls");
+            Assert.That(Time.timeScale, Is.EqualTo(0f));
+            game.StartRun();
+            yield return Frames(3);
+            Assert.That(game.Over, Is.False);
+            Assert.That(game.Hero.Alive, Is.True);
+            Assert.That(game.Wave, Is.EqualTo(1));
+            Assert.That(game.Level, Is.EqualTo(1));
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+        }
+
+        [UnityTest]
+        public IEnumerator FEAT_40_Hundreds_of_enemies_stand_at_once_as_the_waves_grow()
+        {
+            Assert.That(roster.CountFor(20), Is.GreaterThanOrEqualTo(300), "the twentieth wave sends hundreds");
+            yield return Calm();
+            var shambler = KindOf("Shambler");
+            var random = new System.Random(40);
+            for (int i = 0; i < 400; i++)
+            {
+                float angle = (float)random.NextDouble() * Mathf.PI * 2f, distance = 18f + (float)random.NextDouble() * 30f;
+                game.Horde.Spawn(shambler, 1, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance, false);
+            }
+            Assert.That(game.Horde.Count, Is.EqualTo(400));
+            int frames = 0;
+            float started = Time.realtimeSinceStartup;
+            while (frames < 120)
+            {
+                frames++;
+                yield return null;
+            }
+            float each = (Time.realtimeSinceStartup - started) / frames * 1000f;
+            Debug.Log($"[Survivors] 400 enemies: {each:0.0} ms a frame over {frames} frames, {ProcessControl.Instance.Active} processes");
+            Assert.That(game.Horde.Count, Is.GreaterThan(350), "they stand, the hero's bolts felling a few");
+            Assert.That(game.Hero.Alive, Is.True);
+        }
+    }
+}
+#endif
