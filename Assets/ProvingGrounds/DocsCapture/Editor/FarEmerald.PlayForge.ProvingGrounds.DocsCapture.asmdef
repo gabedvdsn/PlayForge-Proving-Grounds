@@ -1,0 +1,20 @@
+{
+    "name": "FarEmerald.PlayForge.ProvingGrounds.DocsCapture",
+    "rootNamespace": "FarEmerald.PlayForge.ProvingGrounds.DocsCapture",
+    "references": [
+        "FarEmerald.PlayForge",
+        "FarEmerald.PlayForge.Editor",
+        "FarEmerald.PlayForge.Lab"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
