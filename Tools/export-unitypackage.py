@@ -7,7 +7,8 @@ import puts it, so the Forge Projects PlayForge makes in Assets/PlayForge are ne
 with:
 - UniTask 2.5.11's source in PlayForge/ThirdParty/UniTask, from GitHub's archive of its tag, and its licence in
   PlayForge/Third-Party Notices.txt. A package under Assets resolves no dependency, so it carries its own;
-- the four samples copied out of Samples~ into PlayForge/Samples, as Unity imports no folder whose name ends in ~.
+- the samples package.json lists, copied out of Samples~ into PlayForge/Samples, as Unity imports no folder whose name
+  ends in ~.
 The internal docs live in PlayForge's own Docs/, outside the package, so it leaves nothing out.
 The folders it makes take GUIDs worked out from the paths they had under Assets/PlayForge, so each export names them as
 the exports before EP-12 did.
@@ -170,8 +171,10 @@ RULES = [
     ("exceptions", re.compile(r"^[\w.]+Exception\b")),
     ("asset warnings", re.compile(r"^(?!.*warning CS).*(\b(warning|Warning)\b|Unknown pseudo class|Unknown property)")),
 ]
+# Unity's import progress, "Start importing <path>", names each asset, so an asset named for a warning, as a cue's
+# "Slam Warning", read as one
 IGNORE = re.compile(r"Licensing|licensing|\[Licensing|Curl error|Unable to connect|Package Manager|Shader warning in|"
-                    r"^SAMPLE CHECK done|^PLAYFORGE EXPORT done", re.I)
+                    r"Start importing |^SAMPLE CHECK done|^PLAYFORGE EXPORT done", re.I)
 
 args = sys.argv[1:]
 out = os.path.join(os.environ.get("TEMP", r"C:\Temp"), "claude", "export")

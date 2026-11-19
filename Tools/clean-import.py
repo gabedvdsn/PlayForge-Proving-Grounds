@@ -181,8 +181,10 @@ RULES = [
     # Unity's own import warnings, and the USS parser's, which don't say "warning"
     ("asset warnings", re.compile(r"^(?!.*warning CS).*(\b(warning|Warning)\b|Unknown pseudo class|Unknown property)")),
 ]
+# Unity's import progress, "Start importing <path>", names each asset, so an asset named for a warning, as a cue's
+# "Slam Warning", read as one
 IGNORE = re.compile(r"Licensing|licensing|\[Licensing|Curl error|Unable to connect|Package Manager|Shader warning in|"
-                    r"^SAMPLE CHECK done", re.I)
+                    r"Start importing |^SAMPLE CHECK done", re.I)
 
 found = {name: [] for name, _ in RULES}
 for line in log.splitlines():
