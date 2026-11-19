@@ -74,8 +74,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// The Demo's Local Data numbers, saved as plain values before EP-16, hold them in the new form: the Volley's reach 9,
-        /// its radius 3.5 and its 5 arrows. Unconverted, they read 0.
+        /// The Demo's Local Data numbers, saved as plain values before EP-16, hold them in the new form: the Volley's radius
+        /// 3.5 and its 5 arrows. Unconverted, they read 0. Its reach is its Cast Range since SP-37.
         /// </summary>
         [Test]
         public void EP_16_The_Demos_Local_Data_numbers_hold_their_values()
@@ -89,7 +89,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
             DataWrapper Entry(string key) => volley.LocalData.FirstOrDefault(entry => entry != null && entry.Key.Name == key);
             ScalableFloat Float(string key) => (Entry(key)?.Value as LocalFloat)?.Value;
-            Assert.AreEqual(9f, Float("Demo.Reach")?.Magnitude, "its reach");
             Assert.AreEqual(3.5f, Float("Demo.Volley.Radius")?.Magnitude, "its radius");
             Assert.AreEqual(5, (Entry("Demo.Volley.Arrows")?.Value as LocalInt)?.Value?.Magnitude, "and its arrows");
             Assert.That(Float("Demo.Volley.Radius")?.IsConstant, Is.True, "each a constant, as a value given in code is");

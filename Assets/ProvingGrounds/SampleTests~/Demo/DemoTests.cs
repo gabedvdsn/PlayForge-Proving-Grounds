@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using FarEmerald.PlayForge.Lab;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -343,6 +344,71 @@ namespace FarEmerald.PlayForge.Samples.Demo.Tests
             yield return Seconds(8f);
             Assert.That(game.Player.HealthShare, Is.LessThan(1f), "the AI hurt the player's hero");
             Assert.That(Enumerable.Range(1, 3).Any(slot => ai.CooldownLeft(ai.AbilityAt(slot)) > 0f), "and cast an ability");
+        }
+
+        /// <summary>
+        /// Each reach in the Demo is a Cast Range component, which the reach ring, the targeting that picks in range, the
+        /// Check Range and the AI all read: every ability that reaches so far, and each hero's attack. The abilities kept
+        /// their reach in Local Data under the roster's Reach key, and the heroes their attack range under its Attack Range
+        /// key, which only the AI and the ring read, so a click cast a Fireball from across the arena (SP-37).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SP_37_Each_reach_in_the_Demo_is_a_Cast_Range_component()
+        {
+            var expected = new Dictionary<string, float>
+            {
+                ["Strike"] = 2.4f, ["Shield Bash"] = 3.5f, ["Rallying Cry"] = 6f,
+                ["Arrow"] = 9f, ["Hunter's Mark"] = 10f, ["Volley"] = 9f,
+                ["Ember"] = 8f, ["Fireball"] = 10f, ["Flame Wall"] = 9f, ["Combustion"] = 9f,
+                ["Cut"] = 2.2f, ["Shadow Step"] = 8f, ["Eviscerate"] = 3.5f,
+                ["Spark"] = 8f, ["Drain Life"] = 8.5f, ["Hex"] = 9f,
+                ["Thunderclap"] = 4f,
+            };
+            var abilities = AssetDatabase.FindAssets("t:Ability", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<Ability>).Where(ability => ability != null).ToList();
+            var entities = AssetDatabase.FindAssets("t:EntityIdentity", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<EntityIdentity>).Where(entity => entity != null).ToList();
+            var wrong = new List<string>();
+            foreach (var asset in abilities.Cast<BaseForgeAsset>().Concat(entities))
+                foreach (var data in asset.LocalData ?? new List<DataWrapper>())
+                    if (data != null && data.Key.Name is { } key && (key.EndsWith(".Reach") || key.EndsWith(".AttackRange")))
+                        wrong.Add($"{asset.name} keeps {key} in Local Data");
+            foreach (var ability in abilities)
+            {
+                var range = ability.Find<CastRangeAbilityComponent>();
+                if (expected.TryGetValue(ability.GetName(), out float reach))
+                {
+                    if (range == null) wrong.Add($"{ability.GetName()} has no Cast Range");
+                    else if (!range.Range.IsConstant || Mathf.Abs(range.Range.Constant - reach) > 0.001f)
+                        wrong.Add($"{ability.GetName()}'s Cast Range is {range.Range.Constant}, not {reach}");
+                }
+                else if (range != null) wrong.Add($"{ability.GetName()} has a Cast Range, though it reaches anywhere");
+                // A targeting that picks within a range takes the Cast Range, and holds the same number
+                if (range != null && ability.Behaviour?.Targeting is SelectGasTargetInRangeTask inRange
+                    && (!inRange.UseCastRange || Mathf.Abs(inRange.MaxTargetRange.Constant - range.Range.Constant) > 0.001f))
+                    wrong.Add($"{ability.GetName()}'s targeting picks to {inRange.MaxTargetRange.Constant}, not its Cast Range");
+                if (range != null && ability.Behaviour?.Targeting is AutoTargetByAffinityTask around
+                    && (!around.UseCastRange || Mathf.Abs(around.Range.Constant - range.Range.Constant) > 0.001f))
+                    wrong.Add($"{ability.GetName()}'s targeting reaches {around.Range.Constant}, not its Cast Range");
+            }
+            var rules = (ILabRules)roster;
+            if (rules.ReachKey.IsValid) wrong.Add($"the roster still names a Reach key, {rules.ReachKey.Name}");
+            if (rules.AttackRangeKey.IsValid) wrong.Add($"the roster still names an Attack Range key, {rules.AttackRangeKey.Name}");
+            Assert.That(wrong, Is.Empty, string.Join("; ", wrong));
+
+            // In play, each hero attacks from its attack's Cast Range, and reaches each of its casts by its own
+            foreach (var hero in roster.Heroes.Select(each => each.Identity.GetName()).ToList())
+            {
+                yield return Face(hero);
+                var me = game.Player;
+                Assert.That(me.AttackRange, Is.EqualTo(expected[me.AttackAbility.GetName()]).Within(0.001f), $"{hero} attacks from its Cast Range");
+                for (int slot = 1; slot <= 3; slot++)
+                {
+                    var ability = me.AbilityAt(slot);
+                    float reach = expected.TryGetValue(ability.GetName(), out var given) ? given : 0f;
+                    Assert.That(me.Reach(ability), Is.EqualTo(reach).Within(0.001f), $"{hero}'s {ability.GetName()} reaches as its Cast Range says");
+                }
+            }
         }
 
         // Whether an ability waits for the player's click to choose its target
