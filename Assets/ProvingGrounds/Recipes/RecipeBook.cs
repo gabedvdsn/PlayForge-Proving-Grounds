@@ -186,7 +186,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
         {
             var set = ScriptableObject.CreateInstance<AttributeSet>();
             set.name = set.Name = name;
-            set.AssetTag = Tag.Generate($"Recipe.Set.{Compact(name)}");
+            set.AssetTag = Tag.Generate($"Recipe.AttributeSet.{Compact(name)}");
             set.Attributes = new List<AttributeSetElement>();
             foreach (var (attribute, value) in values)
             {

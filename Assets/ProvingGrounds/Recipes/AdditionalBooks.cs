@@ -187,7 +187,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.Recipes
             var set = new SparringSet();
             var attributes = ScriptableObject.CreateInstance<AttributeSet>();
             attributes.Name = "Sparring Dummy";
-            attributes.AssetTag = Tag.Generate($"{Family}.Set.SparringDummy");
+            attributes.AssetTag = Tag.Generate($"{Family}.AttributeSet.SparringDummy");
             attributes.Attributes = new List<AttributeSetElement>
             {
                 Element(health, 400f, EAttributeOverflowPolicy.ZeroToBase),

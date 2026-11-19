@@ -427,5 +427,36 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
                 LogAssert.ignoreFailingMessages = false;
             }
         }
+
+        /// <summary>
+        /// A tag under a prefix of its own follows its name too, as each sample's does: Demo.Effect.Burning, the Demo's
+        /// Burning kept apart from a game's own, read as one its name doesn't give, and the samples opened The Forge's
+        /// Problems on 170 warnings. Renamed, it's stale as any is, and its fix keeps its prefix (ED-91).
+        /// </summary>
+        [Test]
+        public void ED_91_A_tag_under_a_prefix_follows_its_name()
+        {
+            var burning = Effect("Burning");
+            try
+            {
+                var tags = burning.Tags;
+                tags.AssetTag = new Tag { Name = "Demo.Effect.Burning", DisplayName = "Demo.Effect.Burning" };
+                burning.Tags = tags;
+                Assert.That(Messages(burning), Has.None.Contains("but its name gives"), "a sample's tag, read as its path, follows its name");
+                tags.AssetTag = new Tag { Name = "Demo.Effect.Burning", DisplayName = "Burning" };
+                burning.Tags = tags;
+                Assert.That(Messages(burning), Has.None.Contains("but its name gives"), "and so does one read as its name");
+
+                burning.Definition.Name = "Inferno";
+                Fix(ProblemOf(burning, "Its asset tag is Demo.Effect.Burning, but its name gives Demo.Effect.Inferno."), "Store the Tag");
+                Assert.AreEqual("Demo.Effect.Inferno", burning.Tags.AssetTag.Name, "renamed, its fix keeps its prefix");
+                Assert.AreEqual("Inferno", burning.Tags.AssetTag.DisplayName, "and reads as its name");
+                Assert.That(Messages(burning), Has.None.Contains("but its name gives"), "and it follows its name again");
+            }
+            finally
+            {
+                Object.DestroyImmediate(burning);
+            }
+        }
     }
 }
