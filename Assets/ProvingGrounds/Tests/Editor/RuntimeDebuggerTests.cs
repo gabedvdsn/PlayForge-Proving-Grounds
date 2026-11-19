@@ -979,6 +979,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 
         private IEnumerator FitsANarrowColumn()
         {
+            // The columns the user hid, which a full window keeps hidden: none
+            using var hidden = new KeptPreference("PlayForge_HiddenColumns_Debugger.Processes");
             var chilled = Tag.Generate("Status.Chilled");
             var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
             Assert.IsTrue(Apply(foe, Lasting("Frost", 5f, chilled)), "the foe is chilled");
@@ -1068,6 +1070,45 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             laid.Size(1360f, 800f);
             yield return Frames();
             Assert.That(columns.All(column => column.visible), "and wide again, every one");
+        }
+
+        /// <summary>
+        /// The Debugger's fit to its width was kept as the user's own choice of columns (ED-98, the docs session's
+        /// finding): each column it showed or hid went into the hidden columns the user keeps, one preference for every
+        /// Unity project. A narrow window, as each new floating one is at first, kept four of the Processes list's columns
+        /// hidden, and a wide one showed all four again, a column the user had hidden from the header's menu among them.
+        /// The fit keeps nothing: a narrow window hides the four, a wide one shows those the user didn't hide, and the
+        /// user's choice stays as they left it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_98_The_fit_to_a_width_keeps_the_users_hidden_columns() => Guarded(KeepsTheUsersHiddenColumns());
+
+        private IEnumerator KeepsTheUsersHiddenColumns()
+        {
+            const string key = "PlayForge_HiddenColumns_Debugger.Processes";
+            using var hidden = new KeptPreference(key);
+            RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            var fit = Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null);
+            Assert.IsNotNull(fit, "the window fits its layout to its width");
+            var columns = ProcessList(window).columns;
+            fit.Invoke(window, new object[] { 1280f });
+            Assume.That(columns.All(column => column.visible), "a wide window shows every column");
+
+            // Handler hidden from the header's menu, which sets its column's visibility
+            columns["Handler"].visible = false;
+            Assert.AreEqual("Handler", EditorPrefs.GetString(key, ""), "the window keeps the user's choice");
+
+            fit.Invoke(window, new object[] { 360f });
+            Assert.That(columns.Where(column => column.visible).Select(column => column.name), Is.EqualTo(new[] { "ID", "Process", "State", "Step" }),
+                "a narrow window hides the four");
+            Assert.AreEqual("Handler", EditorPrefs.GetString(key, ""), "and keeps none of them as the user's choice");
+
+            fit.Invoke(window, new object[] { 1280f });
+            Assert.IsFalse(columns["Handler"].visible, "a wide window keeps the column the user hid hidden");
+            Assert.That(new[] { "Lifecycle", "Timing", "Lifetime" }.Select(name => columns[name].visible), Is.All.True, "and shows the others");
+            Assert.AreEqual("Handler", EditorPrefs.GetString(key, ""), "the user's choice as they left it");
         }
 
         private const string HiddenClass = "pf-debugger__hidden";
