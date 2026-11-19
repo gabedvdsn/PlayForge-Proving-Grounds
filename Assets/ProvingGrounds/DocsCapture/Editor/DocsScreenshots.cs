@@ -108,6 +108,18 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 KeepPref(projects?.GetProperty("ActiveKey", Any)?.GetValue(null) as string);
                 projects?.GetProperty("Active", Any)?.SetValue(null, demo);
             }
+
+            // The close-ups alone open only inspectors, so they leave the tables' preferences, which every Unity project
+            // shares, as they are: a test run in another project may be keeping and putting back the same ones
+            if (closeUpsOnly)
+            {
+                yield return 1f;
+                var closeUpEffect = Find<GameplayEffect>(asset => asset.name.Contains("Damage")) ?? Find<GameplayEffect>(_ => true);
+                var closeUpAbility = Find<Ability>(asset => asset.name.Contains("Fireball")) ?? Find<Ability>(_ => true);
+                foreach (var step in CloseUps(demo, closeUpEffect, closeUpAbility)) yield return step;
+                yield break;
+            }
+
             // Each table as it first opens for anyone, every column shown at its own width, and The Forge's list wide
             // enough for the assets' names
             var widths = typeof(TheForge).Assembly.GetType("FarEmerald.PlayForge.Editor.ForgeColumnWidths");
@@ -123,14 +135,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
             KeepPref(listKey);
             if (listKey != null) EditorPrefs.SetString(listKey, "800");
             yield return 1f;
-
-            if (closeUpsOnly)
-            {
-                var closeUpEffect = Find<GameplayEffect>(asset => asset.name.Contains("Damage")) ?? Find<GameplayEffect>(_ => true);
-                var closeUpAbility = Find<Ability>(asset => asset.name.Contains("Fireball")) ?? Find<Ability>(_ => true);
-                foreach (var step in CloseUps(demo, closeUpEffect, closeUpAbility)) yield return step;
-                yield break;
-            }
 
             // The Forge: every asset beside an effect, its toolbar, an ability's summary and inspector, and the Tags view
             var forge = Floating<TheForge>(1600, 900);
@@ -363,7 +367,23 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
         {
             var inspectorType = typeof(EditorWindow).Assembly.GetType("UnityEditor.InspectorWindow");
 
-            // An effect made from a template: its header, a number field, a tag field and a field it overrides
+            // A number field's row, outside any list: Burning's Duration, a constant
+            var burning = Find<GameplayEffect>(asset => asset.name == "Burning");
+            if (burning != null)
+            {
+                Selection.activeObject = burning;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                foreach (var section in root.Query(className: "pf-section").ToList()) SectionExpanded?.SetValue(section, true);
+                yield return 1f;
+                var rows = Drawn(root, "pf-magnitude__row").Where(each => each.GetFirstAncestorOfType<BaseVerticalCollectionView>() == null).ToList();
+                var number = rows.FirstOrDefault(each => each.Q<Label>(className: "unity-base-field__label")?.text == "Duration") ?? rows.FirstOrDefault();
+                foreach (var step in Scrolled(inspector, "number-field", number)) yield return step;
+                inspector.Close();
+            }
+
+            // An effect made from a template: its header, a tag field and a field it overrides
             var templated = Find<GameplayEffect>(asset => asset.name == "Fireball Damage") ?? effect;
             if (templated != null)
             {
@@ -373,15 +393,11 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 var root = inspector.rootVisualElement;
                 var header = root.Q(className: "pf-asset-header");
                 if (header != null) Save(inspector, "inspector-header", header);
-                // Every section open, so each field has its size; then the first field of each kind drawn, and the
-                // smallest override
+                // Every section open, so each field has its size; then a tag field showing a tag with a path, and the top
+                // of the smallest override, enough to show its mark
                 var expanded = SectionExpanded;
                 foreach (var section in root.Query(className: "pf-section").ToList()) expanded?.SetValue(section, true);
                 yield return 1f;
-                // The smallest number field, a single row; a tag field showing a tag with a path; and the top of the
-                // smallest override, enough to show its mark
-                var number = Drawn(root, "pf-magnitude").Where(each => each.worldBound.height >= 16).OrderBy(each => each.worldBound.height).FirstOrDefault();
-                foreach (var step in Scrolled(inspector, "number-field", number)) yield return step;
                 var tags = Drawn(root, "pf-tag-field").ToList();
                 var tag = tags.FirstOrDefault(each => each.Query<TextElement>().ToList().Any(text => (text.text ?? "").Contains('.'))) ?? tags.FirstOrDefault();
                 foreach (var step in Scrolled(inspector, "tag-field", tag)) yield return step;
@@ -696,12 +712,20 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 Debug.LogWarning($"[Docs] {name}: not found");
                 yield break;
             }
-            var scroll = part.GetFirstAncestorOfType<ScrollView>();
-            scroll?.ScrollTo(part);
-            yield return 1f;
-            // An inspector's header stays at the top as its content scrolls: the element below it, not under it
+            // Each scroll view round it, the innermost first, as a list scrolls inside the inspector's
+            for (var each = part.parent; each != null; each = each.parent)
+            {
+                if (each is not ScrollView view || !view.contentContainer.Contains(part)) continue;
+                view.ScrollTo(part);
+                yield return 0.5f;
+            }
+            yield return 0.5f;
+            // An inspector's header stays at the top of the inspector's scroll view as its content scrolls: the element
+            // below it, not under it
             var header = window.rootVisualElement.Q(className: "pf-asset-header");
-            if (scroll != null && header != null && header != part && part.worldBound.yMin < header.worldBound.yMax + 4)
+            var scroll = header?.GetFirstAncestorOfType<ScrollView>();
+            if (scroll != null && header != part && scroll.contentContainer.Contains(part)
+                && part.worldBound.yMin < header.worldBound.yMax + 4)
             {
                 scroll.scrollOffset -= new Vector2(0, header.worldBound.yMax + 8 - part.worldBound.yMin);
                 yield return 1f;
@@ -711,9 +735,14 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 Save(window, name, part, 6f);
                 yield break;
             }
+            // Cut at the bottom of the lowest field that ends within tallest, so no row is cut through
             var bound = part.worldBound;
+            float limit = bound.yMin + tallest;
+            float bottom = part.Query(className: "unity-base-field").ToList().Select(each => each.worldBound)
+                .Where(each => each.height > 0f && each.yMax <= limit).Select(each => each.yMax).DefaultIfEmpty(limit).Max();
+            float height = bottom - bound.yMin;
             bound.position -= window.rootVisualElement.worldBound.position;
-            Save(window, name, new Rect(bound.x, bound.y, bound.width, tallest), 6f);
+            Save(window, name, new Rect(bound.x, bound.y, bound.width, height), 6f);
         }
 
         // The elements of a class that are drawn, with a size of their own, in the window's order
