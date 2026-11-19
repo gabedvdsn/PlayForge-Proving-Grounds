@@ -242,6 +242,80 @@ namespace FarEmerald.PlayForge.Samples.Survivors.Tests
             Heal(hero);
         }
 
+        /// <summary>
+        /// Each reach in Survivors is a Cast Range component, as the Demo's are since SP-37: the hero casts each ability
+        /// as an enemy stands within it, its targeting picks within it, and each enemy attacks and casts within its own. The
+        /// abilities kept their reach in Local Data under the roster's Reach key, and each enemy its attack range under its
+        /// Attack Range key. The melee kinds shared one Claw, so its reach couldn't be one number: they attack by their
+        /// size's Bite, Claw, Maul or Smash (SP-38).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SP_38_Each_reach_in_Survivors_is_a_Cast_Range_component()
+        {
+            var expected = new Dictionary<string, float>
+            {
+                ["Arcane Bolt"] = 14f, ["Cleave"] = 4.2f, ["Holy Aura"] = 3.6f, ["Orbiting Blades"] = 8f,
+                ["Lightning Strike"] = 12f, ["Fire Field"] = 12f, ["Hurled Axe"] = 12f, ["Frost Nova"] = 5f,
+                ["Bite"] = 1.1f, ["Claw"] = 1.4f, ["Maul"] = 1.7f, ["Smash"] = 2.3f, ["Detonate"] = 1.6f,
+                ["Arrow Shot"] = 9f, ["Fire Bolt"] = 10f, ["Death Bolt"] = 10f, ["Mend"] = 30f, ["Charge"] = 7f,
+                ["Phase"] = 30f, ["Slam"] = 4.5f, ["Bolt Nova"] = 14f, ["Raise Dead"] = 30f, ["Brood"] = 30f, ["Acid Spray"] = 11f,
+            };
+            var attacks = new Dictionary<string, string>
+            {
+                ["Shambler"] = "Claw", ["Bat"] = "Bite", ["Archer"] = "Arrow Shot", ["Brute"] = "Maul", ["Bomber"] = "Detonate",
+                ["Shaman"] = "Fire Bolt", ["Charger"] = "Claw", ["Splitter"] = "Claw", ["Splitling"] = "Bite", ["Wraith"] = "Claw",
+                ["Guardian"] = "Maul", ["Ogre Warlord"] = "Smash", ["Lich"] = "Death Bolt", ["Hive Queen"] = "Smash",
+            };
+            var folder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(roster))?.Replace('\\', '/');
+            var abilities = AssetDatabase.FindAssets("t:Ability", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<Ability>).Where(ability => ability != null).ToList();
+            var entities = AssetDatabase.FindAssets("t:EntityIdentity", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<EntityIdentity>).Where(entity => entity != null).ToList();
+            var wrong = new List<string>();
+            foreach (var asset in abilities.Cast<BaseForgeAsset>().Concat(entities))
+                foreach (var data in asset.LocalData ?? new List<DataWrapper>())
+                    if (data != null && data.Key.Name is { } key && (key.EndsWith(".Reach") || key.EndsWith(".AttackRange")))
+                        wrong.Add($"{asset.name} keeps {key} in Local Data");
+            foreach (var ability in abilities)
+            {
+                var range = ability.Find<CastRangeAbilityComponent>();
+                if (!expected.TryGetValue(ability.GetName(), out float reach)) wrong.Add($"{ability.GetName()} isn't expected");
+                else if (range == null) wrong.Add($"{ability.GetName()} has no Cast Range");
+                else if (!range.Range.IsConstant || Mathf.Abs(range.Range.Constant - reach) > 0.001f)
+                    wrong.Add($"{ability.GetName()}'s Cast Range is {range.Range.Constant}, not {reach}");
+                // A targeting that finds its own takes the Cast Range, and holds the same number
+                if (range != null && ability.Behaviour?.Targeting is AutoTargetTask auto
+                    && (!auto.UseCastRange || Mathf.Abs(auto.Range.Constant - range.Range.Constant) > 0.001f))
+                    wrong.Add($"{ability.GetName()}'s targeting finds within {auto.Range.Constant}, not its Cast Range");
+            }
+            foreach (var entity in entities.Where(entity => attacks.ContainsKey(entity.GetName())))
+            {
+                var attack = entity.StartingAbilities.FirstOrDefault();
+                if (attack == null || attack.GetName() != attacks[entity.GetName()])
+                    wrong.Add($"{entity.GetName()} attacks with {(attack ? attack.GetName() : "nothing")}, not {attacks[entity.GetName()]}");
+            }
+            var rules = (ILabRules)roster;
+            if (rules.ReachKey.IsValid) wrong.Add($"the roster still names a Reach key, {rules.ReachKey.Name}");
+            if (rules.AttackRangeKey.IsValid) wrong.Add($"the roster still names an Attack Range key, {rules.AttackRangeKey.Name}");
+            Assert.That(wrong, Is.Empty, string.Join("; ", wrong));
+
+            // In play, the hero reaches each ability by its Cast Range, and each kind attacks from its attack's
+            yield return Calm();
+            var hero = game.Hero;
+            foreach (var ability in roster.AbilityPool)
+            {
+                if (!hero.Known().Contains(ability)) hero.Teach(ability, 1);
+                Assert.That(hero.Reach(ability), Is.EqualTo(expected[ability.GetName()]).Within(0.001f), $"the hero's {ability.GetName()}");
+            }
+            foreach (var kind in roster.Enemies.Concat(roster.BossWaves.SelectMany(wave => wave.Units).Select(entry => entry.Kind)))
+            {
+                var enemy = game.Horde.Spawn(kind, 1, new Vector3(30f, 0f, 30f), false);
+                Assert.That(enemy.Unit.AttackRange, Is.EqualTo(expected[attacks[kind.Identity.GetName()]]).Within(0.001f),
+                    $"a {kind.Identity.GetName()} attacks from its attack's Cast Range");
+                game.Horde.Clear();
+            }
+        }
+
         [UnityTest]
         public IEnumerator FEAT_40_Each_kind_of_the_horde_fights_the_hero()
         {
@@ -305,12 +379,16 @@ namespace FarEmerald.PlayForge.Samples.Survivors.Tests
             Assert.That(game.Draft.Kind, Is.EqualTo(ESurvivorsDraftKind.Passive));
             Assert.That(game.Draft.Cards.Count, Is.EqualTo(roster.PassiveCards));
 
-            var passive = game.Draft.Cards[0].Passive;
+            // A passive whose bonus is more at level 2 than at level 1: Multishot's and Piercing's step up only every few
+            // levels, so the test took the first card at random and failed when one of them came first
+            int chosen = game.Draft.Cards.FindIndex(card => RisesAtLevelTwo(card.Passive));
+            Assert.That(chosen, Is.GreaterThanOrEqualTo(0), "the draft offers a passive that rises at its second level");
+            var passive = game.Draft.Cards[chosen].Passive;
             var bonus = passive.GrantedEffects[0].ImpactSpecification;
             bool byBase = bonus.TargetImpact == EAttributeTarget.Base;
             float Read() => byBase ? game.Hero.Base(bonus.AttributeTarget) : game.Hero.Value(bonus.AttributeTarget);
             float before = Read();
-            game.Choose(0);
+            game.Choose(chosen);
             yield return Frames(2);
             Assert.That(game.Hero.Items(), Does.Contain(passive), "the passive is held");
             float first = Read();
@@ -329,6 +407,12 @@ namespace FarEmerald.PlayForge.Samples.Survivors.Tests
             Assert.That(game.Hero.LevelOf(passive), Is.EqualTo(2), "it's at level 2");
             Assert.That(Read(), Is.GreaterThan(first), "its second level raises it more");
         }
+
+        // Whether a passive's bonus, a table by its level, is more at level 2 than at level 1
+        private static bool RisesAtLevelTwo(Item passive) =>
+            passive && passive.GrantedEffects.Count > 0
+            && passive.GrantedEffects[0].ImpactSpecification.MagnitudeOperation.Scaler is AbstractScaler table
+            && table.LevelValues != null && table.LevelValues.Length > 1 && table.LevelValues[1] > table.LevelValues[0];
 
         [UnityTest]
         public IEnumerator FEAT_40_A_kill_drops_a_crystal_the_hero_picks_up()
