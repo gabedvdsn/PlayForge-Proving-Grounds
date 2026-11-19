@@ -916,6 +916,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.AreEqual("Chilled", row.Q<Label>("Name").text, "and its leaf");
         }
 
+        /// <summary>
+        /// The Tags view's tree didn't stay open (ED-94, seen capturing the docs' screenshots): a parent opened the first
+        /// time it showed, then closed at the tree's next refill, which a tag held or let go brings, and never opened again.
+        /// Each refill set the tree's items anew, which Unity's tree takes with every parent closed. Each parent stays as
+        /// it was left, open or closed, and a parent new to the tree opens.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_94_The_tag_tree_keeps_each_parent_as_it_was_left() => Guarded(KeepsItsFolds());
+
+        private IEnumerator KeepsItsFolds()
+        {
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            Assert.IsTrue(Apply(foe, Lasting("Frost", 5f, Tag.Generate("Status.Chilled"))), "the foe is chilled");
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowTags");
+            var tree = TagTree(window);
+            Assert.IsTrue(tree.IsExpanded(TagId(window, "Status")), "a parent opens the first time it's shown");
+
+            // A tag held builds the tree again
+            Assert.IsTrue(Apply(foe, Lasting("Fire", 5f, Tag.Generate("Status.Burning"))), "the foe burns too");
+            foe.CompileGrantedTags();
+            Sample(window);
+            Assume.That(((IDictionary)Debugger.GetField("tagNodes", AnyInstance).GetValue(window)).Contains("Status.Burning"),
+                "the tree holds the new tag");
+            Assert.IsTrue(tree.IsExpanded(TagId(window, "Status")), "and the parent stays open as the tree is built again");
+
+            // Closed, as a click closes it, then the tree built again for a tag under a parent new to it
+            tree.CollapseItem(TagId(window, "Status"));
+            Assert.IsTrue(Apply(foe, Lasting("Hunted", 5f, Tag.Generate("Mark.Hunted"))), "the foe is marked");
+            foe.CompileGrantedTags();
+            Sample(window);
+            Assert.IsFalse(tree.IsExpanded(TagId(window, "Status")), "a parent closed stays closed");
+            Assert.IsTrue(tree.IsExpanded(TagId(window, "Mark")), "and a parent new to the tree opens");
+
+            // A parent closed over the tag selected stays closed too
+            tree.SetSelectionById(TagId(window, "Mark.Hunted"));
+            yield return Frames();
+            Sample(window);
+            tree.CollapseItem(TagId(window, "Mark"));
+            Assert.IsTrue(Apply(foe, Lasting("Roots", 5f, Tag.Generate("Status.Rooted"))), "the foe is rooted");
+            foe.CompileGrantedTags();
+            Sample(window);
+            Assert.IsFalse(tree.IsExpanded(TagId(window, "Mark")), "a parent closed over the tag selected stays closed");
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-43: a narrow column
         // ═══════════════════════════════════════════════════════════════════════════
@@ -972,6 +1018,56 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.IsTrue(frame.ClassListContains(HiddenClass), "and off the status bar");
             Assert.That(root.Q("TagDetail").Query(className: "pf-debugger__col-source").ToList().All(cell => !cell.ClassListContains(HiddenClass)),
                 "and Held By shows Source");
+        }
+
+        /// <summary>
+        /// The Debugger threw Unity's ArgumentOutOfRangeException, in the Processes list's column resize, as it opened in a
+        /// floating window and as a window was widened (ED-96, seen capturing the docs' screenshots). A window laid out
+        /// narrow, as a new floating one is first, hides four of the list's columns, and the list's rows hold the others'
+        /// cells. Widened, the window showed the four again as it was laid out: the list's header laid them out at once,
+        /// while the rows took their cells only at the list's next rebuild, so the header resized a column the rows had no
+        /// cell for. The window widens and narrows with no error, its rows' cells those of the columns shown.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_96_The_Debugger_widens_and_narrows_without_an_error() => Guarded(WidensAndNarrows());
+
+        private IEnumerator WidensAndNarrows()
+        {
+            using var widths = new KeptPreference("PlayForge_Columns_Debugger.Processes");
+            using var hidden = new KeptPreference("PlayForge_HiddenColumns_Debugger.Processes");
+            RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            RuntimeHub("Runtime Ally", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            // Laid out as a new floating window first is, 320 by 240, fitting its layout to its width as its root is laid
+            // out, as the window's own root does
+            using var laid = new LaidOut(window, 320f, 240f);
+            var fit = Debugger.GetMethod("Fit", AnyInstance, null, new[] { typeof(float) }, null);
+            Assert.IsNotNull(fit, "the window fits its layout to its width");
+            laid.Root.RegisterCallback<GeometryChangedEvent>(changed =>
+            {
+                fit.Invoke(window, new object[] { changed.newRect.width });
+                laid.Mirror();
+            });
+            yield return Frames();
+            Assume.That(laid.Root.panel, Is.Not.Null, "the window's content is in a panel");
+            yield return Switch(window, laid, "ShowProcesses");
+            var list = laid.Root.Q<MultiColumnListView>("Processes");
+            Assume.That(list.itemsSource?.Count ?? 0, Is.GreaterThanOrEqualTo(2), "the list has a row for each hub");
+            var columns = list.columns;
+            Assert.That(columns.Where(column => column.visible).Select(column => column.name), Is.EqualTo(new[] { "ID", "Process", "State", "Step" }),
+                "laid out narrow, the list keeps its four columns");
+
+            // Widened, as the window is placed at its size, then narrowed again
+            laid.Size(1360f, 800f);
+            yield return Frames();
+            Assert.That(columns.All(column => column.visible), "laid out wide, the list shows every column");
+            laid.Size(360f, 720f);
+            yield return Frames();
+            Assert.That(columns.Count(column => column.visible), Is.EqualTo(4), "and narrow again, its four");
+            laid.Size(1360f, 800f);
+            yield return Frames();
+            Assert.That(columns.All(column => column.visible), "and wide again, every one");
         }
 
         private const string HiddenClass = "pf-debugger__hidden";
@@ -1410,6 +1506,31 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             {
                 ForgeTime.Use(before);
             }
+        }
+
+        /// <summary>
+        /// The Timeline's detail said "Nothing recorded yet" while its list showed the tracks recorded since, none of them
+        /// selected (ED-95, seen capturing the docs' screenshots): its note was chosen as the view first showed, before
+        /// anything was recorded, and kept. Once there's a track, the detail asks for one.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_95_The_Timeline_asks_for_a_track_once_it_has_one() => Guarded(AsksForATrack());
+
+        private IEnumerator AsksForATrack()
+        {
+            var foe = RuntimeHub("Runtime Foe", Set((Attribute("Health"), 100f, 100f)), out _);
+            var window = Open();
+            yield return Frames();
+            yield return ShowView(window, "ShowTimeline");
+            string Note() => window.rootVisualElement.Q("TimelineDetail").Q<Label>(className: "pf-note")?.text;
+            StringAssert.StartsWith("Nothing recorded yet", Note(), "with nothing recorded, the detail says so");
+
+            Assert.IsTrue(Apply(foe, Lasting("Frost", 5f)), "Frost lands");
+            Sample(window);
+            var tracks = window.rootVisualElement.Q<MultiColumnListView>("Tracks");
+            Assert.That(Listed(tracks).Select(TrackName), Has.Member("Runtime Foe · Frost"), "the list shows its track");
+            Assert.That(tracks.selectedIndices, Is.Empty, "none of them selected");
+            Assert.AreEqual("Select a track to see it here.", Note(), "and the detail asks for one");
         }
 
         // The ratio between two colors' relative luminances, as WCAG measures contrast

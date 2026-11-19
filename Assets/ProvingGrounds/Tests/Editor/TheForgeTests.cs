@@ -588,6 +588,37 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             }
         }
 
+        /// <summary>
+        /// The Forge's tag view listed the empty tag (ED-93, seen capturing the docs' screenshots): its first row had no
+        /// name, was For each context an unset tag field has, and counted every asset with one, 120 of the Demo's. The tag
+        /// registry took each unset tag field for a use of a tag of no name, and the view selected that row while no tag
+        /// was, since a tag of no name matched its selection of none. An unset field uses no tag: the view lists the tags
+        /// set, and a new view selects none.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ED_93_The_tag_view_leaves_out_an_unset_tag_field() => Guarded(ED_93_The_tag_view_leaves_out_an_unset_tag_fieldBody());
+
+        private IEnumerator ED_93_The_tag_view_leaves_out_an_unset_tag_fieldBody()
+        {
+            // An asset with a tag set beside a field left unset, as a saved asset holds one: a tag of no name
+            var set = Tag.Generate("Test.ED93.Set");
+            var ability = Ability("ED93 Unset");
+            ability.Tags.ContextTags = new List<Tag> { set, new Tag { Name = "", DisplayName = "" } };
+            Save(ability, "ED93 Unset");
+            var forge = Open();
+            yield return Frames();
+            forge.rootVisualElement.Q<ToolbarToggle>("Tags").value = true;
+            yield return Frames();
+
+            var tags = forge.rootVisualElement.Q<MultiColumnListView>("TagList");
+            var shown = tags.itemsSource.Cast<ForgeTagRegistry.TagUsageRecord>().Select(record => record.Tag).ToList();
+            Assert.That(shown, Has.Member(set), "the view lists the tag the asset sets");
+            Assert.That(shown.Where(tag => !tag.IsValid).Select(tag => $"'{tag.Name}'"), Is.Empty, "and no tag for the field it leaves unset");
+            Assert.That(tags.selectedIndices, Is.Empty, "a new view selects no tag");
+            Assert.That(forge.rootVisualElement.Q("Detail").Query<Label>().ToList().Select(label => label.text),
+                Has.Member("Select a tag to see what uses it."), "and its detail asks for one");
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-48: column widths
         // ═══════════════════════════════════════════════════════════════════════════
