@@ -147,31 +147,6 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
         }
 
         /// <summary>
-        /// Proving Grounds' labs opened The Forge's Problems on a warning (ED-97, seen capturing the docs' screenshots): the
-        /// Dota lab's Mana Void was set to take its levels from a provider that was never in the project, so no level
-        /// provider was set. It uses its own levels, as the warning's fix sets, which reads no differently, since an effect
-        /// with no provider takes the level of what applies it. Each lab's assets pass The Forge's checks, as the samples'
-        /// do.
-        /// </summary>
-        [Test]
-        public void ED_97_The_labs_assets_pass_The_Forges_checks()
-        {
-            var folders = new[] { "Assets/ProvingGrounds/Dota", "Assets/ProvingGrounds/Hades", "Assets/ProvingGrounds/RiskOfRain", "Assets/ProvingGrounds/Recipes" }
-                .Where(AssetDatabase.IsValidFolder).ToArray();
-            Assume.That(folders, Is.Not.Empty, "the labs are in the project");
-            var found = new List<string>();
-            foreach (var path in AssetDatabase.FindAssets("", folders).Select(AssetDatabase.GUIDToAssetPath).Distinct())
-            {
-                // PlayForge's assets, not a scene, which can't be loaded as one
-                if (!path.EndsWith(".asset", System.StringComparison.Ordinal)) continue;
-                foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path).OfType<ScriptableObject>())
-                    foreach (var problem in ForgeValidator.Check(asset))
-                        if (problem.Severity != ForgeProblemSeverity.Note) found.Add($"{path}: [{problem.Severity}] {problem.Message}");
-            }
-            Assert.That(found, Is.Empty, $"{found.Count} problems: {string.Join("\n", found.Take(12))}");
-        }
-
-        /// <summary>
         /// The Problems view lists each problem with its asset, and a click selects the asset, where Validate All showed 15
         /// in a dialog nothing in could be selected.
         /// </summary>

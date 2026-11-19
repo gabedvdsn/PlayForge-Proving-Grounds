@@ -182,7 +182,7 @@ MonoBehaviour:
     Application: []
     Ongoing: []
     Removal: []
-  LinkMode: 0
+  LinkMode: 1
   _linkedSource: {fileID: 11400000, guid: a5d98219810b1d5408ce9a7c1874b1c3, type: 2}
   references:
     version: 2
