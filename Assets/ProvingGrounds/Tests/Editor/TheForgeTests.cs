@@ -1814,6 +1814,52 @@ namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
             Assert.That(summary, Has.Some.Contains("Wet"), "and what it requires");
         }
 
+        /// <summary>
+        /// The rules assets' summaries were empty: a Value Pipeline's, an Effect Modifier's and Crowd Control Rules'. The
+        /// user's edit gave them lines, which threw for a pipeline with an empty stage and for a modifier with no
+        /// condition, as a new one has (EP-89). Each's summary says its description, as text, and a line for each of its
+        /// parts.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EP_89_The_rules_assets_have_summaries() => Guarded(EP_89_The_rules_assets_have_summariesBody());
+
+        private IEnumerator EP_89_The_rules_assets_have_summariesBody()
+        {
+            var pipeline = ScriptableObject.CreateInstance<ValuePipeline>();
+            pipeline.Description = "Each hit's reductions";
+            pipeline.Stages = new List<AbstractValueStage> { new MultiplyStage { Label = "Armor" }, null, new ClampStage { Label = "Floor", Enabled = false } };
+            Save(pipeline, "EP89 Pipeline");
+            var modifier = ScriptableObject.CreateInstance<EffectModifier>();
+            modifier.Description = "Fire lasts longer";
+            modifier.Rule.EffectTags = new List<Tag> { Tag.Generate("Status.Burn") };
+            Save(modifier, "EP89 Modifier");
+            var rules = ScriptableObject.CreateInstance<CrowdControlRules>();
+            rules.Description = "A stun stops everything";
+            rules.Rules = new List<CrowdControlRule> { new() { Tag = Tag.Generate("Status.Stunned") } };
+            Save(rules, "EP89 Rules");
+            var forge = Open();
+            yield return Frames();
+
+            TheForge.OpenToAsset(pipeline);
+            yield return Frames();
+            var summary = SummaryOf(forge);
+            Assert.That(summary, Has.Member("Each hit's reductions"), "a Value Pipeline's summary says its description: " + string.Join(" | ", summary));
+            Assert.That(summary, Has.Member("Armor → Floor (off)"), "and its stages in order, one that's off marked so");
+
+            TheForge.OpenToAsset(modifier);
+            yield return Frames();
+            summary = SummaryOf(forge);
+            Assert.That(summary, Has.Member("Fire lasts longer"), "an Effect Modifier's summary says its description: " + string.Join(" | ", summary));
+            Assert.That(summary, Has.Some.Contains("Burn"), "the effects it picks");
+            Assert.That(summary, Has.Member("Always"), "and, with no condition, that it always holds");
+
+            TheForge.OpenToAsset(rules);
+            yield return Frames();
+            summary = SummaryOf(forge);
+            Assert.That(summary, Has.Member("A stun stops everything"), "Crowd Control Rules' summary says its description: " + string.Join(" | ", summary));
+            Assert.That(summary, Has.Some.Contains("Stunned: every ability"), "and each rule, by its tag and what it stops");
+        }
+
         // ═══════════════════════════════════════════════════════════════════════════
         // ED-76: back and forward
         // ═══════════════════════════════════════════════════════════════════════════
