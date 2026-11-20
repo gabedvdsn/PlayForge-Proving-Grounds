@@ -31,6 +31,8 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
         private static string output;
         private static bool quitAfter;
         private static bool closeUpsOnly;
+        private static bool remainingOnly;
+        private static bool retakesOnly;
         private static IEnumerator shots;
         private static double resumeAt;
         private static bool optionsKept;
@@ -38,6 +40,7 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
         private static EnterPlayModeOptions options;
         // The preferences the run sets, each as the run found it, put back after: null for one that wasn't set
         private static readonly Dictionary<string, string> keptPrefs = new Dictionary<string, string>();
+        private static readonly Dictionary<string, bool?> keptBools = new Dictionary<string, bool?>();
 
         [MenuItem("Window/PlayForge/Docs/Capture Screenshots")]
         public static void Capture() =>
@@ -48,6 +51,24 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
 
         /// <summary>The command line's entry for the close-ups of the inspectors' parts alone, a minute's run.</summary>
         public static void CaptureCloseUpsAndQuit() => Begin(OutputArg(), true, true);
+
+        /// <summary>
+        /// The command line's entry for the shots the others leave: a kind field, PlayForge's dropdown and a number field's
+        /// menu, The Forge's menus and the Move to Trash question, which the system draws, and the Profiler's modules.
+        /// </summary>
+        public static void CaptureRemainingAndQuit()
+        {
+            remainingOnly = true;
+            Begin(OutputArg(), true);
+        }
+
+        /// <summary>The command line's entry for a number field's menu, from a field with its own values, and the Profiler.</summary>
+        public static void CaptureRetakesAndQuit()
+        {
+            remainingOnly = true;
+            retakesOnly = true;
+            Begin(OutputArg(), true);
+        }
 
         private static string OutputArg()
         {
@@ -117,6 +138,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 var closeUpEffect = Find<GameplayEffect>(asset => asset.name.Contains("Damage")) ?? Find<GameplayEffect>(_ => true);
                 var closeUpAbility = Find<Ability>(asset => asset.name.Contains("Fireball")) ?? Find<Ability>(_ => true);
                 foreach (var step in CloseUps(demo, closeUpEffect, closeUpAbility)) yield return step;
+                yield break;
+            }
+            if (remainingOnly)
+            {
+                yield return 1f;
+                foreach (var step in Remaining()) yield return step;
                 yield break;
             }
 
@@ -704,6 +731,408 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
             return null;
         }
 
+        // The shots the others leave. The Forge's menus and the Move to Trash question are the system's own windows, which
+        // no view of the editor's draws, so a helper process takes each from the screen and closes it
+        private static IEnumerable Remaining()
+        {
+            var inspectorType = InspectorType;
+            var forgeAssembly = typeof(TheForge).Assembly;
+            // The Forge's tables as they are now, put back after, as The Forge may write them as it opens
+            var widths = forgeAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeColumnWidths");
+            foreach (var table in new[] { "Forge.Assets", "Forge.Tags" })
+            foreach (var keyOf in new[] { "KeyOf", "HiddenKeyOf" })
+                KeepPref(widths?.GetMethod(keyOf, Any)?.Invoke(null, new object[] { table }) as string);
+            KeepPref(typeof(TheForge).GetProperty("ListWidthKey", Any)?.GetValue(null) as string);
+            var dropdownWindow = forgeAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeDropdownWindow");
+
+            // A number field's menu, from a field with its own values, whose items it all offers: Fireball Damage's
+            // table, its scaler's
+            var damage = Find<GameplayEffect>(asset => asset.name == "Fireball Damage");
+            if (damage != null && dropdownWindow != null)
+            {
+                Selection.activeObject = damage;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                foreach (var section in root.Query(className: "pf-section").ToList()) SectionExpanded?.SetValue(section, true);
+                yield return 1f;
+                var table = Drawn(root, "pf-magnitude__row").FirstOrDefault(each => each.Query<TextElement>().ToList().Any(text => text.text == "Table"));
+                if (table != null)
+                {
+                    for (var each = table.parent; each != null; each = each.parent)
+                        if (each is ScrollView view && view.contentContainer.Contains(table)) view.ScrollTo(table);
+                    yield return 1f;
+                    foreach (var step in Dropdown(dropdownWindow, "number-field-menu", table.Q(className: "pf-magnitude__menu"), false)) yield return step;
+                }
+                else Debug.LogWarning("[Docs] number-field-menu: no table");
+                inspector.Close();
+            }
+            if (retakesOnly)
+            {
+                foreach (var step in ProfilerModules()) yield return step;
+                yield break;
+            }
+
+            // A kind field: one of Fireball's tasks, as Apply Effects where it has one
+            var fireball = Find<Ability>(asset => asset.name == "Fireball") ?? Find<Ability>(_ => true);
+            if (fireball != null)
+            {
+                Selection.activeObject = fireball;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                foreach (var section in root.Query(className: "pf-section").ToList()) SectionExpanded?.SetValue(section, true);
+                yield return 1f;
+                var kinds = root.Query<VisualElement>().ToList()
+                    .Where(each => each.GetType().Name == "ForgeTypeField" && each.resolvedStyle.display != DisplayStyle.None
+                                   && each.worldBound.width > 60 && each.worldBound.height > 12)
+                    .ToList();
+                var kind = kinds.FirstOrDefault(each => each.Query<TextElement>().ToList().Any(text => (text.text ?? "").Contains("Apply Effects")))
+                           ?? kinds.FirstOrDefault();
+                foreach (var step in Scrolled(inspector, "kind-field", kind)) yield return step;
+                inspector.Close();
+            }
+
+            // PlayForge's dropdown, as a number field's kind menu opens it, its keys on a choice so its Context shows;
+            // then the field's own menu, its ⋮
+            var burning = Find<GameplayEffect>(asset => asset.name == "Burning");
+            var dropdownType = forgeAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeDropdownWindow");
+            if (burning != null && dropdownType != null)
+            {
+                Selection.activeObject = burning;
+                var inspector = Floating(inspectorType, 640, 1000);
+                yield return 2.5f;
+                var root = inspector.rootVisualElement;
+                foreach (var section in root.Query(className: "pf-section").ToList()) SectionExpanded?.SetValue(section, true);
+                yield return 1f;
+                var rows = Drawn(root, "pf-magnitude__row").Where(each => each.GetFirstAncestorOfType<BaseVerticalCollectionView>() == null).ToList();
+                var row = rows.FirstOrDefault(each => each.Q<Label>(className: "unity-base-field__label")?.text == "Duration") ?? rows.FirstOrDefault();
+                if (row != null)
+                {
+                    // The row in sight, so each dropdown opens under it
+                    for (var each = row.parent; each != null; each = each.parent)
+                        if (each is ScrollView view && view.contentContainer.Contains(row)) view.ScrollTo(row);
+                    yield return 1f;
+                    foreach (var step in Dropdown(dropdownType, "forge-dropdown", row.Q(name: "Kind"), true)) yield return step;
+                }
+                else Debug.LogWarning("[Docs] forge-dropdown: no number field");
+                inspector.Close();
+            }
+
+            // The Forge's menus: the window menu on its tab, Create on its toolbar, and the asset menu on Fireball's row
+            EditorApplication.ExecuteMenuItem("Window/PlayForge/The Forge");
+            yield return 1.5f;
+            var forge = Resources.FindObjectsOfTypeAll<TheForge>().FirstOrDefault();
+            if (forge != null)
+            {
+                Place(forge, 1280, 720);
+                yield return 2f;
+                var host = typeof(EditorWindow).GetField("m_Parent", Any)?.GetValue(forge);
+                var popupMenu = host?.GetType().GetMethods(Any).FirstOrDefault(method => method.Name == "PopupGenericMenu" && method.GetParameters().Length == 2);
+                foreach (var step in Popup("the-forge-window-menu", "menu", () =>
+                             popupMenu?.Invoke(host, new object[] { forge, new Rect(forge.position.width - 24, 4, 16, 16) })))
+                    yield return step;
+                var create = forge.rootVisualElement.Q<ToolbarMenu>("Create");
+                // A toolbar menu's ShowMenu, an extension in one of the editor's assemblies
+                var showMenu = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.GetName().Name.StartsWith("UnityEditor"))
+                    .SelectMany(assembly =>
+                    {
+                        try
+                        {
+                            return assembly.GetTypes();
+                        }
+                        catch (ReflectionTypeLoadException partial)
+                        {
+                            return partial.Types.Where(type => type != null).ToArray();
+                        }
+                    })
+                    .SelectMany(type => type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    .FirstOrDefault(method => method.Name == "ShowMenu" && method.GetParameters().Length == 1
+                                              && method.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(ToolbarMenu)));
+                foreach (var step in Popup("the-forge-create-menu", "menu", () => showMenu?.Invoke(null, new object[] { create })))
+                    yield return step;
+                if (fireball != null)
+                {
+                    TheForge.OpenToAsset(fireball);
+                    yield return 2f;
+                    var list = forge.rootVisualElement.Query<BaseVerticalCollectionView>().ToList().FirstOrDefault(view => view.selectedIndex >= 0);
+                    var selected = list?.Q(className: "unity-collection-view__item--selected");
+                    foreach (var step in Popup("the-forge-asset-menu", "menu", () =>
+                             {
+                                 if (list == null) return;
+                                 var at = (selected ?? list).worldBound.center;
+                                 using var click = ContextClickEvent.GetPooled(new Event { type = EventType.ContextClick, mousePosition = at, button = 1 });
+                                 list.panel.contextualMenuManager.DisplayMenu(click, list);
+                             }))
+                        yield return step;
+                }
+                // The Move to Trash question for Burning, which other assets refer to. The question shown is The Forge's
+                // own, but its answer is taken as Cancel whatever it is, so nothing moves to the trash
+                var deletion = forgeAssembly.GetType("FarEmerald.PlayForge.Editor.ForgeAssetDeletion");
+                var confirm = deletion?.GetField("Confirm", Any);
+                var moveToTrash = deletion?.GetMethod("MoveToTrash", Any, null, new[] { typeof(IReadOnlyList<Object>) }, null);
+                if (burning != null && confirm != null && moveToTrash != null)
+                {
+                    var kept = confirm.GetValue(null);
+                    confirm.SetValue(null, new Func<string, string, bool>((title, message) =>
+                    {
+                        EditorUtility.DisplayDialog(title, message, "Move to Trash", "Cancel");
+                        return false;
+                    }));
+                    foreach (var step in Popup("move-to-trash-dialog", "dialog", () => moveToTrash.Invoke(null, new object[] { new Object[] { burning } })))
+                        yield return step;
+                    confirm.SetValue(null, kept);
+                }
+                else Debug.LogWarning("[Docs] move-to-trash-dialog: not shown");
+                forge.Close();
+            }
+            else Debug.LogWarning("[Docs] the-forge menus: The Forge not shown");
+
+            foreach (var step in ProfilerModules()) yield return step;
+        }
+
+        // A dropdown PlayForge opens in its own window, from the field given: its kind menu on a submit, or its button
+        private static IEnumerable Dropdown(Type windowType, string name, VisualElement from, bool keyDown)
+        {
+            if (from == null)
+            {
+                Debug.LogWarning($"[Docs] {name}: not found");
+                yield break;
+            }
+            using (var submit = NavigationSubmitEvent.GetPooled())
+            {
+                submit.target = from;
+                from.SendEvent(submit);
+            }
+            yield return 1.5f;
+            var window = Resources.FindObjectsOfTypeAll(windowType).OfType<EditorWindow>().FirstOrDefault();
+            if (window == null)
+            {
+                Debug.LogWarning($"[Docs] {name}: not shown");
+                yield break;
+            }
+            if (keyDown)
+            {
+                // The keys on the first choice, so the foot's Context says what it is
+                var search = window.rootVisualElement.Q<TextField>() ?? (VisualElement)window.rootVisualElement;
+                using (var down = KeyDownEvent.GetPooled('\0', KeyCode.DownArrow, EventModifiers.None))
+                {
+                    down.target = search;
+                    search.SendEvent(down);
+                }
+                yield return 1f;
+            }
+            window.Repaint();
+            yield return 0.5f;
+            Save(window, name);
+            window.Close();
+            yield return 0.5f;
+        }
+
+        // The Profiler with PlayForge's two modules on, recording the Demo in play, its Processes module selected
+        private static IEnumerable ProfilerModules()
+        {
+            if (!File.Exists(DemoScene)) yield break;
+            var modules = typeof(TheForge).Assembly.GetTypes()
+                .Where(type => type.Name.StartsWith("PlayForge") && type.Name.EndsWith("ProfilerModule")).ToList();
+            foreach (var module in modules)
+            foreach (var id in new[] { module.FullName, module.AssemblyQualifiedName })
+            {
+                var key = $"ProfilerModule.{id}.Active";
+                KeepBool(key);
+                EditorPrefs.SetBool(key, true);
+            }
+            EditorSceneManager.OpenScene(DemoScene);
+            optionsKept = true;
+            optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            options = EditorSettings.enterPlayModeOptions;
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+            var profiler = Floating(typeof(ProfilerWindow), 1280, 720);
+            yield return 2f;
+            UnityEditorInternal.ProfilerDriver.enabled = true;
+            EditorApplication.EnterPlaymode();
+            yield return 8f;
+            // Its Processes module selected, so its details list the costliest processes; the module found among the
+            // window's own, as its identifier isn't public
+            var processes = modules.FirstOrDefault(type => type.Name.Contains("Processes"));
+            foreach (var member in profiler.GetType().GetFields(Any).Cast<MemberInfo>().Concat(profiler.GetType().GetProperties(Any)))
+            {
+                object value = null;
+                try
+                {
+                    value = member is FieldInfo field ? field.GetValue(profiler) : ((PropertyInfo)member).GetIndexParameters().Length == 0 ? ((PropertyInfo)member).GetValue(profiler) : null;
+                }
+                catch
+                {
+                    // A property that can't be read now
+                }
+                if (value is not IEnumerable list || value is string) continue;
+                var found = list.Cast<object>().FirstOrDefault(each => each != null && each.GetType() == processes);
+                if (found == null) continue;
+                Debug.Log($"[Docs] profiler module {found.GetType().Name}: {found.GetType().GetProperty("Identifier", Any)?.GetValue(found)}, active {found.GetType().GetProperty("active", Any)?.GetValue(found)}");
+                var select = profiler.GetType().GetProperty("selectedModule", Any);
+                try
+                {
+                    select?.SetValue(profiler, found);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Docs] profiler-modules: the module not selected: {e.Message}");
+                }
+                break;
+            }
+            yield return 2f;
+            // The charts scrolled to their foot, where PlayForge's modules come after the editor's own
+            profiler.GetType().GetField("m_GraphPos", Any)?.SetValue(profiler, new Vector2(0f, 100000f));
+            profiler.Repaint();
+            yield return 1.5f;
+            Save(profiler, "profiler-modules");
+            EditorApplication.ExitPlaymode();
+            yield return 2f;
+            UnityEditorInternal.ProfilerDriver.enabled = false;
+            profiler.Close();
+            yield return 1f;
+        }
+
+        // A window the system draws, which a helper process finds, saves and closes: a menu by Escape, a question by its
+        // close, which answers Cancel. The helper's ready before the window opens, and the run waits for it after
+        private static IEnumerable Popup(string name, string kind, Action open)
+        {
+            var script = Path.Combine(Path.GetTempPath(), "pf_docs_popup.ps1");
+            File.WriteAllText(script, PopupScript);
+            var file = Path.Combine(output, name + ".png");
+            var ready = file + ".ready";
+            if (File.Exists(ready)) File.Delete(ready);
+            var start = new System.Diagnostics.ProcessStartInfo("powershell.exe",
+                $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -UnityPid {System.Diagnostics.Process.GetCurrentProcess().Id} -Kind {kind} -Out \"{file}\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            System.Diagnostics.Process helper;
+            try
+            {
+                helper = System.Diagnostics.Process.Start(start);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Docs] {name}: no helper: {e.Message}");
+                yield break;
+            }
+            for (int wait = 0; wait < 60 && !File.Exists(ready) && !helper.HasExited; wait++) yield return 0.25f;
+            if (!File.Exists(ready))
+            {
+                Debug.LogWarning($"[Docs] {name}: not shown, as its helper isn't ready");
+                if (!helper.HasExited) helper.Kill();
+                yield break;
+            }
+            try
+            {
+                open();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            for (int wait = 0; wait < 80 && !helper.HasExited; wait++) yield return 0.25f;
+            if (!helper.HasExited)
+            {
+                helper.Kill();
+                Debug.LogWarning($"[Docs] {name}: not shown");
+            }
+            else Debug.Log($"[Docs] {name}: helper exit {helper.ExitCode}");
+            File.Delete(ready);
+            yield return 0.5f;
+        }
+
+        // The helper: it notes the windows the editor's process shows, says it's ready, then waits for a new one, a menu's
+        // or a dialog's, takes it from the screen in pixels, and closes it
+        private const string PopupScript = @"
+param([int]$UnityPid, [string]$Kind, [string]$Out, [double]$Timeout = 15)
+Add-Type -AssemblyName System.Drawing
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class DocsPopup {
+  [DllImport(""user32.dll"")] public static extern bool SetProcessDPIAware();
+  public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport(""user32.dll"")] public static extern bool EnumWindows(EnumProc proc, IntPtr lParam);
+  [DllImport(""user32.dll"")] public static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
+  [DllImport(""user32.dll"")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+  [DllImport(""user32.dll"")] public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport(""user32.dll"")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+  [DllImport(""user32.dll"")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr w, IntPtr l);
+  [DllImport(""user32.dll"")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport(""dwmapi.dll"")] public static extern int DwmGetWindowAttribute(IntPtr hWnd, int attribute, out RECT value, int size);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  public static List<IntPtr> Shown(uint pid) {
+    var shown = new List<IntPtr>();
+    EnumWindows(delegate(IntPtr h, IntPtr l) {
+      uint p; GetWindowThreadProcessId(h, out p);
+      if (p == pid && IsWindowVisible(h)) shown.Add(h);
+      return true;
+    }, IntPtr.Zero);
+    return shown;
+  }
+  public static string ClassOf(IntPtr h) { var name = new StringBuilder(128); GetClassName(h, name, 128); return name.ToString(); }
+}
+'@
+[DocsPopup]::SetProcessDPIAware() | Out-Null
+$log = [System.IO.Path]::ChangeExtension($Out, '.log')
+$before = [DocsPopup]::Shown([uint32]$UnityPid)
+New-Item -ItemType File -Path ($Out + '.ready') -Force | Out-Null
+$want = if ($Kind -eq 'dialog') { '#32770' } else { '#32768' }
+$deadline = (Get-Date).AddSeconds($Timeout)
+$found = [IntPtr]::Zero
+$seen = $null
+while ((Get-Date) -lt $deadline -and $found -eq [IntPtr]::Zero) {
+  $new = @([DocsPopup]::Shown([uint32]$UnityPid) | Where-Object { $before -notcontains $_ })
+  $pick = @($new | Where-Object { [DocsPopup]::ClassOf($_) -eq $want })
+  # The class looked for, else a new window that has stayed two seconds
+  if ($pick.Count -gt 0) { $found = $pick[0] }
+  elseif ($new.Count -gt 0) { if ($seen -eq $null) { $seen = Get-Date } elseif (((Get-Date) - $seen).TotalSeconds -ge 2) { $found = $new[0] } }
+  if ($found -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 100 }
+}
+if ($found -eq [IntPtr]::Zero) {
+  'no new window' | Out-File $log
+  # Whatever it opened is closed all the same, so the editor isn't left waiting on it
+  [DocsPopup]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); [DocsPopup]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)
+  exit 2
+}
+Start-Sleep -Milliseconds 800
+$r = New-Object DocsPopup+RECT
+[DocsPopup]::GetWindowRect($found, [ref]$r) | Out-Null
+# The frame as drawn, without the invisible border a window's rect has round it, where the system says
+$frame = New-Object DocsPopup+RECT
+if ([DocsPopup]::DwmGetWindowAttribute($found, 9, [ref]$frame, 16) -eq 0 -and $frame.Right -gt $frame.Left) { $r = $frame }
+$w = $r.Right - $r.Left
+$h = $r.Bottom - $r.Top
+$class = [DocsPopup]::ClassOf($found)
+try {
+  $image = New-Object System.Drawing.Bitmap $w, $h
+  $graphics = [System.Drawing.Graphics]::FromImage($image)
+  $graphics.CopyFromScreen($r.Left, $r.Top, 0, 0, $image.Size)
+  $image.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
+  ""saved $class $w x $h at $($r.Left),$($r.Top)"" | Out-File $log
+} catch { ""capture failed: $_"" | Out-File $log }
+for ($i = 0; $i -lt 5 -and [DocsPopup]::IsWindowVisible($found); $i++) {
+  if ($Kind -eq 'dialog') { [DocsPopup]::PostMessage($found, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }
+  else { [DocsPopup]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); [DocsPopup]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero) }
+  Start-Sleep -Milliseconds 500
+}
+exit 0
+";
+
+        // A preference of yes or no as the run first finds it, before the run sets it
+        private static void KeepBool(string key)
+        {
+            if (string.IsNullOrEmpty(key) || keptBools.ContainsKey(key)) return;
+            keptBools[key] = EditorPrefs.HasKey(key) ? EditorPrefs.GetBool(key) : (bool?)null;
+        }
+
         // An element's close-up, its scroll view scrolled to show it first; no taller than tallest, where given
         private static IEnumerable Scrolled(EditorWindow window, string name, VisualElement part, float tallest = 0f)
         {
@@ -841,6 +1270,12 @@ namespace FarEmerald.PlayForge.ProvingGrounds.DocsCapture
                 else EditorPrefs.SetString(kept.Key, kept.Value);
             }
             keptPrefs.Clear();
+            foreach (var kept in keptBools)
+            {
+                if (kept.Value is bool value) EditorPrefs.SetBool(kept.Key, value);
+                else EditorPrefs.DeleteKey(kept.Key);
+            }
+            keptBools.Clear();
         }
 
         // Keeps a preference as the run first finds it, before the run sets it
