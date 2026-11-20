@@ -11,8 +11,13 @@ buyer's import:
   down after as Proving Grounds' sample tests take it down, so each scene starts as a press of Play starts it.
 The Test Framework fails a test on any error or exception logged. Unity runs with graphics, as a buyer's editor does.
 
-Usage: python smoke-check.py [--out <dir>]
-  --out   the export's folder, as export-unitypackage.py's --out (default: %TEMP%\\claude\\export)
+With --edition core, it smokes PlayForge Core's check project, which export-unitypackage.py --edition core --tests
+makes: the Debugger opens from its menu, and in play mode a Process Bootstrapper brings ProcessControl up, with no
+ability system in the package, and a sequence runs on it to its end.
+
+Usage: python smoke-check.py [--out <dir>] [--edition core]
+  --out      the export's folder, as export-unitypackage.py's --out (default: %TEMP%\\claude\\export)
+  --edition  core for PlayForge Core's check project; the full package's otherwise
 """
 import io
 import os
@@ -70,7 +75,7 @@ namespace PlayForgeSmoke
     public class WindowsSmoke
     {
         [UnityTest, Timeout(120000)]
-        public IEnumerator Each_window_opens_from_its_menu([Values("The Forge", "Debugger", "Problems")] string title)
+        public IEnumerator Each_window_opens_from_its_menu([Values(TITLES)] string title)
         {
             var before = Resources.FindObjectsOfTypeAll<EditorWindow>().ToList();
             Assert.That(EditorApplication.ExecuteMenuItem("Window/PlayForge/" + title), Is.True, "its menu item ran");
@@ -179,14 +184,72 @@ namespace PlayForgeSmoke
 }
 '''
 
+CORE = r'''using System.Collections;
+using FarEmerald.PlayForge;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace PlayForgeSmoke
+{
+    // PlayForge Core as a buyer's scene has it: a Process Bootstrapper brings ProcessControl up, with no ability system
+    // in the package, and a sequence runs on it to its end, nothing logged
+    public class CoreSmoke
+    {
+        [UnityTest, Timeout(60000)]
+        public IEnumerator A_sequence_runs_on_ProcessControl_alone()
+        {
+            Assert.That(typeof(ProcessControl).Assembly.GetType("FarEmerald.PlayForge.GameRoot"), Is.Null,
+                "the core edition, with no ability system");
+            var host = new GameObject("Process Bootstrapper");
+            host.SetActive(false);
+            host.AddComponent<ProcessBootstrapper>();
+            host.SetActive(true);
+            Assert.That(ProcessControl.Instance, Is.Not.Null, "ProcessControl came up");
+
+            int ran = 0;
+            var sequence = new TaskSequence(TaskSequenceBuilder.Create("Smoke").Delay(0.25f).Do(_ => ran++).Build());
+            Assert.That((bool)ProcessControl.Register(sequence).Run(), Is.True, "a sequence registers");
+            int frames = 0;
+            float until = Time.realtimeSinceStartup + 5f;
+            while (ran == 0 && Time.realtimeSinceStartup < until)
+            {
+                frames++;
+                yield return null;
+            }
+            Assert.That(ran, Is.EqualTo(1), "and runs to its end");
+            Debug.Log($"SMOKE core: ProcessControl up alone, and a sequence ran to its end in {frames} frames");
+        }
+
+        [UnityTearDown]
+        public IEnumerator TakePlayForgeDown()
+        {
+            if (ProcessControl.Instance) ProcessControl.Instance.TerminateAllImmediately();
+            yield return null;
+            if (ProcessControl.Instance) Object.Destroy(ProcessControl.Instance.gameObject);
+            yield return null;
+            ProcessControl.Instance = null;
+            TagRegistry.Reset();
+        }
+    }
+}
+'''
+
 args = sys.argv[1:]
 out = os.path.join(os.environ.get("TEMP", r"C:\Temp"), "claude", "export")
 if "--out" in args:
     out = args[args.index("--out") + 1]
-check = os.path.join(out, "check")
-logs = os.path.join(out, "logs")
+core = "--edition" in args and args[args.index("--edition") + 1] == "core"
+suffix = "-core" if core else ""
+check = os.path.join(out, "check" + suffix)
+logs = os.path.join(out, "logs" + suffix)
 if not os.path.isdir(os.path.join(check, "Assets", "Plugins", "PlayForge")):
-    sys.exit(f"no check project with PlayForge at {check}: run export-unitypackage.py --tests first")
+    sys.exit(f"no check project with PlayForge at {check}: run export-unitypackage.py{' --edition core' if core else ''} "
+             "--tests first")
+# The windows each edition opens from Window/PlayForge, and what plays
+titles = ['"Debugger"'] if core else ['"The Forge"', '"Debugger"', '"Problems"']
+windows = WINDOWS.replace("TITLES", ", ".join(titles))
+play = ("CoreSmoke.cs", CORE) if core else ("SampleScenesSmoke.cs", SCENES)
 manifest = io.open(os.path.join(check, "Packages", "manifest.json"), encoding="utf-8").read()
 if "com.unity.test-framework" not in manifest:
     sys.exit("the check project has no Test Framework: run export-unitypackage.py --tests")
@@ -203,8 +266,8 @@ def take_out():
 
 
 take_out()
-for folder, files in (("Edit", {"PlayForgeSmoke.Edit.asmdef": EDIT_ASMDEF, "WindowsSmoke.cs": WINDOWS}),
-                      ("Play", {"PlayForgeSmoke.Play.asmdef": PLAY_ASMDEF, "SampleScenesSmoke.cs": SCENES})):
+for folder, files in (("Edit", {"PlayForgeSmoke.Edit.asmdef": EDIT_ASMDEF, "WindowsSmoke.cs": windows}),
+                      ("Play", {"PlayForgeSmoke.Play.asmdef": PLAY_ASMDEF, play[0]: play[1]})):
     os.makedirs(os.path.join(smoke, folder))
     for name, text in files.items():
         io.open(os.path.join(smoke, folder, name), "w", encoding="utf-8", newline="\n").write(text)

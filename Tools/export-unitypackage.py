@@ -22,9 +22,18 @@ warnings, zero missing types, and no missing script, reference or type in the sa
 With --tests, the check project also takes the Test Framework and runs PlayForge's golden tests; with --build, it builds
 a Windows player through PlayForge's BuildVerification.
 
-Usage: python export-unitypackage.py [--out <dir>] [--skip-check] [--tests] [--build]
+With --edition core, it exports PlayForge Core instead, PlayForge-Core-<version>.unitypackage: ProcessControl and task
+sequences without the ability system, as the full package's own files with the rest left out, each keeping its GUID, so
+a buyer who moves up to PlayForge imports it over the core edition. Proving Grounds' Tests/Editor/CoreEdition.txt names
+its files, which CoreEditionTests compile alone: the [runtime] and [editor] scripts, the [package] guides, and the
+[samples] it ships, which package.json's list narrows to. Its own package.json names it, and it carries UniTask and the
+notices as the full package does. Its projects and logs are build-core, check-core and logs-core, beside the full
+package's; it has no golden tests, so --tests gives its check project the Test Framework alone, for smoke-check.py.
+
+Usage: python export-unitypackage.py [--out <dir>] [--edition core] [--skip-check] [--tests] [--build]
   --out         where the throwaway project, the check project, the logs and the .unitypackage go
                 (default: %TEMP%\\claude\\export)
+  --edition     core for PlayForge Core; the full package otherwise
   --skip-check  export only
   --tests       the check project runs the golden tests too, with the Test Framework added
   --build       and builds a Windows player, its scenes none, as BuildVerification makes one
@@ -180,14 +189,45 @@ args = sys.argv[1:]
 out = os.path.join(os.environ.get("TEMP", r"C:\Temp"), "claude", "export")
 if "--out" in args:
     out = args[args.index("--out") + 1]
+edition = args[args.index("--edition") + 1] if "--edition" in args else "full"
+if edition not in ("full", "core"):
+    sys.exit(f"no edition {edition}: core, or none for the full package")
+core = edition == "core"
+# The core edition's projects and logs sit beside the full package's, so neither export clears the other's
+suffix = "-core" if core else ""
 download = os.path.join(out, "download")
-build = os.path.join(out, "build")
-check = os.path.join(out, "check")
-logs = os.path.join(out, "logs")
+build = os.path.join(out, "build" + suffix)
+check = os.path.join(out, "check" + suffix)
+logs = os.path.join(out, "logs" + suffix)
 for each in (download, logs):
     os.makedirs(each, exist_ok=True)
-version = json.load(open(os.path.join(PACKAGE, "package.json"), encoding="utf-8"))["version"]
-unitypackage = os.path.join(out, f"PlayForge-{version}.unitypackage")
+package_json = json.load(open(os.path.join(PACKAGE, "package.json"), encoding="utf-8"))
+version = package_json["version"]
+unitypackage = os.path.join(out, f"PlayForge-Core-{version}.unitypackage" if core else f"PlayForge-{version}.unitypackage")
+
+# PlayForge Core's files, as Proving Grounds' CoreEditionTests compile them
+CORE_LIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "Assets", "ProvingGrounds", "Tests", "Editor", "CoreEdition.txt")
+CORE_NAME = "PlayForge Core"
+CORE_DESCRIPTION = ("PlayForge's process control and task sequences, without its ability system: processes scheduled "
+                    "from Unity's player loop, with lifecycles, step timings, priorities, groups and clocks of their "
+                    "own, and task sequences, staged workflows with waits, conditions, timers, chains and two task "
+                    "libraries, as code builds them. It carries UniTask 2.5.11 in ThirdParty/UniTask.")
+
+
+def core_list(*sections):
+    # The core edition's list: the paths its sections name, and the paths left out of them
+    taken, left, current = [], [], None
+    for raw in io.open(CORE_LIST, encoding="utf-8-sig"):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("["):
+            current = line[1:-1]
+            continue
+        if current in sections:
+            (left if line.startswith("!") else taken).append(line.lstrip("!"))
+    return taken, left
 
 
 def unity(*extra, log, env=None):
@@ -282,17 +322,65 @@ def leave_out(directory, names):
     return skipped
 
 
-shutil.copytree(PACKAGE, target, ignore=leave_out)
+def copy_core():
+    # Each path the core edition's list names, with its meta, and each folder above it with its own, so every file and
+    # folder keeps the GUID it has in the package; a path the list leaves out stays out
+    taken, left = core_list("runtime", "editor", "package")
+
+    def out_of_it(relative):
+        bare = relative[:-5] if relative.endswith(".meta") else relative
+        return any(bare == each or bare.startswith(each + "/") for each in left)
+
+    def ignore(directory, names):
+        relative = os.path.relpath(directory, PACKAGE).replace("\\", "/")
+        return [name for name in names if out_of_it(f"{relative}/{name}")]
+
+    os.makedirs(target)
+    for each in taken:
+        source = os.path.join(PACKAGE, *each.split("/"))
+        if not os.path.exists(source):
+            sys.exit(f"the core edition's list names {each}, which the package hasn't")
+        parts = each.split("/")
+        for depth in range(1, len(parts)):
+            folder = os.path.join(target, *parts[:depth])
+            os.makedirs(folder, exist_ok=True)
+            meta = os.path.join(PACKAGE, *parts[:depth]) + ".meta"
+            if os.path.exists(meta) and not os.path.exists(folder + ".meta"):
+                shutil.copyfile(meta, folder + ".meta")
+        destination = os.path.join(target, *parts)
+        if os.path.isdir(source):
+            shutil.copytree(source, destination, ignore=ignore, dirs_exist_ok=True)
+        else:
+            shutil.copyfile(source, destination)
+        if os.path.exists(source + ".meta"):
+            shutil.copyfile(source + ".meta", destination + ".meta")
+
+
+if core:
+    copy_core()
+else:
+    shutil.copytree(PACKAGE, target, ignore=leave_out)
 # The package's folder keeps the GUID it has in PlayForge's own project
 if os.path.exists(PACKAGE + ".meta"):
     shutil.copyfile(PACKAGE + ".meta", target + ".meta")
 folder_meta(target, "Assets/PlayForge")
 
-# The samples, out of Samples~
+# The samples, out of Samples~: the core edition's, those its list names
+shipped = package_json.get("samples", [])
+if core:
+    named = core_list("samples")[0]
+    shipped = [sample for sample in shipped if sample["path"] in named]
+    if len(shipped) != len(named):
+        sys.exit(f"the core edition's samples, {named}, aren't all in package.json's list")
+    # Its own package.json, which names it and lists its samples
+    core_json = dict(package_json, displayName=CORE_NAME, description=CORE_DESCRIPTION, samples=shipped)
+    io.open(os.path.join(target, "package.json"), "w", encoding="utf-8", newline="\n").write(
+        json.dumps(core_json, indent=2, ensure_ascii=False) + "\n")
+    shutil.copyfile(os.path.join(PACKAGE, "package.json.meta"), os.path.join(target, "package.json.meta"))
 samples = os.path.join(target, "Samples")
 os.makedirs(samples)
 folder_meta(samples, "Assets/PlayForge/Samples")
-for sample in json.load(open(os.path.join(PACKAGE, "package.json"), encoding="utf-8")).get("samples", []):
+for sample in shipped:
     destination = os.path.join(samples, sample["displayName"])
     shutil.copytree(os.path.join(PACKAGE, sample["path"]), destination)
     folder_meta(destination, f"Assets/PlayForge/Samples/{sample['displayName']}")
@@ -363,7 +451,9 @@ code, log = unity("-projectPath", check, "-executeMethod", "SampleCheck.Run", lo
 sampled = report("its samples, each opened", code, log)
 
 tested = True
-if tests:
+if tests and core:
+    print("the golden tests: none in the core edition, which has no ability system")
+elif tests:
     results = os.path.join(logs, "golden.xml")
     path = os.path.join(logs, "golden.log")
     done = subprocess.run([UNITY, "-batchmode", "-nographics", "-projectPath", check, "-runTests", "-testPlatform",

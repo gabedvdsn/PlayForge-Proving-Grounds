@@ -1,0 +1,76 @@
+# PlayForge Core, the core edition: ProcessControl and task sequences, as the full package's own files. Each line is a
+# path in the package; a folder takes every script under it, and a line starting with ! leaves out a path under one taken.
+# Proving Grounds' CoreEditionTests compile exactly these with nothing else of PlayForge's, and the export's core edition
+# ships exactly these.
+
+[runtime]
+Runtime/FarEmerald.PlayForge.asmdef
+Runtime/PlayForge/Management/GameplayProcess
+!Runtime/PlayForge/Management/GameplayProcess/Core/Authored/AbstractEffectingMonoProcess.cs
+!Runtime/PlayForge/Management/GameplayProcess/Core/Authored/AbstractGameplayMonoProcess.cs
+!Runtime/PlayForge/Management/GameplayProcess/Core/Authored/AbstractTargetedMonoProcess.cs
+Runtime/PlayForge/Management/IManagerial.cs
+Runtime/PlayForge/Management/Bootstrapper/ProcessBootstrapper.cs
+Runtime/PlayForge/Core/ForgeLog.cs
+Runtime/PlayForge/Core/ForgeContext.cs
+Runtime/PlayForge/Core/TextureItem.cs
+Runtime/PlayForge/Core/Attributes
+Runtime/PlayForge/Core/TaskSequence
+Runtime/PlayForge/CompositeBehaviour
+!Runtime/PlayForge/CompositeBehaviour/Authored
+Runtime/PlayForge/GameplayEffect/Core/IHasReadableDefinition.cs
+Runtime/PlayForge/Tag/Tag.cs
+Runtime/PlayForge/Tag/TagRegistry.cs
+Runtime/PlayForge/Tag/Tags.cs
+Runtime/PlayForge/Tag/Tags.Direct.cs
+Runtime/PlayForge/Utils/ForgeTime.cs
+Runtime/PlayForge/Utils/ClockChoices.cs
+Runtime/PlayForge/Utils/ForgeCollections.cs
+Runtime/PlayForge/Utils/ForgeInput.cs
+Runtime/PlayForge/Utils/ForgeRandom.cs
+Runtime/PlayForge/Utils/ForgeCounters.cs
+Runtime/PlayForge/Utils/ForgeProfiler.cs
+Runtime/PlayForge/Utils/ForgeFrameCosts.cs
+
+# The editor the core edition ships: the Debugger's Processes view, the inspectors and drawers of what it has, the
+# Preferences' logging, the Profiler's modules, and the editor kit and the style sheet those use
+[editor]
+Editor/FarEmerald.PlayForge.Editor.asmdef
+Editor/AssemblyInfo.cs
+Editor/Debugger/ForgeProfilerModules.cs
+Editor/Debugger/RuntimeDebugger.cs
+Editor/Debugger/RuntimeDebugger.Processes.cs
+Editor/Drawers/Assets/Ability/SequenceInjectionDrawer.cs
+Editor/Drawers/Assets/Ability/TaskSequenceReferenceDrawer.cs
+Editor/Drawers/Base/AbstractGenericDrawer.cs
+Editor/Drawers/Base/AbstractTypeRefDrawer.cs
+Editor/Drawers/Other/ClockChoiceDrawer.cs
+Editor/Drawers/Other/ProcessInstantiatorDrawer.cs
+Editor/Drawers/Other/TextureItemDrawer.cs
+Editor/Inspectors/AbstractMonoProcessEditor.cs
+Editor/Projects/EachAsset.cs
+Editor/Settings/PlayForgePreferences.cs
+Editor/Tools/BuildVerification.cs
+Editor/UI/ForgeTheme.cs
+Editor/UI/PlayForge.uss
+Editor/UI/Kit/ForgeColumnWidths.cs
+Editor/UI/Kit/ForgeDropdown.cs
+Editor/UI/Kit/ForgeGlyph.cs
+Editor/UI/Kit/ForgeSection.cs
+Editor/UI/Kit/ForgeSequencePicker.cs
+Editor/UI/Kit/ForgeShowWhen.cs
+Editor/UI/Kit/ForgeStack.cs
+Editor/UI/Kit/ForgeTypeField.cs
+Editor/UI/Kit/ForgeTypePicker.cs
+Editor/Util/DrawerCollapseState.cs
+Editor/Util/TypePickerCache.cs
+
+# The samples the core edition ships, which compile with its runtime alone
+[samples]
+Samples~/Task Sequence Examples
+Samples~/Process Group Examples
+
+# What else the core edition ships beside its scripts and samples: the guides to what it has
+[package]
+Documentation/PROCESSES.md
+Documentation/TASK_SEQUENCES.md
