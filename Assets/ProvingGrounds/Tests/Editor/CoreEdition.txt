@@ -1,7 +1,7 @@
-# PlayForge Core, the core edition: ProcessControl and task sequences, as the full package's own files. Each line is a
-# path in the package; a folder takes every script under it, and a line starting with ! leaves out a path under one taken.
-# Proving Grounds' CoreEditionTests compile exactly these with nothing else of PlayForge's, and the export's core edition
-# ships exactly these.
+# PlayForge Process Sequencer, the core edition: ProcessControl and task sequences, as the full package's own files.
+# Each line is a path in the package; a folder takes every script under it, and a line starting with ! leaves out a path
+# under one taken. Proving Grounds' CoreEditionTests compile exactly these with nothing else of PlayForge's, and the
+# export's core edition ships exactly these.
 
 [runtime]
 Runtime/FarEmerald.PlayForge.asmdef

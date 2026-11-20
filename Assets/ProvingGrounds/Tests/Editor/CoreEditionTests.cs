@@ -13,11 +13,11 @@ using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 namespace FarEmerald.PlayForge.ProvingGrounds.EditorTests
 {
     /// <summary>
-    /// PlayForge Core, the core edition, on the user's word of 2026-11-19 (EP-84): ProcessControl and task sequences sold
-    /// on their own, as the full package's own files with the ability system left out. Its files, which
-    /// <c>CoreEdition.txt</c> beside this test names, must compile with nothing else of PlayForge's: its runtime as a
-    /// player's build and as the editor's, its editor as an assembly of its own over the runtime's, and its samples with
-    /// its runtime. A change that ties one of them to the ability system fails here.
+    /// PlayForge Process Sequencer, the core edition, on the user's word of 2026-11-19 (EP-84, its name EP-86):
+    /// ProcessControl and task sequences sold on their own, as the full package's own files with the ability system
+    /// left out. Its files, which <c>CoreEdition.txt</c> beside this test names, must compile with nothing else of
+    /// PlayForge's: its runtime as a player's build and as the editor's, its editor as an assembly of its own over the
+    /// runtime's, and its samples with its runtime. A change that ties one of them to the ability system fails here.
     /// </summary>
     public class CoreEditionTests
     {

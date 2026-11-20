@@ -22,18 +22,19 @@ warnings, zero missing types, and no missing script, reference or type in the sa
 With --tests, the check project also takes the Test Framework and runs PlayForge's golden tests; with --build, it builds
 a Windows player through PlayForge's BuildVerification.
 
-With --edition core, it exports PlayForge Core instead, PlayForge-Core-<version>.unitypackage: ProcessControl and task
-sequences without the ability system, as the full package's own files with the rest left out, each keeping its GUID, so
-a buyer who moves up to PlayForge imports it over the core edition. Proving Grounds' Tests/Editor/CoreEdition.txt names
-its files, which CoreEditionTests compile alone: the [runtime] and [editor] scripts, the [package] guides, and the
-[samples] it ships, which package.json's list narrows to. Its own package.json names it, and it carries UniTask and the
-notices as the full package does. Its projects and logs are build-core, check-core and logs-core, beside the full
-package's; it has no golden tests, so --tests gives its check project the Test Framework alone, for smoke-check.py.
+With --edition core, it exports PlayForge Process Sequencer instead, PlayForge-Process-Sequencer-<version>.unitypackage:
+ProcessControl and task sequences without the ability system, as the full package's own files with the rest left out,
+each keeping its GUID, so a buyer who moves up to PlayForge imports it over the core edition. Proving Grounds'
+Tests/Editor/CoreEdition.txt names its files, which CoreEditionTests compile alone: the [runtime] and [editor] scripts,
+the [package] guides, and the [samples] it ships, which package.json's list narrows to. Its own package.json names it,
+and it carries UniTask and the notices as the full package does. Its projects and logs are build-core, check-core and
+logs-core, beside the full package's; it has no golden tests, so --tests gives its check project the Test Framework
+alone, for smoke-check.py.
 
 Usage: python export-unitypackage.py [--out <dir>] [--edition core] [--skip-check] [--tests] [--build]
   --out         where the throwaway project, the check project, the logs and the .unitypackage go
                 (default: %TEMP%\\claude\\export)
-  --edition     core for PlayForge Core; the full package otherwise
+  --edition     core for PlayForge Process Sequencer; the full package otherwise
   --skip-check  export only
   --tests       the check project runs the golden tests too, with the Test Framework added
   --build       and builds a Windows player, its scenes none, as BuildVerification makes one
@@ -203,12 +204,12 @@ for each in (download, logs):
     os.makedirs(each, exist_ok=True)
 package_json = json.load(open(os.path.join(PACKAGE, "package.json"), encoding="utf-8"))
 version = package_json["version"]
-unitypackage = os.path.join(out, f"PlayForge-Core-{version}.unitypackage" if core else f"PlayForge-{version}.unitypackage")
+unitypackage = os.path.join(out, f"PlayForge-Process-Sequencer-{version}.unitypackage" if core else f"PlayForge-{version}.unitypackage")
 
-# PlayForge Core's files, as Proving Grounds' CoreEditionTests compile them
+# PlayForge Process Sequencer's files, as Proving Grounds' CoreEditionTests compile them
 CORE_LIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                          "Assets", "ProvingGrounds", "Tests", "Editor", "CoreEdition.txt")
-CORE_NAME = "PlayForge Core"
+CORE_NAME = "PlayForge Process Sequencer"
 CORE_DESCRIPTION = ("PlayForge's process control and task sequences, without its ability system: processes scheduled "
                     "from Unity's player loop, with lifecycles, step timings, priorities, groups and clocks of their "
                     "own, and task sequences, staged workflows with waits, conditions, timers, chains and two task "

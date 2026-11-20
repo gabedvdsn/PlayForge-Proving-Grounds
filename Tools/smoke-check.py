@@ -11,13 +11,13 @@ buyer's import:
   down after as Proving Grounds' sample tests take it down, so each scene starts as a press of Play starts it.
 The Test Framework fails a test on any error or exception logged. Unity runs with graphics, as a buyer's editor does.
 
-With --edition core, it smokes PlayForge Core's check project, which export-unitypackage.py --edition core --tests
-makes: the Debugger opens from its menu, and in play mode a Process Bootstrapper brings ProcessControl up, with no
-ability system in the package, and a sequence runs on it to its end.
+With --edition core, it smokes PlayForge Process Sequencer's check project, which export-unitypackage.py --edition core
+--tests makes: the Debugger opens from its menu, and in play mode a Process Bootstrapper brings ProcessControl up, with
+no ability system in the package, and a sequence runs on it to its end.
 
 Usage: python smoke-check.py [--out <dir>] [--edition core]
   --out      the export's folder, as export-unitypackage.py's --out (default: %TEMP%\\claude\\export)
-  --edition  core for PlayForge Core's check project; the full package's otherwise
+  --edition  core for PlayForge Process Sequencer's check project; the full package's otherwise
 """
 import io
 import os
@@ -192,7 +192,7 @@ using UnityEngine.TestTools;
 
 namespace PlayForgeSmoke
 {
-    // PlayForge Core as a buyer's scene has it: a Process Bootstrapper brings ProcessControl up, with no ability system
+    // PlayForge Process Sequencer as a buyer's scene has it: a Process Bootstrapper brings ProcessControl up, with no ability system
     // in the package, and a sequence runs on it to its end, nothing logged
     public class CoreSmoke
     {
